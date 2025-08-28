@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("mapa") {
-                            MapScreen()
+                            MapScreen(navController = navController)
                         }
                     }
                 }
