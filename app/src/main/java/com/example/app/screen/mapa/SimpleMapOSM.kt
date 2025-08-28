@@ -13,8 +13,12 @@ import androidx.core.content.ContextCompat
 import com.example.app.models.UbicacionUsuarioResponse
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.config.Configuration
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.example.app.R
+import com.example.app.viewmodel.decodePolyline
 
 @Composable
 fun SimpleMapOSM(
@@ -26,7 +30,9 @@ fun SimpleMapOSM(
     mapCenterLon: Double = 0.0,
     zoom: Double = 16.0,
     recenterTrigger: Int = 0,
-    context: Context = LocalContext.current
+    context: Context = LocalContext.current,
+    transportMode: String,
+    routeGeometry: String? = null, // PARÁMETRO PARA LA RUTA
 ) {
     val mapView = rememberMapView(context, zoom)
 
@@ -43,21 +49,51 @@ fun SimpleMapOSM(
         update = { map ->
             map.overlays.clear()
 
+            // AGREGAR LA RUTA PRIMERO (para que esté debajo de los marcadores)
+            routeGeometry?.let { geometry ->
+                try {
+                    val routePoints = geometry.decodePolyline()
+                    if (routePoints.isNotEmpty()) {
+                        val polyline = Polyline().apply {
+                            setPoints(routePoints)
+
+                            // Color según el modo de transporte
+                            color = when (transportMode) {
+                                "walking" -> Color(0xFF4CAF50).toArgb() // Verde para caminar
+                                "cycling" -> Color(0xFF2196F3).toArgb() // Azul para bicicleta
+                                "driving" -> Color(0xFFFF9800).toArgb() // Naranja para carro
+                                else -> Color(0xFF4CAF50).toArgb()
+                            }
+
+                            width = 12f // Grosor de la línea
+                        }
+                        map.overlays.add(polyline)
+                    }
+                } catch (e: Exception) {
+                    // Manejar error de decodificación
+                    android.util.Log.e("SimpleMapOSM", "Error decoding route geometry", e)
+                }
+            }
+
             // Punto azul del usuario
             val userMarker = Marker(map).apply {
                 position = GeoPoint(userLat, userLon)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+
                 icon = ShapeDrawable(OvalShape()).apply {
-                    intrinsicHeight = 40
-                    intrinsicWidth = 40
-                    paint.color = android.graphics.Color.BLUE
-                    paint.style = android.graphics.Paint.Style.FILL
+                    intrinsicHeight = 36
+                    intrinsicWidth = 36
+                    paint.apply {
+                        color = android.graphics.Color.rgb(33, 150, 243) // Azul material
+                        style = android.graphics.Paint.Style.FILL
+                        isAntiAlias = true
+                    }
                 }
                 title = "Tu ubicación"
             }
             map.overlays.add(userMarker)
 
-            // Puntos rojos guardados
+            // Puntos rojos guardados (destinos)
             val drawable = ContextCompat.getDrawable(context, R.drawable.ic_marker_red)
             ubicaciones.forEach { ubicacion ->
                 val marker = Marker(map).apply {
@@ -70,11 +106,42 @@ fun SimpleMapOSM(
                 map.overlays.add(marker)
             }
 
+            // Si hay una ruta activa, ajustar el zoom para mostrar toda la ruta
+            routeGeometry?.let { geometry ->
+                try {
+                    val routePoints = geometry.decodePolyline()
+                    if (routePoints.isNotEmpty()) {
+                        // Calcular bounding box de la ruta
+                        val allPoints = mutableListOf<GeoPoint>().apply {
+                            addAll(routePoints)
+                            add(GeoPoint(userLat, userLon)) // Incluir posición del usuario
+                            ubicaciones.forEach {
+                                add(GeoPoint(it.latitud, it.longitud))
+                            }
+                        }
+
+                        if (allPoints.size > 1) {
+                            map.zoomToBoundingBox(
+                                org.osmdroid.util.BoundingBox.fromGeoPoints(allPoints),
+                                true,
+                                100 // padding en pixels
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("SimpleMapOSM", "Error calculating bounding box", e)
+                }
+            }
+
             map.invalidate()
         }
     )
 
+    // Efecto para recentrar el mapa
     LaunchedEffect(recenterTrigger) {
-        mapView.controller.animateTo(GeoPoint(mapCenterLat, mapCenterLon))
+        if (routeGeometry == null) {
+            // Solo recentrar manualmente si no hay ruta activa
+            mapView.controller.animateTo(GeoPoint(mapCenterLat, mapCenterLon))
+        }
     }
 }

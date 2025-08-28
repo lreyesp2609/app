@@ -1,5 +1,7 @@
 package com.example.app.screen.mapa
 
+import MapViewModel
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,12 +13,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.filled.DirectionsBike
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
@@ -37,9 +44,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app.models.UbicacionUsuarioResponse
 import com.example.app.screen.rutas.components.RutasBottomButtons
 
@@ -48,31 +60,34 @@ fun RutaMapa(
     modifier: Modifier = Modifier,
     defaultLat: Double = 0.0,
     defaultLon: Double = 0.0,
-    ubicaciones: List<UbicacionUsuarioResponse> = emptyList()
+    ubicaciones: List<UbicacionUsuarioResponse> = emptyList(),
+    viewModel: MapViewModel = viewModel() // Agregar el ViewModel
 ) {
     val context = LocalContext.current
 
-    // Punto azul del usuario (fijo)
+    // Estados existentes
     val userLat = remember { mutableStateOf(defaultLat) }
     val userLon = remember { mutableStateOf(defaultLon) }
-
-    // Centro de la cámara del mapa
     var mapCenterLat by remember { mutableStateOf(defaultLat) }
     var mapCenterLon by remember { mutableStateOf(defaultLon) }
     var recenterTrigger by remember { mutableStateOf(0) }
-
     var locationObtained by remember { mutableStateOf(false) }
     var showGpsButton by remember { mutableStateOf(false) }
-
-    // Ubicación seleccionada (pin rojo)
     var selectedLocation by remember { mutableStateOf<UbicacionUsuarioResponse?>(ubicaciones.firstOrNull()) }
+    var selectedTransportMode by remember { mutableStateOf("walking") }
+
+    // Observar la ruta del ViewModel
+    val currentRoute by viewModel.route
+
+    // Estados para mostrar información de la ruta
+    var showRouteInfo by remember { mutableStateOf(false) }
+    var routeDistance by remember { mutableStateOf("") }
+    var routeDuration by remember { mutableStateOf("") }
 
     Box(modifier = modifier.fillMaxSize()) {
-
-        // MÉTODO 1: Usar when para evitar transiciones
         when {
             showGpsButton -> {
-                // Botón GPS
+                // Card de GPS deshabilitado (sin cambios)
                 Card(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -119,7 +134,7 @@ fun RutaMapa(
                 }
             }
             locationObtained -> {
-                // Mapa obtenido
+                // Mapa obtenido - PASAR LA RUTA AL MAPA
                 SimpleMapOSM(
                     userLat = userLat.value,
                     userLon = userLon.value,
@@ -127,10 +142,34 @@ fun RutaMapa(
                     ubicaciones = ubicaciones,
                     mapCenterLat = mapCenterLat,
                     mapCenterLon = mapCenterLon,
+                    transportMode = selectedTransportMode,
+                    routeGeometry = currentRoute?.routes?.firstOrNull()?.geometry, // PASAR LA RUTA
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Botón para recenter al usuario (azul)
+                // Botones de transporte
+                TransportModeButtons(
+                    selectedMode = selectedTransportMode,
+                    onModeSelected = { mode ->
+                        selectedTransportMode = mode
+                        viewModel.setMode(mode) // Actualizar el ViewModel
+
+                        // Limpiar ruta anterior
+                        viewModel.clearRoute()
+                        showRouteInfo = false
+
+                        Toast.makeText(
+                            context,
+                            "Modo de transporte: ${getModeDisplayName(mode)}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 16.dp)
+                )
+
+                // Botón para centrar usuario
                 FloatingActionButton(
                     onClick = {
                         mapCenterLat = userLat.value
@@ -149,11 +188,59 @@ fun RutaMapa(
                     )
                 }
 
-                // Botones inferiores
+                // Mostrar información de la ruta si existe
+                if (showRouteInfo && currentRoute != null) {
+                    RouteInfoCard(
+                        distance = routeDistance,
+                        duration = routeDuration,
+                        transportMode = selectedTransportMode,
+                        onDismiss = {
+                            showRouteInfo = false
+                            viewModel.clearRoute()
+                        },
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .statusBarsPadding() // Respetar la barra de estado
+                            .padding(16.dp)
+                    )
+                }
+
+                // Botones inferiores - CONECTAR CON EL VIEWMODEL
                 RutasBottomButtons(
                     modifier = Modifier.align(Alignment.BottomCenter),
-                    onAgregarClick = { /* acción agregar */ },
-                    onRutasClick = { /* acción rutas alternas */ },
+                    selectedTransportMode = selectedTransportMode,
+                    onAgregarClick = {
+                        // Acción para agregar ubicación
+                        Toast.makeText(context, "Agregar ubicación", Toast.LENGTH_SHORT).show()
+                    },
+                    onRutasClick = {
+                        // AQUÍ ESTÁ LA MAGIA - CALCULAR RUTA
+                        selectedLocation?.let { destination ->
+                            if (userLat.value != 0.0 && userLon.value != 0.0) {
+                                val startPoint = Pair(userLat.value, userLon.value)
+                                val endPoint = Pair(destination.latitud, destination.longitud)
+
+                                // Hacer la petición de la ruta
+                                viewModel.fetchRoute(startPoint, endPoint)
+
+                                Toast.makeText(
+                                    context,
+                                    "Calculando ruta en ${getModeDisplayName(selectedTransportMode)}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Ubicación del usuario no disponible",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        } ?: Toast.makeText(
+                            context,
+                            "Selecciona un destino primero",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
                     onUbicacionClick = {
                         selectedLocation?.let { loc ->
                             mapCenterLat = loc.latitud
@@ -164,22 +251,20 @@ fun RutaMapa(
                 )
             }
             else -> {
-                // Estado de carga - SPINNER FIJO CON CROSSFADE DISABLED
+                // Estado de carga (sin cambios)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .wrapContentSize(Alignment.Center) // Centra sin expandir
+                        .wrapContentSize(Alignment.Center)
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        // SPINNER CON CONFIGURACIÓN ESPECÍFICA
                         CircularProgressIndicator(
                             modifier = Modifier
-                                .size(40.dp) // Tamaño específico y fijo
+                                .size(40.dp)
                                 .graphicsLayer {
-                                    // Prevenir animaciones de escala
                                     scaleX = 1f
                                     scaleY = 1f
                                 },
@@ -197,7 +282,6 @@ fun RutaMapa(
                     }
                 }
 
-                // Obtener ubicación
                 GetCurrentLocation(
                     onLocationResult = { lat, lon ->
                         userLat.value = lat
@@ -211,5 +295,95 @@ fun RutaMapa(
                 )
             }
         }
+    }
+
+    // Efecto para procesar la respuesta de la ruta
+    LaunchedEffect(currentRoute) {
+        currentRoute?.let { response ->
+            response.routes.firstOrNull()?.let { route ->
+                // Extraer información de la ruta
+                val distanceKm = (route.summary.distance / 1000.0)
+                val durationMin = (route.summary.duration / 60.0).toInt()
+
+                routeDistance = String.format("%.1f km", distanceKm)
+                routeDuration = "${durationMin} min"
+                showRouteInfo = true
+            }
+        }
+    }
+}
+
+@Composable
+fun TransportModeButtons(
+    selectedMode: String,
+    onModeSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp), // separación vertical
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TransportButton(
+            icon = Icons.Default.DirectionsWalk,
+            isSelected = selectedMode == "walking",
+            onClick = { onModeSelected("walking") },
+            contentDescription = "Caminar"
+        )
+
+        TransportButton(
+            icon = Icons.Default.DirectionsCar,
+            isSelected = selectedMode == "driving",
+            onClick = { onModeSelected("driving") },
+            contentDescription = "Carro"
+        )
+
+        TransportButton(
+            icon = Icons.Default.DirectionsBike,
+            isSelected = selectedMode == "cycling",
+            onClick = { onModeSelected("cycling") },
+            contentDescription = "Bicicleta"
+        )
+    }
+}
+
+@Composable
+fun TransportButton(
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    contentDescription: String
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(48.dp)
+            .background(
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    Color.Black.copy(alpha = 0.7f) // Fondo negro semi-transparente
+                },
+                shape = CircleShape
+            )
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (isSelected) {
+                MaterialTheme.colorScheme.onPrimary // Blanco cuando está seleccionado
+            } else {
+                Color.White // Blanco cuando no está seleccionado
+            },
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+fun getModeDisplayName(mode: String): String {
+    return when (mode) {
+        "walking" -> "Caminar"
+        "driving" -> "Carro"
+        "cycling" -> "Bicicleta"
+        else -> "Caminar"
     }
 }

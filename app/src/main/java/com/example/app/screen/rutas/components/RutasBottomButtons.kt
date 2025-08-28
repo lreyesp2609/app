@@ -23,7 +23,8 @@ fun RutasBottomButtons(
     modifier: Modifier = Modifier,
     onAgregarClick: () -> Unit = {},
     onRutasClick: () -> Unit = {},
-    onUbicacionClick: () -> Unit = {}
+    onUbicacionClick: () -> Unit = {},
+    selectedTransportMode: String,
 ) {
     val isDarkTheme = isSystemInDarkTheme()
 

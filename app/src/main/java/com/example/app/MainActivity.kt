@@ -25,7 +25,6 @@ import com.example.app.screen.home.HomeScreen
 import com.example.app.screen.mapa.RutaMapa
 import com.example.app.screen.rutas.AlternateRoutesScreen
 import com.example.app.screen.rutas.components.MapScreen
-import com.example.app.screen.rutas.components.RutasScreen
 import com.example.app.ui.theme.AppTheme
 import com.example.app.viewmodel.AuthViewModel
 import com.example.app.viewmodel.UbicacionesViewModel
