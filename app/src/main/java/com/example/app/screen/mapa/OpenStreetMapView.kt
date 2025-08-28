@@ -6,16 +6,9 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.OvalShape
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import org.osmdroid.config.Configuration
@@ -25,24 +18,21 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Overlay
 import com.example.app.R
+import org.osmdroid.events.MapListener
+import org.osmdroid.events.ScrollEvent
+import org.osmdroid.events.ZoomEvent
 
-// Overlay que dibuja el pin rojo centrado
 class CenteredPinOverlay(private val context: Context) : Overlay() {
     private val pinDrawable: Drawable? = ContextCompat.getDrawable(context, R.drawable.ic_marker_red)
 
     override fun draw(canvas: Canvas?, mapView: MapView?, shadow: Boolean) {
         if (canvas == null || mapView == null || shadow) return
-
         pinDrawable?.let { drawable ->
             val centerX = mapView.width / 2
             val centerY = mapView.height / 2
             val width = drawable.intrinsicWidth
             val height = drawable.intrinsicHeight
-            val left = centerX - width / 2
-            val top = centerY - height
-            val right = left + width
-            val bottom = centerY
-            drawable.setBounds(left, top, right, bottom)
+            drawable.setBounds(centerX - width / 2, centerY - height, centerX + width / 2, centerY)
             drawable.draw(canvas)
         }
     }
@@ -56,9 +46,11 @@ fun OpenStreetMap(
     zoom: Double = 16.0,
     showUserLocation: Boolean = true,
     recenterTrigger: Int = 0,
-    context: Context = LocalContext.current
+    context: Context = LocalContext.current,
+    onLocationSelected: (lat: Double, lon: Double) -> Unit = { _, _ -> }
 ) {
-    val mapView = remember { mutableStateOf<MapView?>(null) }
+    // ✅ Solo se crea una vez y se recuerda
+    val mapView = rememberMapView(context, zoom)
 
     LaunchedEffect(Unit) {
         Configuration.getInstance().load(
@@ -67,59 +59,67 @@ fun OpenStreetMap(
         )
     }
 
-    Box(modifier = modifier) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { ctx ->
-                MapView(ctx).apply {
-                    setTileSource(TileSourceFactory.MAPNIK)
-                    setMultiTouchControls(true)
-                    controller.setZoom(zoom)
-                    setBuiltInZoomControls(false)
-                    mapView.value = this
-                }
-            },
-            update = { map ->
-                map.overlays.clear()
+    AndroidView(
+        modifier = modifier.fillMaxSize(),
+        factory = { mapView },
+        update = { map ->
+            map.overlays.clear()
 
-                if (showUserLocation) {
-                    val circleSize = 40
-                    val shape = ShapeDrawable(OvalShape()).apply {
-                        intrinsicHeight = circleSize
-                        intrinsicWidth = circleSize
+            if (showUserLocation) {
+                val geoPoint = GeoPoint(latitude, longitude)
+                val circleMarker = Marker(map).apply {
+                    position = geoPoint
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                    icon = ShapeDrawable(OvalShape()).apply {
+                        intrinsicHeight = 40
+                        intrinsicWidth = 40
                         paint.color = android.graphics.Color.BLUE
                         paint.style = android.graphics.Paint.Style.FILL
                     }
-                    val geoPoint = GeoPoint(latitude, longitude)
-                    val circleMarker = Marker(map).apply {
-                        position = geoPoint
-                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                        icon = shape
-                    }
-                    map.overlays.add(circleMarker)
                 }
-
-                map.overlays.add(CenteredPinOverlay(context))
+                map.overlays.add(circleMarker)
             }
-        )
 
-        // Centrar mapa al cambiar recenterTrigger
-        LaunchedEffect(recenterTrigger) {
-            mapView.value?.controller?.animateTo(GeoPoint(latitude, longitude))
+            map.overlays.add(CenteredPinOverlay(context))
         }
+    )
 
-        FloatingActionButton(
-            onClick = { mapView.value?.controller?.animateTo(GeoPoint(latitude, longitude)) },
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 16.dp),
-            containerColor = Color(0xFF2196F3),
-            contentColor = Color.White
-        ) {
-            Icon(
-                imageVector = Icons.Default.MyLocation,
-                contentDescription = "Centrar en mi ubicación"
-            )
+    // Centrar mapa cuando se presione botón
+    LaunchedEffect(recenterTrigger) {
+        mapView.controller.animateTo(GeoPoint(latitude, longitude))
+    }
+
+    // Detectar movimiento del mapa
+    DisposableEffect(mapView) {
+        val listener = object : MapListener {
+            override fun onScroll(event: ScrollEvent?): Boolean {
+                event?.source?.mapCenter?.let { center ->
+                    onLocationSelected(center.latitude, center.longitude)
+                }
+                return true
+            }
+
+            override fun onZoom(event: ZoomEvent?): Boolean {
+                event?.source?.mapCenter?.let { center ->
+                    onLocationSelected(center.latitude, center.longitude)
+                }
+                return true
+            }
+        }
+        mapView.addMapListener(listener)
+        onDispose { mapView.removeMapListener(listener) }
+    }
+}
+
+@Composable
+fun rememberMapView(context: Context, zoom: Double = 16.0): MapView {
+    return remember {
+        MapView(context).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(true)
+            controller.setZoom(zoom)
+            setBuiltInZoomControls(false)
         }
     }
 }
+
