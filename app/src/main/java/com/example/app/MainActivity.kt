@@ -89,7 +89,6 @@ class MainActivity : ComponentActivity() {
                             val id = backStackEntry.arguments?.getInt("id") ?: 0
                             val token = authViewModel.accessToken ?: ""
 
-                            // ✅ Usamos viewModel() de Compose
                             val viewModel: UbicacionesViewModel = viewModel(
                                 factory = UbicacionesViewModelFactory(token)
                             )
@@ -99,15 +98,12 @@ class MainActivity : ComponentActivity() {
                             }
 
                             val ubicacion = viewModel.ubicacionSeleccionada
-                            if (ubicacion != null) {
-                                RutaMapa(
-                                    defaultLat = ubicacion.latitud,
-                                    defaultLon = ubicacion.longitud,
-                                    ubicaciones = listOf(ubicacion)
-                                )
-                            } else {
-                                CircularProgressIndicator(modifier = Modifier.fillMaxSize())
-                            }
+
+                            RutaMapa(
+                                defaultLat = 0.0, // GPS del usuario
+                                defaultLon = 0.0, // GPS del usuario
+                                ubicaciones = if (ubicacion != null) listOf(ubicacion) else emptyList()
+                            )
                         }
                     }
                 }

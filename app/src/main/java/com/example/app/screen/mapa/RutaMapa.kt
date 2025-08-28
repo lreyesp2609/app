@@ -61,7 +61,7 @@ fun RutaMapa(
     defaultLat: Double = 0.0,
     defaultLon: Double = 0.0,
     ubicaciones: List<UbicacionUsuarioResponse> = emptyList(),
-    viewModel: MapViewModel = viewModel() // Agregar el ViewModel
+    viewModel: MapViewModel = viewModel()
 ) {
     val context = LocalContext.current
 
@@ -84,10 +84,17 @@ fun RutaMapa(
     var routeDistance by remember { mutableStateOf("") }
     var routeDuration by remember { mutableStateOf("") }
 
+    // ACTUALIZAR selectedLocation cuando cambien las ubicaciones
+    LaunchedEffect(ubicaciones) {
+        if (ubicaciones.isNotEmpty()) {
+            selectedLocation = ubicaciones.first()
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         when {
             showGpsButton -> {
-                // Card de GPS deshabilitado (sin cambios)
+                // Card de GPS deshabilitado
                 Card(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -143,7 +150,7 @@ fun RutaMapa(
                     mapCenterLat = mapCenterLat,
                     mapCenterLon = mapCenterLon,
                     transportMode = selectedTransportMode,
-                    routeGeometry = currentRoute?.routes?.firstOrNull()?.geometry, // PASAR LA RUTA
+                    routeGeometry = currentRoute?.routes?.firstOrNull()?.geometry,
                     modifier = Modifier.fillMaxSize()
                 )
 
@@ -152,7 +159,7 @@ fun RutaMapa(
                     selectedMode = selectedTransportMode,
                     onModeSelected = { mode ->
                         selectedTransportMode = mode
-                        viewModel.setMode(mode) // Actualizar el ViewModel
+                        viewModel.setMode(mode)
 
                         // Limpiar ruta anterior
                         viewModel.clearRoute()
@@ -200,27 +207,24 @@ fun RutaMapa(
                         },
                         modifier = Modifier
                             .align(Alignment.TopCenter)
-                            .statusBarsPadding() // Respetar la barra de estado
+                            .statusBarsPadding()
                             .padding(16.dp)
                     )
                 }
 
-                // Botones inferiores - CONECTAR CON EL VIEWMODEL
+                // Botones inferiores
                 RutasBottomButtons(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     selectedTransportMode = selectedTransportMode,
                     onAgregarClick = {
-                        // Acción para agregar ubicación
                         Toast.makeText(context, "Agregar ubicación", Toast.LENGTH_SHORT).show()
                     },
                     onRutasClick = {
-                        // AQUÍ ESTÁ LA MAGIA - CALCULAR RUTA
                         selectedLocation?.let { destination ->
                             if (userLat.value != 0.0 && userLon.value != 0.0) {
                                 val startPoint = Pair(userLat.value, userLon.value)
                                 val endPoint = Pair(destination.latitud, destination.longitud)
 
-                                // Hacer la petición de la ruta
                                 viewModel.fetchRoute(startPoint, endPoint)
 
                                 Toast.makeText(
@@ -251,23 +255,17 @@ fun RutaMapa(
                 )
             }
             else -> {
-                // Estado de carga (sin cambios)
+                // Estado de carga - SPINNER ARREGLADO
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center)
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
                         CircularProgressIndicator(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .graphicsLayer {
-                                    scaleX = 1f
-                                    scaleY = 1f
-                                },
+                            modifier = Modifier.size(32.dp),
                             color = MaterialTheme.colorScheme.primary,
                             strokeWidth = 3.dp,
                             trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
@@ -276,8 +274,7 @@ fun RutaMapa(
                         Text(
                             text = "Obteniendo ubicación...",
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 1
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
@@ -301,7 +298,6 @@ fun RutaMapa(
     LaunchedEffect(currentRoute) {
         currentRoute?.let { response ->
             response.routes.firstOrNull()?.let { route ->
-                // Extraer información de la ruta
                 val distanceKm = (route.summary.distance / 1000.0)
                 val durationMin = (route.summary.duration / 60.0).toInt()
 
@@ -321,7 +317,7 @@ fun TransportModeButtons(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp), // separación vertical
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         TransportButton(
@@ -362,7 +358,7 @@ fun TransportButton(
                 color = if (isSelected) {
                     MaterialTheme.colorScheme.primary
                 } else {
-                    Color.Black.copy(alpha = 0.7f) // Fondo negro semi-transparente
+                    Color.Black.copy(alpha = 0.7f)
                 },
                 shape = CircleShape
             )
@@ -371,14 +367,15 @@ fun TransportButton(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = if (isSelected) {
-                MaterialTheme.colorScheme.onPrimary // Blanco cuando está seleccionado
+                MaterialTheme.colorScheme.onPrimary
             } else {
-                Color.White // Blanco cuando no está seleccionado
+                Color.White
             },
             modifier = Modifier.size(24.dp)
         )
     }
 }
+
 fun getModeDisplayName(mode: String): String {
     return when (mode) {
         "walking" -> "Caminar"
