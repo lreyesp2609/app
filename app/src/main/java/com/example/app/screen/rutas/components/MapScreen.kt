@@ -102,7 +102,7 @@ fun MapScreen(navController: NavController, onConfirmClick: () -> Unit = {}) {
                     }
 
                     MapBottomButtons(
-                        userLocation = "Tu dirección actual",
+                        userLocation = currentAddress,
                         selectedLocation = selectedAddress,
                         locationName = locationName,
                         onLocationNameChange = { locationName = it },

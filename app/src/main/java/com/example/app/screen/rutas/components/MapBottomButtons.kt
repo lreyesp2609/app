@@ -136,30 +136,27 @@ fun LocationNameCard(
     val background = getBackgroundGradient(isDarkTheme)
     val contentColor = if (isDarkTheme) Color.White else Color.Black
     val focusManager = LocalFocusManager.current
-
-    // Color para el icono del nombre
-    val iconColor = Color(0xFF3B82F6) // azul
+    val iconColor = Color(0xFF3B82F6)
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        shape = RoundedCornerShape(12.dp), // un poco más compacto
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Box(
             modifier = Modifier
                 .background(brush = background)
-                .padding(16.dp)
+                .padding(12.dp) // menos padding
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Icono con fondo circular
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(36.dp) // icono más pequeño
                         .background(color = iconColor.copy(alpha = 0.2f), shape = CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
@@ -167,35 +164,31 @@ fun LocationNameCard(
                         imageVector = Icons.Default.Edit,
                         contentDescription = null,
                         tint = iconColor,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(20.dp) // icono más pequeño
                     )
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(12.dp)) // menos espacio
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Nombre de la ubicación",
                         color = contentColor.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall, // más pequeño
                         fontWeight = FontWeight.Medium
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp)) // menos altura
 
-                    // Campo de texto para el nombre
                     OutlinedTextField(
                         value = locationName,
                         onValueChange = { newValue ->
-                            // Limitar a 100 caracteres
-                            if (newValue.length <= 100) {
-                                onLocationNameChange(newValue)
-                            }
+                            if (newValue.length <= 100) onLocationNameChange(newValue)
                         },
                         placeholder = {
                             Text(
-                                "ej. Casa, Trabajo, Universidad...",
+                                "ej. Casa, Trabajo...",
                                 color = contentColor.copy(alpha = 0.5f),
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodySmall
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
@@ -205,8 +198,8 @@ fun LocationNameCard(
                             unfocusedBorderColor = contentColor.copy(alpha = 0.3f),
                             cursorColor = iconColor
                         ),
-                        shape = RoundedCornerShape(12.dp),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        shape = RoundedCornerShape(8.dp),
+                        textStyle = MaterialTheme.typography.bodySmall.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
                         singleLine = true,
@@ -231,6 +224,7 @@ fun LocationNameCard(
         }
     }
 }
+
 
 enum class LocationCardType {
     Current,
