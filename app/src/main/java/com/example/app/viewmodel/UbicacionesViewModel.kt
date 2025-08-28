@@ -23,6 +23,11 @@ class UbicacionesViewModel(private val token: String) : ViewModel() {
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
+    // 👇 Nueva variable para la ubicación individual
+    var ubicacionSeleccionada by mutableStateOf<UbicacionUsuarioResponse?>(null)
+        private set
+
+    // --- métodos existentes ---
     fun crearUbicacion(ubicacion: UbicacionUsuarioCreate, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             isLoading = true
@@ -44,6 +49,20 @@ class UbicacionesViewModel(private val token: String) : ViewModel() {
             errorMessage = null
             repository.obtenerUbicaciones(token).fold(onSuccess = {
                 ubicaciones = it
+                isLoading = false
+            }, onFailure = {
+                errorMessage = it.message
+                isLoading = false
+            })
+        }
+    }
+
+    fun cargarUbicacionPorId(id: Int) {
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+            repository.obtenerUbicacionPorId(token, id).fold(onSuccess = {
+                ubicacionSeleccionada = it
                 isLoading = false
             }, onFailure = {
                 errorMessage = it.message

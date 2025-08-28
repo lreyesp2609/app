@@ -40,4 +40,19 @@ class UbicacionesRepository {
             Result.failure(Exception("Error HTTP: ${e.message}"))
         }
     }
+    suspend fun obtenerUbicacionPorId(token: String, id: Int): Result<UbicacionUsuarioResponse> {
+        return try {
+            val response = api.obtenerUbicacionPorId("Bearer $token", id)
+            if (response.isSuccessful) {
+                response.body()?.let { Result.success(it) }
+                    ?: Result.failure(Exception("Ubicación no encontrada"))
+            } else {
+                Result.failure(Exception(response.errorBody()?.string() ?: "Error desconocido"))
+            }
+        } catch (e: IOException) {
+            Result.failure(Exception("Error de red: ${e.message}"))
+        } catch (e: HttpException) {
+            Result.failure(Exception("Error HTTP: ${e.message}"))
+        }
+    }
 }

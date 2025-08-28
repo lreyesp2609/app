@@ -35,6 +35,6 @@ object RetrofitClient {
     }
 
     val ubicacionesApiService: UbicacionesApiService by lazy {
-        retrofit.create(UbicacionesApiService::class.java)  // Fixed: Use class name, not property name
+        retrofit.create(UbicacionesApiService::class.java)
     }
 }

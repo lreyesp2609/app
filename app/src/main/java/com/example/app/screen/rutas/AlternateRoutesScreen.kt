@@ -36,7 +36,6 @@ fun AlternateRoutesScreen(
     modifier: Modifier = Modifier,
     navController: NavController
 ) {
-    // ViewModel
     val viewModel = remember { UbicacionesViewModel(token) }
 
     LaunchedEffect(Unit) {
@@ -86,9 +85,7 @@ fun AlternateRoutesScreen(
 
         // Botón para agregar ubicación
         Button(
-            onClick = {
-                navController.navigate("mapa")
-            },
+            onClick = { navController.navigate("mapa") },
             modifier = Modifier.fillMaxWidth(0.7f),
             colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
             shape = RoundedCornerShape(12.dp)
@@ -101,7 +98,6 @@ fun AlternateRoutesScreen(
             Spacer(modifier = Modifier.width(8.dp))
             Text(text = "Agregar Ubicación", color = Color.White)
         }
-
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -139,6 +135,33 @@ fun AlternateRoutesScreen(
                                 color = textColor.copy(alpha = 0.7f),
                                 fontSize = 14.sp
                             )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // 🚀 Aquí pasamos el ID en vez de lat/lon
+                                Button(
+                                    onClick = {
+                                        navController.navigate("rutas_screen/${ubicacion.id}")
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(text = "Ver Ruta", color = Color.White)
+                                }
+
+                                Button(
+                                    onClick = { println("Editar ${ubicacion.nombre}") },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(text = "Editar", color = Color.White)
+                                }
+                            }
                         }
                     }
                 }
