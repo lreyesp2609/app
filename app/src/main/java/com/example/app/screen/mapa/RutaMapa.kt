@@ -251,23 +251,17 @@ fun RutaMapa(
                 )
             }
             else -> {
-                // Estado de carga (sin cambios)
+                // Estado de carga - ARREGLADO EL BUG VISUAL
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center)
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
                         CircularProgressIndicator(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .graphicsLayer {
-                                    scaleX = 1f
-                                    scaleY = 1f
-                                },
+                            modifier = Modifier.size(32.dp), // Tamaño fijo más pequeño
                             color = MaterialTheme.colorScheme.primary,
                             strokeWidth = 3.dp,
                             trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
@@ -276,8 +270,7 @@ fun RutaMapa(
                         Text(
                             text = "Obteniendo ubicación...",
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 1
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
@@ -379,6 +372,7 @@ fun TransportButton(
         )
     }
 }
+
 fun getModeDisplayName(mode: String): String {
     return when (mode) {
         "walking" -> "Caminar"

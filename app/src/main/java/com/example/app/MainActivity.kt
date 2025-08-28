@@ -4,14 +4,23 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -81,7 +90,7 @@ class MainActivity : ComponentActivity() {
                             MapScreen(navController = navController)
                         }
 
-                        // 🔹 Rutas por ID en vez de lat/lon
+                        // 🔹 Rutas por ID en vez de lat/lon - BUG CORREGIDO
                         composable(
                             "rutas_screen/{id}",
                             arguments = listOf(navArgument("id") { type = NavType.IntType })
@@ -99,15 +108,11 @@ class MainActivity : ComponentActivity() {
                             }
 
                             val ubicacion = viewModel.ubicacionSeleccionada
-                            if (ubicacion != null) {
-                                RutaMapa(
-                                    defaultLat = ubicacion.latitud,
-                                    defaultLon = ubicacion.longitud,
-                                    ubicaciones = listOf(ubicacion)
-                                )
-                            } else {
-                                CircularProgressIndicator(modifier = Modifier.fillMaxSize())
-                            }
+                            RutaMapa(
+                                defaultLat = ubicacion?.latitud ?: 0.0,
+                                defaultLon = ubicacion?.longitud ?: 0.0,
+                                ubicaciones = if (ubicacion != null) listOf(ubicacion) else emptyList()
+                            )
                         }
                     }
                 }
