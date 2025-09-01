@@ -6,21 +6,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsWalk
@@ -48,7 +43,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -84,64 +78,37 @@ fun RutaMapa(
     var routeDistance by remember { mutableStateOf("") }
     var routeDuration by remember { mutableStateOf("") }
 
-    // ACTUALIZAR selectedLocation cuando cambien las ubicaciones
+    // Actualizar selectedLocation cuando cambien las ubicaciones
     LaunchedEffect(ubicaciones) {
         if (ubicaciones.isNotEmpty()) {
             selectedLocation = ubicaciones.first()
         }
     }
 
+    // LocationTracker siempre activo para recibir actualizaciones
+    LocationTracker { lat, lon ->
+        userLat.value = lat
+        userLon.value = lon
+
+        if (!locationObtained) {
+            mapCenterLat = lat
+            mapCenterLon = lon
+            locationObtained = true
+        }
+    }
+
+
     Box(modifier = modifier.fillMaxSize()) {
         when {
             showGpsButton -> {
                 // Card de GPS deshabilitado
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(24.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocationOff,
-                            contentDescription = "GPS deshabilitado",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "GPS deshabilitado",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Activa la ubicación para continuar",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { showGpsButton = false },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(imageVector = Icons.Default.LocationOn, contentDescription = "Habilitar GPS")
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Reintentar")
-                        }
-                    }
-                }
+                GpsEnableButton(
+                    onEnableGps = { showGpsButton = false },
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
             locationObtained -> {
-                // Mapa obtenido - PASAR LA RUTA AL MAPA
+                // Mapa con la ruta
                 SimpleMapOSM(
                     userLat = userLat.value,
                     userLon = userLon.value,
@@ -160,8 +127,6 @@ fun RutaMapa(
                     onModeSelected = { mode ->
                         selectedTransportMode = mode
                         viewModel.setMode(mode)
-
-                        // Limpiar ruta anterior
                         viewModel.clearRoute()
                         showRouteInfo = false
 
@@ -195,7 +160,7 @@ fun RutaMapa(
                     )
                 }
 
-                // Mostrar información de la ruta si existe
+                // Mostrar información de la ruta
                 if (showRouteInfo && currentRoute != null) {
                     RouteInfoCard(
                         distance = routeDistance,
@@ -224,7 +189,6 @@ fun RutaMapa(
                             if (userLat.value != 0.0 && userLon.value != 0.0) {
                                 val startPoint = Pair(userLat.value, userLon.value)
                                 val endPoint = Pair(destination.latitud, destination.longitud)
-
                                 viewModel.fetchRoute(startPoint, endPoint)
 
                                 Toast.makeText(
@@ -255,7 +219,7 @@ fun RutaMapa(
                 )
             }
             else -> {
-                // Estado de carga - SPINNER ARREGLADO
+                // Estado de carga - Spinner
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -279,6 +243,7 @@ fun RutaMapa(
                     }
                 }
 
+                // GetCurrentLocation maneja permisos y GPS apagado
                 GetCurrentLocation(
                     onLocationResult = { lat, lon ->
                         userLat.value = lat
@@ -294,13 +259,12 @@ fun RutaMapa(
         }
     }
 
-    // Efecto para procesar la respuesta de la ruta
+    // Procesar la respuesta de la ruta
     LaunchedEffect(currentRoute) {
         currentRoute?.let { response ->
             response.routes.firstOrNull()?.let { route ->
                 val distanceKm = (route.summary.distance / 1000.0)
                 val durationMin = (route.summary.duration / 60.0).toInt()
-
                 routeDistance = String.format("%.1f km", distanceKm)
                 routeDuration = "${durationMin} min"
                 showRouteInfo = true
@@ -308,6 +272,7 @@ fun RutaMapa(
         }
     }
 }
+
 
 @Composable
 fun TransportModeButtons(
