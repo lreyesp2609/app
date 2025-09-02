@@ -36,8 +36,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
+import calcularDistanciaSobreRuta
 import com.example.app.models.UbicacionUsuarioResponse
 import com.example.app.screen.rutas.components.RutasBottomButtons
+import com.example.app.viewmodel.decodePolyline
+import kotlinx.coroutines.delay
+import org.osmdroid.util.GeoPoint
+import kotlin.collections.isNotEmpty
 
 @Composable
 fun RutaMapa(
@@ -47,7 +52,8 @@ fun RutaMapa(
     ubicaciones: List<UbicacionUsuarioResponse> = emptyList(),
     viewModel: MapViewModel = viewModel()
 ) {
-    val context = LocalContext.current
+    var tiempoRecorrido by remember { mutableStateOf(0L) }
+    var tiempoInicioRuta by remember { mutableStateOf(0L) } // NUEVO: tiempo cuando inició la ruta
 
     // Estados existentes
     val userLat = remember { mutableStateOf(defaultLat) }
@@ -72,9 +78,15 @@ fun RutaMapa(
     var routeDistance by remember { mutableStateOf("") }
     var routeDuration by remember { mutableStateOf("") }
 
-    // ESTADOS MODIFICADOS para evitar que reaparezca el mensaje
+    // NUEVOS ESTADOS para manejar la ruta original
+    var rutaOriginal by remember { mutableStateOf<List<GeoPoint>>(emptyList()) }
+    var distanciaOriginal by remember { mutableStateOf(0.0) }
+    var duracionOriginal by remember { mutableStateOf(0.0) }
+    var rutaActiva by remember { mutableStateOf(false) }
+
+    // Estados para mensajes
     var destinoAlcanzado by remember { mutableStateOf(false) }
-    var mensajeDestinoMostrado by remember { mutableStateOf(false) } // NUEVO: rastrea si ya se mostró
+    var mensajeDestinoMostrado by remember { mutableStateOf(false) }
     var showTransportMessage by remember { mutableStateOf(false) }
     var transportMessage by remember { mutableStateOf("") }
 
@@ -82,25 +94,116 @@ fun RutaMapa(
     LaunchedEffect(ubicaciones) {
         if (ubicaciones.isNotEmpty()) {
             selectedLocation = ubicaciones.first()
-            // RESETEAR cuando cambia la ubicación destino
             mensajeDestinoMostrado = false
             destinoAlcanzado = false
         }
     }
 
-    // RESETEAR cuando se calcula nueva ruta
+    // GUARDAR ruta original cuando se calcula nueva ruta
     LaunchedEffect(currentRoute) {
-        currentRoute?.let { response ->
-            response.routes.firstOrNull()?.let { route ->
-                val distanceKm = (route.summary.distance / 1000.0)
-                val durationMin = (route.summary.duration / 60.0).toInt()
-                routeDistance = String.format("%.1f km", distanceKm)
-                routeDuration = "${durationMin} min"
-                showRouteInfo = true
+        currentRoute?.routes?.firstOrNull()?.let { route ->
+            rutaOriginal = route.geometry.decodePolyline()
+            distanciaOriginal = route.summary.distance * 1000.0 // convertir a metros
+            duracionOriginal = route.summary.duration // en segundos
+            rutaActiva = true
+            tiempoInicioRuta = System.currentTimeMillis() / 1000 // tiempo actual en segundos
 
-                // RESETEAR el estado del mensaje cuando se calcula nueva ruta
-                mensajeDestinoMostrado = false
-                destinoAlcanzado = false
+            // Calcular valores iniciales
+            val distanciaRestanteKm = calcularDistanciaSobreRuta(userLat.value, userLon.value, rutaOriginal) / 1000.0
+            val durationRemaining = duracionOriginal * (distanciaRestanteKm / (distanciaOriginal / 1000.0))
+            val durationMin = (durationRemaining / 60.0).toInt()
+
+            routeDistance = String.format("%.2f km", distanciaRestanteKm)
+            routeDuration = "${durationMin} min"
+            showRouteInfo = true
+
+            mensajeDestinoMostrado = false
+            destinoAlcanzado = false
+        }
+    }
+
+    // ACTUALIZAR distancia y tiempo continuamente cuando hay ruta activa
+    LaunchedEffect(userLat.value, userLon.value, rutaActiva) {
+        if (rutaActiva && rutaOriginal.isNotEmpty()) {
+            // Calcular distancia restante usando GPS actual
+            val distanciaRestanteMetros = calcularDistanciaSobreRuta(userLat.value, userLon.value, rutaOriginal)
+            val distanciaRestanteKm = distanciaRestanteMetros / 1000.0
+
+            // Calcular tiempo transcurrido desde que inició la ruta
+            val tiempoActual = System.currentTimeMillis() / 1000
+            val tiempoTranscurrido = tiempoActual - tiempoInicioRuta
+
+            // Calcular duración restante basada en la proporción de distancia
+            val proporcionDistanciaRestante = if (distanciaOriginal > 0) {
+                distanciaRestanteMetros / distanciaOriginal
+            } else {
+                0.0
+            }
+
+            // Tiempo estimado original para la distancia restante
+            val tiempoEstimadoRestante = duracionOriginal * proporcionDistanciaRestante
+
+            // Calcular duración usando proporción simple como Google Maps
+            val duracionFinal = if (tiempoTranscurrido > 30 && distanciaOriginal > distanciaRestanteMetros) {
+                // Calcular progreso real
+                val distanciaRecorrida = distanciaOriginal - distanciaRestanteMetros
+                val progresoReal = if (distanciaOriginal > 0) distanciaRecorrida / distanciaOriginal else 0.0
+
+                if (progresoReal > 0.01) { // Solo si hay progreso significativo (1%)
+                    // Calcular tiempo restante basado en velocidad real observada
+                    val velocidadObservada = distanciaRecorrida / tiempoTranscurrido
+                    if (velocidadObservada > 0) {
+                        distanciaRestanteMetros / velocidadObservada
+                    } else {
+                        tiempoEstimadoRestante
+                    }
+                } else {
+                    // Si no hay progreso significativo, usar estimación original
+                    tiempoEstimadoRestante
+                }
+            } else {
+                // Usar estimación proporcional simple
+                tiempoEstimadoRestante
+            }
+
+            val durationMin = (duracionFinal / 60.0).toInt()
+
+            // Actualizar valores mostrados de forma simple
+            routeDistance = String.format("%.2f km", distanciaRestanteKm)
+            routeDuration = when {
+                distanciaRestanteMetros < 50 -> "Llegando..."
+                durationMin > 0 -> "${durationMin} min"
+                distanciaRestanteKm > 0 -> {
+                    // Usar proporción simple de la estimación original
+                    val tiempoProporcionado = (duracionOriginal * proporcionDistanciaRestante / 60.0).toInt()
+                    "${maxOf(tiempoProporcionado, 1)} min"
+                }
+                else -> "Llegando..."
+            }
+
+            // Detección de llegada MÁS ESTRICTA - usar distancia al destino real
+            selectedLocation?.let { destino ->
+                val distanciaAlDestino = calcularDistancia(
+                    userLat.value, userLon.value,
+                    destino.latitud, destino.longitud
+                )
+
+                // Solo considerar llegada si está a menos de 30 metros del destino real
+                if (distanciaAlDestino < 30 && !mensajeDestinoMostrado) {
+                    rutaActiva = false
+                    destinoAlcanzado = true
+                    mensajeDestinoMostrado = true
+                }
+            }
+        }
+    }
+
+    // Contador de tiempo para mostrar tiempo transcurrido
+    LaunchedEffect(locationObtained) {
+        if (locationObtained) {
+            while (true) {
+                delay(1000L)
+                tiempoRecorrido++
             }
         }
     }
@@ -118,10 +221,9 @@ fun RutaMapa(
         selectedLocation?.let { destino ->
             val distancia = calcularDistancia(lat, lon, destino.latitud, destino.longitud)
 
-            // LÓGICA MODIFICADA: Solo mostrar si no se ha mostrado antes
             if (distancia < 50 && !mensajeDestinoMostrado) {
                 destinoAlcanzado = true
-                mensajeDestinoMostrado = true // Marcar que ya se mostró
+                mensajeDestinoMostrado = true
             }
         }
     }
@@ -158,8 +260,8 @@ fun RutaMapa(
                         viewModel.setMode(mode)
                         viewModel.clearRoute()
                         showRouteInfo = false
+                        rutaActiva = false // RESETEAR ruta activa
 
-                        // USAR NOTIFICACIÓN INTEGRADA en lugar de Toast
                         transportMessage = "Modo de transporte: ${getModeDisplayName(mode)}"
                         showTransportMessage = true
                     },
@@ -175,7 +277,6 @@ fun RutaMapa(
                         .padding(end = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Botón Zoom In (+)
                     FloatingActionButton(
                         onClick = { zoomInTrigger++ },
                         modifier = Modifier.size(48.dp),
@@ -188,7 +289,6 @@ fun RutaMapa(
                         )
                     }
 
-                    // Botón Zoom Out (-)
                     FloatingActionButton(
                         onClick = { zoomOutTrigger++ },
                         modifier = Modifier.size(48.dp),
@@ -201,7 +301,6 @@ fun RutaMapa(
                         )
                     }
 
-                    // Botón para centrar usuario
                     FloatingActionButton(
                         onClick = {
                             mapCenterLat = userLat.value
@@ -219,8 +318,8 @@ fun RutaMapa(
                     }
                 }
 
-                // Mostrar información de la ruta
-                if (showRouteInfo && currentRoute != null) {
+                // Mostrar información de la ruta - ACTUALIZADA DINÁMICAMENTE
+                if (showRouteInfo && (currentRoute != null || rutaActiva)) {
                     RouteInfoCard(
                         distance = routeDistance,
                         duration = routeDuration,
@@ -228,6 +327,7 @@ fun RutaMapa(
                         onDismiss = {
                             showRouteInfo = false
                             viewModel.clearRoute()
+                            rutaActiva = false // RESETEAR ruta activa
                         },
                         modifier = Modifier
                             .align(Alignment.TopCenter)
@@ -236,7 +336,7 @@ fun RutaMapa(
                     )
                 }
 
-                // BOTONES INFERIORES CON NOTIFICACIONES INTEGRADAS
+                // BOTONES INFERIORES
                 RutasBottomButtons(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     selectedTransportMode = selectedTransportMode,
@@ -244,14 +344,11 @@ fun RutaMapa(
                     destinationMessage = "Has llegado a tu destino",
                     onDismissDestination = {
                         destinoAlcanzado = false
-                        // NO reseteamos mensajeDestinoMostrado para que no vuelva a aparecer
                     },
                     showTransportMessage = showTransportMessage,
                     transportMessage = transportMessage,
                     onDismissTransport = { showTransportMessage = false },
                     onAgregarClick = {
-                        // Ya no usamos Toast aquí, puedes agregar lógica personalizada
-                        // o crear un nuevo estado para mostrar mensaje de "Agregar ubicación"
                     },
                     onRutasClick = {
                         selectedLocation?.let { destination ->
@@ -260,11 +357,9 @@ fun RutaMapa(
                                 val endPoint = Pair(destination.latitud, destination.longitud)
                                 viewModel.fetchRoute(startPoint, endPoint)
 
-                                // USAR NOTIFICACIÓN INTEGRADA
                                 transportMessage = "Calculando ruta en ${getModeDisplayName(selectedTransportMode)}"
                                 showTransportMessage = true
                             } else {
-                                // Puedes crear otro estado para este mensaje si quieres
                                 transportMessage = "Ubicación del usuario no disponible"
                                 showTransportMessage = true
                             }
@@ -283,7 +378,6 @@ fun RutaMapa(
                 )
             }
             else -> {
-                // Estado de carga
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -304,7 +398,6 @@ fun RutaMapa(
         }
     }
 }
-
 @Composable
 fun TransportModeButtons(
     selectedMode: String,
