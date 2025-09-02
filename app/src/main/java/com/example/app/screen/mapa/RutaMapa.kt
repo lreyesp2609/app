@@ -44,7 +44,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app.models.UbicacionUsuarioResponse
 import com.example.app.screen.rutas.components.RutasBottomButtons
@@ -189,6 +188,8 @@ fun RutaMapa(
                             if (userLat.value != 0.0 && userLon.value != 0.0) {
                                 val startPoint = Pair(userLat.value, userLon.value)
                                 val endPoint = Pair(destination.latitud, destination.longitud)
+
+                                // Llamada al ViewModel
                                 viewModel.fetchRoute(startPoint, endPoint)
 
                                 Toast.makeText(

@@ -10,6 +10,7 @@ import com.example.app.models.DirectionsResponse
 import com.example.app.network.RetrofitInstance
 
 class MapViewModel : ViewModel() {
+
     private val _route = mutableStateOf<DirectionsResponse?>(null)
     val route: State<DirectionsResponse?> = _route
 
@@ -36,11 +37,24 @@ class MapViewModel : ViewModel() {
                     )
                 )
 
+                // Mostrar request en consola
+                Log.d("MapViewModel", "Enviando request: $request")
+                println("Enviando request: $request")
+
                 val response = RetrofitInstance.api.getRoute(profile, request)
-                _route.value = response
+
+                // Agregar profile al response para visualizar en la app
+                val responseWithProfile = response.copy(profile = currentMode)
+
+                // Mostrar response en consola
+                Log.d("MapViewModel", "Recibiendo response: $responseWithProfile")
+                println("Recibiendo response: $responseWithProfile")
+
+                _route.value = responseWithProfile
 
             } catch (e: Exception) {
                 Log.e("MapViewModel", "Error fetching route", e)
+                println("Error fetching route: ${e.message}")
                 _route.value = null
             }
         }

@@ -1,7 +1,8 @@
 package com.example.app.models
 
 data class DirectionsResponse(
-    val routes: List<Route>
+    val routes: List<Route>,
+    val profile: String
 )
 
 data class Route(
@@ -24,7 +25,8 @@ data class Segment(
 data class Step(
     val instruction: String,
     val distance: Double,
-    val duration: Double
+    val duration: Double,
+    val type: Int = mapInstructionToType(instruction)
 )
 
 data class DirectionsRequest(
@@ -33,3 +35,16 @@ data class DirectionsRequest(
     val units: String = "km",
     val instructions: Boolean = true
 )
+
+// función helper para mapear la instrucción a un tipo
+fun mapInstructionToType(instruction: String): Int {
+    val text = instruction.lowercase()
+    return when {
+        "gire a la derecha" in text -> 1
+        "gire a la izquierda" in text -> 0
+        "siga recto" in text -> 2
+        "arrive" in text || "llegar" in text -> 10
+        "head" in text -> 11
+        else -> -1 // tipo desconocido
+    }
+}
