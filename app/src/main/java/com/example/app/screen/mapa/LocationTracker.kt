@@ -60,3 +60,15 @@ fun LocationTracker(
         }
     }
 }
+fun calcularDistancia(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
+    val start = android.location.Location("start").apply {
+        latitude = lat1
+        longitude = lon1
+    }
+    val end = android.location.Location("end").apply {
+        latitude = lat2
+        longitude = lon2
+    }
+    return start.distanceTo(end) // en metros
+}
+
