@@ -1,5 +1,6 @@
 package com.example.app
 
+import MapViewModel
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +21,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.app.repository.RutasRepository
 import com.example.app.screen.auth.LoginScreen
 import com.example.app.screen.home.HomeScreen
 import com.example.app.screen.mapa.RutaMapa
@@ -27,6 +29,7 @@ import com.example.app.screen.rutas.AlternateRoutesScreen
 import com.example.app.screen.rutas.components.MapScreen
 import com.example.app.ui.theme.AppTheme
 import com.example.app.viewmodel.AuthViewModel
+import com.example.app.viewmodel.MapViewModelFactory
 import com.example.app.viewmodel.UbicacionesViewModel
 import com.example.app.viewmodel.UbicacionesViewModelFactory
 
@@ -89,6 +92,11 @@ class MainActivity : ComponentActivity() {
                             val id = backStackEntry.arguments?.getInt("id") ?: 0
                             val token = authViewModel.accessToken ?: ""
 
+                            // Crear ViewModel con factory si necesita RutasRepository
+                            val mapViewModel: MapViewModel = viewModel(
+                                factory = MapViewModelFactory(RutasRepository())
+                            )
+
                             val viewModel: UbicacionesViewModel = viewModel(
                                 factory = UbicacionesViewModelFactory(token)
                             )
@@ -98,11 +106,15 @@ class MainActivity : ComponentActivity() {
                             }
 
                             val ubicacion = viewModel.ubicacionSeleccionada
+                            val selectedLocationId = ubicacion?.id ?: 0
 
                             RutaMapa(
                                 defaultLat = 0.0, // GPS del usuario
                                 defaultLon = 0.0, // GPS del usuario
-                                ubicaciones = if (ubicacion != null) listOf(ubicacion) else emptyList()
+                                ubicaciones = if (ubicacion != null) listOf(ubicacion) else emptyList(),
+                                viewModel = mapViewModel,
+                                token = token,
+                                selectedLocationId = selectedLocationId
                             )
                         }
                     }

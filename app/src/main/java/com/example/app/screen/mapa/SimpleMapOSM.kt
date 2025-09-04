@@ -34,8 +34,6 @@ fun SimpleMapOSM(
     userLat: Double = 0.0,
     userLon: Double = 0.0,
     ubicaciones: List<UbicacionUsuarioResponse> = emptyList(),
-    mapCenterLat: Double = 0.0,
-    mapCenterLon: Double = 0.0,
     zoom: Double = 16.0,
     recenterTrigger: Int = 0,
     zoomInTrigger: Int = 0,
@@ -70,9 +68,9 @@ fun SimpleMapOSM(
                         val polyline = Polyline().apply {
                             setPoints(routePoints)
                             color = when (transportMode) {
-                                "walking" -> Color(0xFF4CAF50).toArgb()
-                                "cycling" -> Color(0xFF2196F3).toArgb()
-                                "driving" -> Color(0xFFFF9800).toArgb()
+                                "foot-walking" -> Color(0xFF4CAF50).toArgb()
+                                "cycling-regular" -> Color(0xFF2196F3).toArgb()
+                                "driving-car" -> Color(0xFFFF9800).toArgb()
                                 else -> Color(0xFF4CAF50).toArgb()
                             }
                             width = 12f

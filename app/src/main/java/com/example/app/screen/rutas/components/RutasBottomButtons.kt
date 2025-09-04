@@ -1,5 +1,6 @@
 package com.example.app.screen.rutas.components
 
+import MapViewModel
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,6 +34,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.text.font.FontWeight
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app.ui.theme.getBackgroundGradient
 import kotlinx.coroutines.delay
 
@@ -48,8 +50,11 @@ fun RutasBottomButtons(
     onDismissDestination: () -> Unit = {},
     showTransportMessage: Boolean = false,
     transportMessage: String = "",
-    onDismissTransport: () -> Unit = {}
-) {
+    onDismissTransport: () -> Unit = {},
+    viewModel: MapViewModel,
+    token: String,
+    selectedLocationId: Int,
+    ) {
     val isDarkTheme = isSystemInDarkTheme()
 
     Column(modifier = modifier) {
@@ -190,7 +195,9 @@ fun RutasBottomButtons(
 
             // Botón Rutas alternas
             FloatingActionButton(
-                onClick = onRutasClick,
+                onClick = {
+                    onRutasClick() // ✅ Solo esta llamada, sin guardarRuta()
+                },
                 containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f),
                 modifier = Modifier.size(56.dp)
             ) {

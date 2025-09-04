@@ -48,3 +48,39 @@ fun mapInstructionToType(instruction: String): Int {
         else -> -1 // tipo desconocido
     }
 }
+
+fun DirectionsResponse.toRutaUsuarioJson(
+    ubicacionId: Int,
+    transporteTexto: String
+): RutaUsuario {
+    val ruta = this.routes.firstOrNull()
+    return RutaUsuario(
+        transporte_texto = transporteTexto,
+        ubicacion_id = ubicacionId,
+        distancia_total = ruta?.summary?.distance ?: 0.0,
+        duracion_total = ruta?.summary?.duration ?: 0.0,
+        geometria = ruta?.geometry ?: "",
+        fecha_inicio = System.currentTimeMillis().toString(), // o formato adecuado
+        segmentos = ruta?.segments?.map { segment ->
+            SegmentoRuta(
+                distancia = segment.distance,
+                duracion = segment.duration,
+                pasos = segment.steps.map { step ->
+                    PasoRuta(
+                        instruccion = step.instruction,
+                        distancia = step.distance,
+                        duracion = step.duration,
+                        tipo = step.type
+                    )
+                }
+            )
+        } ?: emptyList()
+    )
+}
+
+// Helper para convertir milisegundos a ISO 8601
+fun Long.toISOString(): String {
+    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.getDefault())
+    sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+    return sdf.format(java.util.Date(this))
+}

@@ -1,7 +1,6 @@
 package com.example.app.screen.mapa
 
 import MapViewModel
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,7 +49,9 @@ fun RutaMapa(
     defaultLat: Double = 0.0,
     defaultLon: Double = 0.0,
     ubicaciones: List<UbicacionUsuarioResponse> = emptyList(),
-    viewModel: MapViewModel = viewModel()
+    viewModel: MapViewModel = viewModel(),
+    token: String,
+    selectedLocationId: Int
 ) {
     var tiempoRecorrido by remember { mutableStateOf(0L) }
     var tiempoInicioRuta by remember { mutableStateOf(0L) } // NUEVO: tiempo cuando inició la ruta
@@ -64,7 +65,7 @@ fun RutaMapa(
     var locationObtained by remember { mutableStateOf(false) }
     var showGpsButton by remember { mutableStateOf(false) }
     var selectedLocation by remember { mutableStateOf<UbicacionUsuarioResponse?>(ubicaciones.firstOrNull()) }
-    var selectedTransportMode by remember { mutableStateOf("walking") }
+    var selectedTransportMode by remember { mutableStateOf("foot-walking") }
 
     // Estados para controles de zoom
     var zoomInTrigger by remember { mutableStateOf(0) }
@@ -243,8 +244,6 @@ fun RutaMapa(
                     userLon = userLon.value,
                     recenterTrigger = recenterTrigger,
                     ubicaciones = ubicaciones,
-                    mapCenterLat = mapCenterLat,
-                    mapCenterLon = mapCenterLon,
                     transportMode = selectedTransportMode,
                     routeGeometry = currentRoute?.routes?.firstOrNull()?.geometry,
                     zoomInTrigger = zoomInTrigger,
@@ -342,20 +341,25 @@ fun RutaMapa(
                     selectedTransportMode = selectedTransportMode,
                     showDestinationReached = destinoAlcanzado,
                     destinationMessage = "Has llegado a tu destino",
-                    onDismissDestination = {
-                        destinoAlcanzado = false
-                    },
+                    onDismissDestination = { destinoAlcanzado = false },
                     showTransportMessage = showTransportMessage,
                     transportMessage = transportMessage,
                     onDismissTransport = { showTransportMessage = false },
-                    onAgregarClick = {
-                    },
+                    onAgregarClick = { },
                     onRutasClick = {
                         selectedLocation?.let { destination ->
                             if (userLat.value != 0.0 && userLon.value != 0.0) {
                                 val startPoint = Pair(userLat.value, userLon.value)
                                 val endPoint = Pair(destination.latitud, destination.longitud)
-                                viewModel.fetchRoute(startPoint, endPoint)
+
+                                // ✅ AGREGAR los parámetros para guardar automáticamente
+                                viewModel.fetchRoute(
+                                    start = startPoint,
+                                    end = endPoint,
+                                    token = token,
+                                    ubicacionId = selectedLocationId,
+                                    transporteTexto = selectedTransportMode
+                                )
 
                                 transportMessage = "Calculando ruta en ${getModeDisplayName(selectedTransportMode)}"
                                 showTransportMessage = true
@@ -374,7 +378,10 @@ fun RutaMapa(
                             mapCenterLon = loc.longitud
                             recenterTrigger++
                         }
-                    }
+                    },
+                    viewModel = viewModel,                 // 🔹 PASAR ViewModel
+                    token = token,                         // 🔹 PASAR token
+                    selectedLocationId = selectedLocationId // 🔹 PASAR ID
                 )
             }
             else -> {
@@ -411,26 +418,27 @@ fun TransportModeButtons(
     ) {
         TransportButton(
             icon = Icons.Default.DirectionsWalk,
-            isSelected = selectedMode == "walking",
-            onClick = { onModeSelected("walking") },
+            isSelected = selectedMode == "foot-walking",
+            onClick = { onModeSelected("foot-walking") },
             contentDescription = "Caminar"
         )
 
         TransportButton(
             icon = Icons.Default.DirectionsCar,
-            isSelected = selectedMode == "driving",
-            onClick = { onModeSelected("driving") },
+            isSelected = selectedMode == "driving-car",
+            onClick = { onModeSelected("driving-car") },
             contentDescription = "Carro"
         )
 
         TransportButton(
             icon = Icons.Default.DirectionsBike,
-            isSelected = selectedMode == "cycling",
-            onClick = { onModeSelected("cycling") },
+            isSelected = selectedMode == "cycling-regular",
+            onClick = { onModeSelected("cycling-regular") },
             contentDescription = "Bicicleta"
         )
     }
 }
+
 
 @Composable
 fun TransportButton(
@@ -467,9 +475,9 @@ fun TransportButton(
 
 fun getModeDisplayName(mode: String): String {
     return when (mode) {
-        "walking" -> "Caminar"
-        "driving" -> "Carro"
-        "cycling" -> "Bicicleta"
+        "foot-walking" -> "Caminar"
+        "driving-car" -> "Carro"
+        "cycling-regular" -> "Bicicleta"
         else -> "Caminar"
     }
 }
