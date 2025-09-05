@@ -65,21 +65,19 @@ fun mapInstructionToType(instruction: String): Int {
         else -> -1 // tipo desconocido
     }
 }
-
-// En tu archivo de modelos DirectionsResponse, actualiza esta función:
-
 fun DirectionsResponse.toRutaUsuarioJson(
     ubicacionId: Int,
-    transporteTexto: String
+    transporteTexto: String,
+    tipoRutaUsado: String? = null  // 🔥 NUEVO PARÁMETRO
 ): RutaUsuario {
     val ruta = this.routes.firstOrNull()
     return RutaUsuario(
         transporte_texto = transporteTexto,
-        ubicacion_id = ubicacionId,  // ✅ Está aquí
+        ubicacion_id = ubicacionId,
         distancia_total = ruta?.summary?.distance ?: 0.0,
         duracion_total = ruta?.summary?.duration ?: 0.0,
         geometria = ruta?.geometry ?: "",
-        fecha_inicio = System.currentTimeMillis().toString(),
+        fecha_inicio = System.currentTimeMillis().toISOString(),
         segmentos = ruta?.segments?.map { segment ->
             SegmentoRuta(
                 distancia = segment.distance,
@@ -93,7 +91,8 @@ fun DirectionsResponse.toRutaUsuarioJson(
                     )
                 }
             )
-        } ?: emptyList()
+        } ?: emptyList(),
+        tipo_ruta_usado = tipoRutaUsado  // 🔥 INCLUIR EN EL JSON
     )
 }
 

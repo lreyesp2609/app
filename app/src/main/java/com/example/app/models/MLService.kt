@@ -1,14 +1,20 @@
 package com.example.app.models
 
+data class TipoRutaRequest(
+    val ubicacion_id: Int
+)
+
 data class TipoRutaResponse(
     val tipo_ruta: String,
     val usuario_id: Int,
+    val ubicacion_id: Int,
     val confidence: Double? = null
 )
 
 data class FeedbackRequest(
     val tipo_usado: String,
     val completada: Boolean,
+    val ubicacion_id: Int,
     val distancia: Double? = null,
     val duracion: Double? = null
 )

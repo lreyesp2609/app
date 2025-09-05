@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -25,8 +24,6 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +46,7 @@ import calcularDistanciaSobreRuta
 import com.example.app.models.UbicacionUsuarioResponse
 import com.example.app.screen.rutas.components.RutasBottomButtons
 import com.example.app.viewmodel.decodePolyline
-import com.example.app.viewmodels.MapViewModel
+import com.example.app.viewmodel.MapViewModel
 import kotlinx.coroutines.delay
 import org.osmdroid.util.GeoPoint
 import kotlin.collections.isNotEmpty

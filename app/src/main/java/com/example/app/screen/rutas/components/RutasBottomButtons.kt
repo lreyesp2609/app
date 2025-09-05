@@ -31,9 +31,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.text.font.FontWeight
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app.ui.theme.getBackgroundGradient
-import com.example.app.viewmodels.MapViewModel
+import com.example.app.viewmodel.MapViewModel
 import kotlinx.coroutines.delay
 
 @Composable

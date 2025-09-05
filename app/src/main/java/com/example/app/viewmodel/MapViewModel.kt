@@ -1,4 +1,4 @@
-package com.example.app.viewmodels
+package com.example.app.viewmodel
 
 import android.util.Log
 import androidx.compose.runtime.State
@@ -42,22 +42,20 @@ class MapViewModel(
         start: Pair<Double, Double>,
         end: Pair<Double, Double>,
         token: String,
-        ubicacionId: Int? = null,
+        ubicacionId: Int,
         transporteTexto: String? = null
     ) {
         currentToken = token
 
         viewModelScope.launch {
             try {
-                // PASO 1: Obtener recomendación ML con JWT
+                // PASO 1: Obtener recomendación ML
                 Log.d("MapViewModel", "Consultando ML con token...")
 
-                val recomendacion = try {
-                    RetrofitClient.mlService.getRecomendacionTipoRuta("Bearer $token")
-                } catch (e: Exception) {
-                    Log.w("MapViewModel", "Error en ML, usando fallback: ${e.message}")
-                    TipoRutaResponse("fastest", 0) // Fallback
-                }
+                val recomendacion = RetrofitClient.mlService.getRecomendacionTipoRuta(
+                    "Bearer $token",
+                    TipoRutaRequest(ubicacionId)
+                )
 
                 currentMLType = recomendacion.tipo_ruta
                 Log.d("MapViewModel", "ML recomienda: ${recomendacion.tipo_ruta} para usuario ${recomendacion.usuario_id}")
@@ -67,14 +65,15 @@ class MapViewModel(
 
                 val request = DirectionsRequest(
                     coordinates = listOf(
-                        listOf(start.second, start.first), // lon, lat
+                        listOf(start.second, start.first),
                         listOf(end.second, end.first)
                     ),
-                    preference = preference,
+                    preference = preference,  // 🔥 ESTE debe coincidir con recomendacion.tipo_ruta
                     options = avoidOptions
                 )
 
                 Log.d("MapViewModel", "Enviando request ORS: $request")
+                Log.d("MapViewModel", "🔥 USANDO TIPO ML: ${recomendacion.tipo_ruta} -> ORS preference: $preference")
 
                 // PASO 3: Obtener ruta de OpenRouteService
                 val response = RetrofitInstance.api.getRoute(currentMode, request)
@@ -84,9 +83,15 @@ class MapViewModel(
 
                 _route.value = responseWithProfile
 
-                // PASO 4: Guardar ruta (si se necesita)
-                if (ubicacionId != null && transporteTexto != null) {
-                    guardarRutaEnBackend(responseWithProfile, token, ubicacionId, transporteTexto)
+                // PASO 4: Guardar ruta CON el tipo usado
+                if (transporteTexto != null) {
+                    guardarRutaEnBackend(
+                        responseWithProfile,
+                        token,
+                        ubicacionId,
+                        transporteTexto,
+                        recomendacion.tipo_ruta  // 🔥 PASAR EL TIPO ML
+                    )
                 }
 
             } catch (e: Exception) {
@@ -96,67 +101,31 @@ class MapViewModel(
         }
     }
 
-    // Función para reportar resultado con JWT
-    fun reportarResultadoNavegacion(
-        completada: Boolean,
-        distancia: Double? = null,
-        duracion: Double? = null
-    ) {
-        viewModelScope.launch {
-            try {
-                if (currentMLType != null && currentToken != null) {
-                    val feedback = FeedbackRequest(
-                        tipo_usado = currentMLType!!,
-                        completada = completada,
-                        distancia = distancia,
-                        duracion = duracion
-                    )
-
-                    val result = RetrofitClient.mlService.enviarFeedback("Bearer $currentToken", feedback)
-                    Log.d("MapViewModel", "Feedback enviado: ${result.mensaje}")
-
-                    currentMLType = null // Reset
-                }
-            } catch (e: Exception) {
-                Log.e("MapViewModel", "Error enviando feedback ML", e)
-            }
-        }
-    }
-
-    // Función para obtener estadísticas del usuario
-    fun obtenerEstadisticasML(token: String) {
-        viewModelScope.launch {
-            try {
-                val stats = RetrofitClient.mlService.obtenerMisEstadisticas("Bearer $token")
-                Log.d("MapViewModel", "Estadísticas ML: $stats")
-                // Puedes agregar un StateFlow para mostrar estas stats en UI
-            } catch (e: Exception) {
-                Log.e("MapViewModel", "Error obteniendo estadísticas ML", e)
-            }
-        }
-    }
-
+    // 3. ACTUALIZAR guardarRutaEnBackend
     private suspend fun guardarRutaEnBackend(
         response: DirectionsResponse,
         token: String,
         ubicacionId: Int,
-        transporteTexto: String
+        transporteTexto: String,
+        tipoRutaUsado: String
     ) {
         try {
             val rutaJson = response.toRutaUsuarioJson(
                 ubicacionId = ubicacionId,
-                transporteTexto = transporteTexto
+                transporteTexto = transporteTexto,
+                tipoRutaUsado = tipoRutaUsado
             )
 
-            Log.d("MapViewModel", "Guardando ruta...")
+            Log.d("MapViewModel", "Guardando ruta con tipo ML: $tipoRutaUsado")
 
             val result = rutasRepository.guardarRuta(token, rutaJson)
             result.onSuccess { rutaGuardada ->
-                Log.d("MapViewModel", "Ruta guardada correctamente: $rutaGuardada")
-                _rutaIdActiva.value = rutaGuardada.id   // <-- necesitas un State<Int?>
-                _mostrarOpcionesFinalizar.value = true // <-- necesitas un State<Boolean>
+                Log.d("MapViewModel", "✅ Ruta guardada correctamente con tipo: $tipoRutaUsado")
+                Log.d("MapViewModel", "Ruta completa: $rutaGuardada")
+                _rutaIdActiva.value = rutaGuardada.id
+                _mostrarOpcionesFinalizar.value = true
             }.onFailure { error ->
-                Log.e("MapViewModel", "Error al guardar ruta: ${error.message}")
+                Log.e("MapViewModel", "❌ Error al guardar ruta: ${error.message}")
             }
         } catch (e: Exception) {
             Log.e("MapViewModel", "Excepción al guardar ruta", e)

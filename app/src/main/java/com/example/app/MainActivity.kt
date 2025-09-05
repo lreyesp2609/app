@@ -30,7 +30,7 @@ import com.example.app.viewmodel.AuthViewModel
 import com.example.app.viewmodel.MapViewModelFactory
 import com.example.app.viewmodel.UbicacionesViewModel
 import com.example.app.viewmodel.UbicacionesViewModelFactory
-import com.example.app.viewmodels.MapViewModel
+import com.example.app.viewmodel.MapViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
