@@ -12,20 +12,13 @@ interface RutasApiService {
         @Body ruta: RutaUsuario
     ): Response<RutaUsuario>
 
-    @GET("rutas/")
-    suspend fun listarRutas(
-        @Header("Authorization") token: String
-    ): Response<List<RutaUsuario>>
+    @POST("rutas/{id}/finalizar")
+    suspend fun finalizarRuta(
+        @Path("id") rutaId: Int
+    )
 
-    @GET("rutas/{id}")
-    suspend fun obtenerRuta(
-        @Header("Authorization") token: String,
-        @Path("id") id: Int
-    ): Response<RutaUsuario>
-
-    @DELETE("rutas/{id}")
-    suspend fun eliminarRuta(
-        @Header("Authorization") token: String,
-        @Path("id") id: Int
-    ): Response<Unit>
+    @POST("rutas/{id}/cancelar")
+    suspend fun cancelarRuta(
+        @Path("id") rutaId: Int
+    )
 }

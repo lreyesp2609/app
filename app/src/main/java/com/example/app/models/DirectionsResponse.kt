@@ -33,8 +33,25 @@ data class DirectionsRequest(
     val coordinates: List<List<Double>>,
     val language: String = "es",
     val units: String = "km",
-    val instructions: Boolean = true
+    val instructions: Boolean = true,
+    val preference: String = "fastest", // Nuevo: para ML
+    val options: AvoidOptions? = null   // Nuevo: para rutas scenic
 )
+
+data class AvoidOptions(
+    val avoid_features: List<String> = emptyList()
+)
+
+// Helper para convertir tipo ML a configuración OpenRouteService
+fun String.toORSConfig(): Pair<String, AvoidOptions?> {
+    return when (this) {
+        "fastest" -> "fastest" to null
+        "shortest" -> "shortest" to null
+        "scenic" -> "recommended" to AvoidOptions(listOf("highways", "tollways"))
+        "balanced" -> "recommended" to null
+        else -> "fastest" to null
+    }
+}
 
 // función helper para mapear la instrucción a un tipo
 fun mapInstructionToType(instruction: String): Int {
@@ -49,6 +66,8 @@ fun mapInstructionToType(instruction: String): Int {
     }
 }
 
+// En tu archivo de modelos DirectionsResponse, actualiza esta función:
+
 fun DirectionsResponse.toRutaUsuarioJson(
     ubicacionId: Int,
     transporteTexto: String
@@ -56,11 +75,11 @@ fun DirectionsResponse.toRutaUsuarioJson(
     val ruta = this.routes.firstOrNull()
     return RutaUsuario(
         transporte_texto = transporteTexto,
-        ubicacion_id = ubicacionId,
+        ubicacion_id = ubicacionId,  // ✅ Está aquí
         distancia_total = ruta?.summary?.distance ?: 0.0,
         duracion_total = ruta?.summary?.duration ?: 0.0,
         geometria = ruta?.geometry ?: "",
-        fecha_inicio = System.currentTimeMillis().toString(), // o formato adecuado
+        fecha_inicio = System.currentTimeMillis().toString(),
         segmentos = ruta?.segments?.map { segment ->
             SegmentoRuta(
                 distancia = segment.distance,

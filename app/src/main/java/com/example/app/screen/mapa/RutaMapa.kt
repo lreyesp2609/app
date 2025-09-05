@@ -1,22 +1,32 @@
 package com.example.app.screen.mapa
 
-import MapViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
@@ -27,10 +37,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -39,6 +49,7 @@ import calcularDistanciaSobreRuta
 import com.example.app.models.UbicacionUsuarioResponse
 import com.example.app.screen.rutas.components.RutasBottomButtons
 import com.example.app.viewmodel.decodePolyline
+import com.example.app.viewmodels.MapViewModel
 import kotlinx.coroutines.delay
 import org.osmdroid.util.GeoPoint
 import kotlin.collections.isNotEmpty
@@ -90,6 +101,15 @@ fun RutaMapa(
     var mensajeDestinoMostrado by remember { mutableStateOf(false) }
     var showTransportMessage by remember { mutableStateOf(false) }
     var transportMessage by remember { mutableStateOf("") }
+
+
+    val mostrarOpcionesFinalizar by viewModel.mostrarOpcionesFinalizar
+    val rutaIdActiva by viewModel.rutaIdActiva
+
+
+    rutaActiva = true
+    tiempoInicioRuta = System.currentTimeMillis() / 1000
+
 
     // Actualizar selectedLocation cuando cambien las ubicaciones
     LaunchedEffect(ubicaciones) {
@@ -335,6 +355,65 @@ fun RutaMapa(
                     )
                 }
 
+                // Mostrar información de la ruta - ACTUALIZADA DINÁMICAMENTE
+                if (showRouteInfo && (currentRoute != null || rutaActiva)) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .statusBarsPadding()
+                            .padding(top = 16.dp, start = 16.dp, end = 16.dp) // 👈 espacio superior
+                    ) {
+                        // Card con km/min
+                        RouteInfoCard(
+                            distance = routeDistance,
+                            duration = routeDuration,
+                            transportMode = selectedTransportMode,
+                            onDismiss = {
+                                showRouteInfo = false
+                                viewModel.clearRoute()
+                                rutaActiva = false // RESETEAR ruta activa
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Botones Finalizar/Cancelar debajo 👇
+                        if (mostrarOpcionesFinalizar) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp), // espacio entre la card y los botones
+                                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        rutaIdActiva?.let { id ->
+                                            viewModel.finalizarRutaBackend(id)
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                                ) {
+                                    Icon(Icons.Default.Check, contentDescription = "Finalizar", tint = Color.White)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Finalizar")
+                                }
+
+                                Button(
+                                    onClick = {
+                                        rutaIdActiva?.let { id ->
+                                            viewModel.cancelarRutaBackend(id)
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336))
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Cancelar", tint = Color.White)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Cancelar")
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // BOTONES INFERIORES
                 RutasBottomButtons(
                     modifier = Modifier.align(Alignment.BottomCenter),
@@ -353,7 +432,7 @@ fun RutaMapa(
                                 val endPoint = Pair(destination.latitud, destination.longitud)
 
                                 // ✅ AGREGAR los parámetros para guardar automáticamente
-                                viewModel.fetchRoute(
+                                viewModel.fetchRouteWithML(
                                     start = startPoint,
                                     end = endPoint,
                                     token = token,

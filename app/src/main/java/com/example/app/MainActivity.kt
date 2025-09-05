@@ -1,12 +1,10 @@
 package com.example.app
 
-import MapViewModel
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +30,7 @@ import com.example.app.viewmodel.AuthViewModel
 import com.example.app.viewmodel.MapViewModelFactory
 import com.example.app.viewmodel.UbicacionesViewModel
 import com.example.app.viewmodel.UbicacionesViewModelFactory
+import com.example.app.viewmodels.MapViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,7 +91,6 @@ class MainActivity : ComponentActivity() {
                             val id = backStackEntry.arguments?.getInt("id") ?: 0
                             val token = authViewModel.accessToken ?: ""
 
-                            // Crear ViewModel con factory si necesita RutasRepository
                             val mapViewModel: MapViewModel = viewModel(
                                 factory = MapViewModelFactory(RutasRepository())
                             )
@@ -103,17 +101,19 @@ class MainActivity : ComponentActivity() {
 
                             LaunchedEffect(id) {
                                 viewModel.cargarUbicacionPorId(id)
+                                // Setear el token en el MapViewModel
+                                mapViewModel.setToken(token)
                             }
 
                             val ubicacion = viewModel.ubicacionSeleccionada
                             val selectedLocationId = ubicacion?.id ?: 0
 
                             RutaMapa(
-                                defaultLat = 0.0, // GPS del usuario
-                                defaultLon = 0.0, // GPS del usuario
+                                defaultLat = 0.0,
+                                defaultLon = 0.0,
                                 ubicaciones = if (ubicacion != null) listOf(ubicacion) else emptyList(),
                                 viewModel = mapViewModel,
-                                token = token,
+                                token = token,  // Pasar token
                                 selectedLocationId = selectedLocationId
                             )
                         }

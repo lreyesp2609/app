@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
     // Cambia esta URL según tu configuración
-    private const val BASE_URL = "https://223ba893d7a9.ngrok-free.app/"
+    private const val BASE_URL = "https://aebae135a787.ngrok-free.app/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = Level.BODY
@@ -40,5 +40,10 @@ object RetrofitClient {
 
     val rutasApiService: RutasApiService by lazy {
         retrofit.create(RutasApiService::class.java)
+    }
+
+
+    val mlService: MLService by lazy {
+        retrofit.create(MLService::class.java)
     }
 }
