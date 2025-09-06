@@ -92,7 +92,7 @@ fun DirectionsResponse.toRutaUsuarioJson(
                 }
             )
         } ?: emptyList(),
-        tipo_ruta_usado = tipoRutaUsado  // 🔥 INCLUIR EN EL JSON
+        tipo_ruta_usado = tipoRutaUsado
     )
 }
 

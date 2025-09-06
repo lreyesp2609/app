@@ -28,6 +28,10 @@ class MapViewModel(
     private val _mostrarOpcionesFinalizar = mutableStateOf(false)
     val mostrarOpcionesFinalizar: State<Boolean> = _mostrarOpcionesFinalizar
 
+    // 🔥 NUEVAS VARIABLES para guardar datos de la ruta actual
+    private var rutaActualUbicacionId: Int? = null
+    private var rutaActualDistancia: Double? = null
+    private var rutaActualDuracion: Double? = null
 
     fun setMode(mode: String) {
         currentMode = mode
@@ -46,6 +50,7 @@ class MapViewModel(
         transporteTexto: String? = null
     ) {
         currentToken = token
+        rutaActualUbicacionId = ubicacionId // 🔥 GUARDAR para el feedback
 
         viewModelScope.launch {
             try {
@@ -68,7 +73,7 @@ class MapViewModel(
                         listOf(start.second, start.first),
                         listOf(end.second, end.first)
                     ),
-                    preference = preference,  // 🔥 ESTE debe coincidir con recomendacion.tipo_ruta
+                    preference = preference,
                     options = avoidOptions
                 )
 
@@ -78,6 +83,12 @@ class MapViewModel(
                 // PASO 3: Obtener ruta de OpenRouteService
                 val response = RetrofitInstance.api.getRoute(currentMode, request)
                 val responseWithProfile = response.copy(profile = currentMode)
+
+                // 🔥 GUARDAR datos de la ruta para el feedback
+                response.routes.firstOrNull()?.summary?.let { summary ->
+                    rutaActualDistancia = summary.distance.toDouble()
+                    rutaActualDuracion = summary.duration
+                }
 
                 Log.d("MapViewModel", "Ruta obtenida: distancia=${response.routes.firstOrNull()?.summary?.distance}m")
 
@@ -90,7 +101,7 @@ class MapViewModel(
                         token,
                         ubicacionId,
                         transporteTexto,
-                        recomendacion.tipo_ruta  // 🔥 PASAR EL TIPO ML
+                        recomendacion.tipo_ruta
                     )
                 }
 
@@ -101,7 +112,6 @@ class MapViewModel(
         }
     }
 
-    // 3. ACTUALIZAR guardarRutaEnBackend
     private suspend fun guardarRutaEnBackend(
         response: DirectionsResponse,
         token: String,
@@ -135,54 +145,84 @@ class MapViewModel(
     fun clearRoute() {
         _route.value = null
         currentMLType = null
+        // 🔥 LIMPIAR datos de feedback
+        rutaActualUbicacionId = null
+        rutaActualDistancia = null
+        rutaActualDuracion = null
     }
 
-    // Función simple sin ML (para casos de fallback)
-    fun fetchSimpleRoute(
-        start: Pair<Double, Double>,
-        end: Pair<Double, Double>
-    ) {
-        viewModelScope.launch {
-            try {
-                val request = DirectionsRequest(
-                    coordinates = listOf(
-                        listOf(start.second, start.first),
-                        listOf(end.second, end.first)
-                    )
-                )
-
-                val response = RetrofitInstance.api.getRoute(currentMode, request)
-                _route.value = response.copy(profile = currentMode)
-
-                Log.d("MapViewModel", "Ruta simple obtenida")
-            } catch (e: Exception) {
-                Log.e("MapViewModel", "Error fetching simple route", e)
-                _route.value = null
-            }
-        }
-    }
-
+    // 🔥 FUNCIÓN FINALIZAR - SIN FEEDBACK DUPLICADO
     fun finalizarRutaBackend(rutaId: Int) {
         viewModelScope.launch {
             try {
-                rutasRepository.finalizarRuta(rutaId) // Llama al endpoint PATCH /rutas/{id}/finalizar
+                // Solo finalizar la ruta - el backend ya maneja el feedback UCB
+                rutasRepository.finalizarRuta(rutaId)
+                Log.d("MapViewModel", "✅ Ruta finalizada en backend (feedback automático)")
+
+                // Limpiar estado
                 _mostrarOpcionesFinalizar.value = false
                 _route.value = null
+
             } catch (e: Exception) {
                 Log.e("MapViewModel", "Error finalizando ruta", e)
             }
         }
     }
 
+    // 🔥 FUNCIÓN CANCELAR - SIN FEEDBACK DUPLICADO
     fun cancelarRutaBackend(rutaId: Int) {
         viewModelScope.launch {
             try {
+                // Solo cancelar la ruta - el backend ya maneja el feedback UCB
                 rutasRepository.cancelarRuta(rutaId)
+                Log.d("MapViewModel", "✅ Ruta cancelada en backend (feedback automático)")
+
+                // Limpiar estado
                 _mostrarOpcionesFinalizar.value = false
                 _route.value = null
+
             } catch (e: Exception) {
                 Log.e("MapViewModel", "Error cancelando ruta", e)
             }
+        }
+    }
+
+    // 🔥 NUEVA FUNCIÓN para enviar feedback al UCB
+    private suspend fun enviarFeedbackUCB(completada: Boolean) {
+        try {
+            // Verificar que tenemos todos los datos necesarios
+            val token = currentToken
+            val tipoUsado = currentMLType
+            val ubicacionId = rutaActualUbicacionId
+            val distancia = rutaActualDistancia
+            val duracion = rutaActualDuracion
+
+            if (token == null || tipoUsado == null || ubicacionId == null) {
+                Log.w("MapViewModel", "❌ Faltan datos para enviar feedback UCB")
+                return
+            }
+
+            // Crear el feedback request
+            val feedbackRequest = FeedbackRequest(
+                tipo_usado = tipoUsado,
+                completada = completada,
+                ubicacion_id = ubicacionId,
+                distancia = distancia,
+                duracion = duracion
+            )
+
+            Log.d("MapViewModel", "📤 Enviando feedback UCB: $feedbackRequest")
+
+            // Enviar al endpoint de ML
+            val response = RetrofitClient.mlService.enviarFeedback(
+                "Bearer $token",
+                feedbackRequest
+            )
+
+            Log.d("MapViewModel", "✅ Feedback UCB enviado: ${response.mensaje}")
+
+        } catch (e: Exception) {
+            Log.e("MapViewModel", "❌ Error enviando feedback UCB: ${e.message}", e)
         }
     }
 }

@@ -32,7 +32,6 @@ data class RutaUsuario(
     val fecha_fin: String? = null,
     val segmentos: List<SegmentoRuta> = emptyList(),
     val id: Int? = null,
-    val estado_id: Int? = null,
     val transporte: Transporte? = null,
     val tipo_ruta_usado: String? = null
 )
