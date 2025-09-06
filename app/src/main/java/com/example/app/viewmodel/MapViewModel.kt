@@ -225,4 +225,8 @@ class MapViewModel(
             Log.e("MapViewModel", "❌ Error enviando feedback UCB: ${e.message}", e)
         }
     }
+    fun ocultarOpcionesFinalizar() {
+        _mostrarOpcionesFinalizar.value = false
+        _rutaIdActiva.value = null
+    }
 }

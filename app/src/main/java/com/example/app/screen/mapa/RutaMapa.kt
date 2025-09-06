@@ -1,5 +1,6 @@
 package com.example.app.screen.mapa
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -99,14 +100,8 @@ fun RutaMapa(
     var showTransportMessage by remember { mutableStateOf(false) }
     var transportMessage by remember { mutableStateOf("") }
 
-
     val mostrarOpcionesFinalizar by viewModel.mostrarOpcionesFinalizar
     val rutaIdActiva by viewModel.rutaIdActiva
-
-
-    rutaActiva = true
-    tiempoInicioRuta = System.currentTimeMillis() / 1000
-
 
     // Actualizar selectedLocation cuando cambien las ubicaciones
     LaunchedEffect(ubicaciones) {
@@ -120,11 +115,11 @@ fun RutaMapa(
     // GUARDAR ruta original cuando se calcula nueva ruta
     LaunchedEffect(currentRoute) {
         currentRoute?.routes?.firstOrNull()?.let { route ->
+            rutaActiva = true
+            tiempoInicioRuta = System.currentTimeMillis() / 1000
             rutaOriginal = route.geometry.decodePolyline()
             distanciaOriginal = route.summary.distance * 1000.0 // convertir a metros
             duracionOriginal = route.summary.duration // en segundos
-            rutaActiva = true
-            tiempoInicioRuta = System.currentTimeMillis() / 1000 // tiempo actual en segundos
 
             // Calcular valores iniciales
             val distanciaRestanteKm = calcularDistanciaSobreRuta(userLat.value, userLon.value, rutaOriginal) / 1000.0
@@ -199,18 +194,35 @@ fun RutaMapa(
                 else -> "Llegando..."
             }
 
-            // Detección de llegada MÁS ESTRICTA - usar distancia al destino real
+            // 🔥 DETECCIÓN DE LLEGADA MEJORADA - CON FEEDBACK AUTOMÁTICO
             selectedLocation?.let { destino ->
                 val distanciaAlDestino = calcularDistancia(
                     userLat.value, userLon.value,
                     destino.latitud, destino.longitud
                 )
 
+                // 🔧 DEBUG: Log para ver el estado
+                Log.d("RutaMapa", "Distancia al destino: ${distanciaAlDestino}m, mensajeDestinoMostrado: $mensajeDestinoMostrado, rutaIdActiva: ${rutaIdActiva}")
+
                 // Solo considerar llegada si está a menos de 30 metros del destino real
                 if (distanciaAlDestino < 30 && !mensajeDestinoMostrado) {
+                    Log.d("RutaMapa", "🎯 LLEGADA DETECTADA! Finalizando ruta automáticamente...")
+
                     rutaActiva = false
                     destinoAlcanzado = true
                     mensajeDestinoMostrado = true
+
+                    // 🎯 AQUÍ ESTÁ EL FIX: Enviar el feedback automáticamente
+                    rutaIdActiva?.let { id ->
+                        Log.d("RutaMapa", "📤 Enviando finalizarRutaBackend con ID: $id")
+                        viewModel.finalizarRutaBackend(id) // ✅ Esto envía el feedback automáticamente
+                    } ?: Log.w("RutaMapa", "⚠️ rutaIdActiva es null!")
+
+                    showRouteInfo = false
+                    viewModel.clearRoute()
+
+                    // 🔥 OCULTAR botones de finalizar porque ya se finalizó automáticamente
+                    viewModel.ocultarOpcionesFinalizar()
                 }
             }
         }
@@ -226,6 +238,7 @@ fun RutaMapa(
         }
     }
 
+    // 🔥 ELIMINAR la detección duplicada aquí
     LocationTracker { lat, lon ->
         userLat.value = lat
         userLon.value = lon
@@ -235,15 +248,7 @@ fun RutaMapa(
             mapCenterLon = lon
             locationObtained = true
         }
-
-        selectedLocation?.let { destino ->
-            val distancia = calcularDistancia(lat, lon, destino.latitud, destino.longitud)
-
-            if (distancia < 50 && !mensajeDestinoMostrado) {
-                destinoAlcanzado = true
-                mensajeDestinoMostrado = true
-            }
-        }
+        // ❌ CÓDIGO ELIMINADO - ya no hay detección duplicada aquí
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -336,29 +341,11 @@ fun RutaMapa(
 
                 // Mostrar información de la ruta - ACTUALIZADA DINÁMICAMENTE
                 if (showRouteInfo && (currentRoute != null || rutaActiva)) {
-                    RouteInfoCard(
-                        distance = routeDistance,
-                        duration = routeDuration,
-                        transportMode = selectedTransportMode,
-                        onDismiss = {
-                            showRouteInfo = false
-                            viewModel.clearRoute()
-                            rutaActiva = false // RESETEAR ruta activa
-                        },
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .statusBarsPadding()
-                            .padding(16.dp)
-                    )
-                }
-
-                // Mostrar información de la ruta - ACTUALIZADA DINÁMICAMENTE
-                if (showRouteInfo && (currentRoute != null || rutaActiva)) {
                     Column(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .statusBarsPadding()
-                            .padding(top = 16.dp, start = 16.dp, end = 16.dp) // 👈 espacio superior
+                            .padding(top = 16.dp, start = 16.dp, end = 16.dp)
                     ) {
                         // Card con km/min
                         RouteInfoCard(
@@ -373,12 +360,12 @@ fun RutaMapa(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        // Botones Finalizar/Cancelar debajo 👇
+                        // Botones Finalizar/Cancelar debajo
                         if (mostrarOpcionesFinalizar) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 12.dp), // espacio entre la card y los botones
+                                    .padding(top = 12.dp),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
                             ) {
                                 Button(
@@ -386,6 +373,9 @@ fun RutaMapa(
                                         rutaIdActiva?.let { id ->
                                             viewModel.finalizarRutaBackend(id)
                                         }
+                                        showRouteInfo = false
+                                        rutaActiva = false
+                                        viewModel.clearRoute()
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                                 ) {
@@ -399,6 +389,9 @@ fun RutaMapa(
                                         rutaIdActiva?.let { id ->
                                             viewModel.cancelarRutaBackend(id)
                                         }
+                                        showRouteInfo = false
+                                        rutaActiva = false
+                                        viewModel.clearRoute()
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336))
                                 ) {
@@ -428,7 +421,6 @@ fun RutaMapa(
                                 val startPoint = Pair(userLat.value, userLon.value)
                                 val endPoint = Pair(destination.latitud, destination.longitud)
 
-                                // ✅ AGREGAR los parámetros para guardar automáticamente
                                 viewModel.fetchRouteWithML(
                                     start = startPoint,
                                     end = endPoint,
@@ -450,14 +442,12 @@ fun RutaMapa(
                     },
                     onUbicacionClick = {
                         selectedLocation?.let { loc ->
-                            mapCenterLat = loc.latitud
-                            mapCenterLon = loc.longitud
                             recenterTrigger++
                         }
                     },
-                    viewModel = viewModel,                 // 🔹 PASAR ViewModel
-                    token = token,                         // 🔹 PASAR token
-                    selectedLocationId = selectedLocationId // 🔹 PASAR ID
+                    viewModel = viewModel,
+                    token = token,
+                    selectedLocationId = selectedLocationId
                 )
             }
             else -> {
@@ -481,6 +471,7 @@ fun RutaMapa(
         }
     }
 }
+
 @Composable
 fun TransportModeButtons(
     selectedMode: String,
@@ -514,7 +505,6 @@ fun TransportModeButtons(
         )
     }
 }
-
 
 @Composable
 fun TransportButton(

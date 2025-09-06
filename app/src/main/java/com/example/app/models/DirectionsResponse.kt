@@ -47,8 +47,7 @@ fun String.toORSConfig(): Pair<String, AvoidOptions?> {
     return when (this) {
         "fastest" -> "fastest" to null
         "shortest" -> "shortest" to null
-        "scenic" -> "recommended" to AvoidOptions(listOf("highways", "tollways"))
-        "balanced" -> "recommended" to null
+        "recommended" -> "recommended" to null
         else -> "fastest" to null
     }
 }
