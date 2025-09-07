@@ -23,11 +23,14 @@ class RutasRepository {
             Result.failure(Exception("Error HTTP: ${e.message}"))
         }
     }
-    suspend fun cancelarRuta(rutaId: Int) {
-        api.cancelarRuta(rutaId)
+
+    // 🔥 Ahora con fechaFin
+    suspend fun cancelarRuta(rutaId: Int, fechaFin: String) {
+        api.cancelarRuta(rutaId, fechaFin)
     }
 
-    suspend fun finalizarRuta(rutaId: Int) {
-        api.finalizarRuta(rutaId)
+    // 🔥 Ahora con fechaFin
+    suspend fun finalizarRuta(rutaId: Int, fechaFin: String) {
+        api.finalizarRuta(rutaId, fechaFin)
     }
 }

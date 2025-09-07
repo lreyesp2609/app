@@ -1,5 +1,7 @@
 package com.example.app.models
 
+import android.util.Log
+
 data class DirectionsResponse(
     val routes: List<Route>,
     val profile: String
@@ -67,7 +69,7 @@ fun mapInstructionToType(instruction: String): Int {
 fun DirectionsResponse.toRutaUsuarioJson(
     ubicacionId: Int,
     transporteTexto: String,
-    tipoRutaUsado: String? = null  // 🔥 NUEVO PARÁMETRO
+    tipoRutaUsado: String? = null
 ): RutaUsuario {
     val ruta = this.routes.firstOrNull()
     return RutaUsuario(
@@ -76,7 +78,7 @@ fun DirectionsResponse.toRutaUsuarioJson(
         distancia_total = ruta?.summary?.distance ?: 0.0,
         duracion_total = ruta?.summary?.duration ?: 0.0,
         geometria = ruta?.geometry ?: "",
-        fecha_inicio = System.currentTimeMillis().toISOString(),
+        fecha_inicio = System.currentTimeMillis().toLocalISOString(), // 🔥 CAMBIO
         segmentos = ruta?.segments?.map { segment ->
             SegmentoRuta(
                 distancia = segment.distance,
@@ -95,9 +97,11 @@ fun DirectionsResponse.toRutaUsuarioJson(
     )
 }
 
-// Helper para convertir milisegundos a ISO 8601
-fun Long.toISOString(): String {
-    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.getDefault())
-    sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
-    return sdf.format(java.util.Date(this))
+// Helper para convertir milisegundos a timezone local
+fun Long.toLocalISOString(): String {
+    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.getDefault())
+    val result = sdf.format(java.util.Date(this))
+    Log.d("TimezoneDebug", "Emulador timezone: ${java.util.TimeZone.getDefault().id}")
+    Log.d("TimezoneDebug", "Fecha generada: $result")
+    return result
 }

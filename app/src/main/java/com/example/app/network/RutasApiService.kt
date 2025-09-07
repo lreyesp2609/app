@@ -14,11 +14,13 @@ interface RutasApiService {
 
     @POST("rutas/{id}/finalizar")
     suspend fun finalizarRuta(
-        @Path("id") rutaId: Int
-    )
+        @Path("id") rutaId: Int,
+        @Query("fecha_fin") fechaFin: String
+    ): Response<Unit>
 
     @POST("rutas/{id}/cancelar")
     suspend fun cancelarRuta(
-        @Path("id") rutaId: Int
-    )
+        @Path("id") rutaId: Int,
+        @Query("fecha_fin") fechaFin: String
+    ): Response<Unit>
 }

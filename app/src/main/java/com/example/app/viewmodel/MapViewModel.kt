@@ -18,7 +18,7 @@ class MapViewModel(
     private val _route = mutableStateOf<DirectionsResponse?>(null)
     val route: State<DirectionsResponse?> = _route
 
-    private var currentMode = "driving-car" // foot-walking, cycling-regular, etc.
+    private var currentMode = "foot-walking" // foot-walking, cycling-regular, etc.
     private var currentMLType: String? = null
     private var currentToken: String? = null
 
@@ -63,7 +63,10 @@ class MapViewModel(
                 )
 
                 currentMLType = recomendacion.tipo_ruta
-                Log.d("MapViewModel", "ML recomienda: ${recomendacion.tipo_ruta} para usuario ${recomendacion.usuario_id}")
+                Log.d(
+                    "MapViewModel",
+                    "ML recomienda: ${recomendacion.tipo_ruta} para usuario ${recomendacion.usuario_id}"
+                )
 
                 // PASO 2: Configurar OpenRouteService según ML
                 val (preference, avoidOptions) = recomendacion.tipo_ruta.toORSConfig()
@@ -78,7 +81,10 @@ class MapViewModel(
                 )
 
                 Log.d("MapViewModel", "Enviando request ORS: $request")
-                Log.d("MapViewModel", "🔥 USANDO TIPO ML: ${recomendacion.tipo_ruta} -> ORS preference: $preference")
+                Log.d(
+                    "MapViewModel",
+                    "🔥 USANDO TIPO ML: ${recomendacion.tipo_ruta} -> ORS preference: $preference"
+                )
 
                 // PASO 3: Obtener ruta de OpenRouteService
                 val response = RetrofitInstance.api.getRoute(currentMode, request)
@@ -90,7 +96,10 @@ class MapViewModel(
                     rutaActualDuracion = summary.duration
                 }
 
-                Log.d("MapViewModel", "Ruta obtenida: distancia=${response.routes.firstOrNull()?.summary?.distance}m")
+                Log.d(
+                    "MapViewModel",
+                    "Ruta obtenida: distancia=${response.routes.firstOrNull()?.summary?.distance}m"
+                )
 
                 _route.value = responseWithProfile
 
@@ -126,6 +135,8 @@ class MapViewModel(
                 tipoRutaUsado = tipoRutaUsado
             )
 
+            Log.d("MapViewModel", "📅 Fecha de inicio generada en Android: ${rutaJson.fecha_inicio}")
+
             Log.d("MapViewModel", "Guardando ruta con tipo ML: $tipoRutaUsado")
 
             val result = rutasRepository.guardarRuta(token, rutaJson)
@@ -151,15 +162,17 @@ class MapViewModel(
         rutaActualDuracion = null
     }
 
-    // 🔥 FUNCIÓN FINALIZAR - SIN FEEDBACK DUPLICADO
+    // 🔥 FUNCIÓN FINALIZAR - ahora con fecha_fin
     fun finalizarRutaBackend(rutaId: Int) {
         viewModelScope.launch {
             try {
-                // Solo finalizar la ruta - el backend ya maneja el feedback UCB
-                rutasRepository.finalizarRuta(rutaId)
-                Log.d("MapViewModel", "✅ Ruta finalizada en backend (feedback automático)")
+                val fechaFin = System.currentTimeMillis().toLocalISOString() // 🔥 CAMBIO
+                Log.d("MapViewModel", "📅 Fecha de fin generada en Android (finalizar): $fechaFin")
+                Log.d("MapViewModel", "📤 Enviando al backend rutaId: $rutaId, fechaFin: $fechaFin")
 
-                // Limpiar estado
+                rutasRepository.finalizarRuta(rutaId, fechaFin)
+                Log.d("MapViewModel", "✅ Ruta finalizada en backend con fecha fin $fechaFin")
+
                 _mostrarOpcionesFinalizar.value = false
                 _route.value = null
 
@@ -168,16 +181,16 @@ class MapViewModel(
             }
         }
     }
-
-    // 🔥 FUNCIÓN CANCELAR - SIN FEEDBACK DUPLICADO
+    // 🔥 FUNCIÓN CANCELAR - ahora con fecha_fin
     fun cancelarRutaBackend(rutaId: Int) {
         viewModelScope.launch {
             try {
-                // Solo cancelar la ruta - el backend ya maneja el feedback UCB
-                rutasRepository.cancelarRuta(rutaId)
-                Log.d("MapViewModel", "✅ Ruta cancelada en backend (feedback automático)")
+                val fechaFin = System.currentTimeMillis().toLocalISOString() // 🔥 CAMBIO
+                Log.d("MapViewModel", "📅 Fecha de fin generada en Android (cancelar): $fechaFin")
 
-                // Limpiar estado
+                rutasRepository.cancelarRuta(rutaId, fechaFin)
+                Log.d("MapViewModel", "✅ Ruta cancelada en backend con fecha fin $fechaFin")
+
                 _mostrarOpcionesFinalizar.value = false
                 _route.value = null
 
@@ -190,7 +203,6 @@ class MapViewModel(
     // 🔥 NUEVA FUNCIÓN para enviar feedback al UCB
     private suspend fun enviarFeedbackUCB(completada: Boolean) {
         try {
-            // Verificar que tenemos todos los datos necesarios
             val token = currentToken
             val tipoUsado = currentMLType
             val ubicacionId = rutaActualUbicacionId
@@ -202,7 +214,6 @@ class MapViewModel(
                 return
             }
 
-            // Crear el feedback request
             val feedbackRequest = FeedbackRequest(
                 tipo_usado = tipoUsado,
                 completada = completada,
@@ -213,7 +224,6 @@ class MapViewModel(
 
             Log.d("MapViewModel", "📤 Enviando feedback UCB: $feedbackRequest")
 
-            // Enviar al endpoint de ML
             val response = RetrofitClient.mlService.enviarFeedback(
                 "Bearer $token",
                 feedbackRequest
@@ -225,6 +235,7 @@ class MapViewModel(
             Log.e("MapViewModel", "❌ Error enviando feedback UCB: ${e.message}", e)
         }
     }
+
     fun ocultarOpcionesFinalizar() {
         _mostrarOpcionesFinalizar.value = false
         _rutaIdActiva.value = null
