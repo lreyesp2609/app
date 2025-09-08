@@ -26,8 +26,12 @@ data class FeedbackResponse(
 
 data class EstadisticasResponse(
     val usuario_id: Int,
+    val ubicacion_id: Int? = null,
     val bandits: List<BanditStats>,
-    val total_rutas_generadas: Int
+    val total_rutas_generadas: Int,
+    val rutas_completadas: Int = 0,
+    val rutas_canceladas: Int = 0,
+    val tiempo_promedio_por_tipo: Map<String, Double> = emptyMap()
 )
 
 data class BanditStats(
@@ -35,5 +39,8 @@ data class BanditStats(
     val total_usos: Int,
     val total_rewards: Int,
     val success_rate: Double,
-    val ucb_score: Double?
+    val ucb_score: Double?,
+    val fecha_creacion: String,
+    val fecha_actualizacion: String
 )
+

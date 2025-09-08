@@ -8,7 +8,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
-    private const val BASE_URL = "https://38afd70ba0d2.ngrok-free.app/"
+    private const val BASE_URL = "https://e968eff44bd8.ngrok-free.app/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = Level.BODY
@@ -40,7 +40,6 @@ object RetrofitClient {
     val rutasApiService: RutasApiService by lazy {
         retrofit.create(RutasApiService::class.java)
     }
-
 
     val mlService: MLService by lazy {
         retrofit.create(MLService::class.java)

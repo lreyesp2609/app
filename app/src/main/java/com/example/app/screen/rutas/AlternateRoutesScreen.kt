@@ -7,7 +7,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -73,11 +75,6 @@ fun AlternateRoutesScreen(
                     fontSize = 20.sp,
                     style = MaterialTheme.typography.titleMedium
                 )
-                Text(
-                    text = "Próximamente con integración de mapas y ML",
-                    color = textColor.copy(alpha = 0.7f),
-                    fontSize = 14.sp
-                )
             }
         }
 
@@ -138,10 +135,11 @@ fun AlternateRoutesScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
+                            // Fila de botones reorganizada para 3 botones
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                // 🚀 Aquí pasamos el ID en vez de lat/lon
+                                // Botón Ver Ruta
                                 Button(
                                     onClick = {
                                         navController.navigate("rutas_screen/${ubicacion.id}")
@@ -150,16 +148,44 @@ fun AlternateRoutesScreen(
                                     colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Text(text = "Ver Ruta", color = Color.White)
+                                    Icon(
+                                        imageVector = Icons.Default.Directions,
+                                        contentDescription = "Ver Ruta",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
                                 }
 
+                                // Botón Estadísticas
+                                Button(
+                                    onClick = {
+                                        navController.navigate("estadisticas/${ubicacion.id}")
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)), // Azul
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Analytics,
+                                        contentDescription = "Estadísticas",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+
+                                // Botón Editar
                                 Button(
                                     onClick = { println("Editar ${ubicacion.nombre}") },
                                     modifier = Modifier.weight(1f),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Text(text = "Editar", color = Color.White)
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Editar",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
                                 }
                             }
                         }

@@ -22,8 +22,10 @@ import androidx.navigation.navArgument
 import com.example.app.repository.RutasRepository
 import com.example.app.screen.auth.LoginScreen
 import com.example.app.screen.home.HomeScreen
+import com.example.app.screen.home.components.PlaceholderScreen
 import com.example.app.screen.mapa.RutaMapa
 import com.example.app.screen.rutas.AlternateRoutesScreen
+import com.example.app.screen.rutas.components.EstadisticasScreen
 import com.example.app.screen.rutas.components.MapScreen
 import com.example.app.ui.theme.AppTheme
 import com.example.app.viewmodel.AuthViewModel
@@ -116,6 +118,37 @@ class MainActivity : ComponentActivity() {
                                 token = token,  // Pasar token
                                 selectedLocationId = selectedLocationId
                             )
+                        }
+
+                        // 🆕 Nueva ruta para estadísticas
+                        composable(
+                            "estadisticas/{id}",
+                            arguments = listOf(navArgument("id") { type = NavType.IntType })
+                        ) { backStackEntry ->
+                            val id = backStackEntry.arguments?.getInt("id") ?: 0
+                            val token = authViewModel.accessToken ?: ""
+                            val isDarkTheme = isSystemInDarkTheme()
+                            val primaryColor = if (isDarkTheme) Color(0xFF64B5F6) else Color(0xFF1976D2)
+                            val textColor = if (isDarkTheme) Color.White else Color.Black
+
+                            EstadisticasScreen(
+                                ubicacionId = id,
+                                token = token,
+                                isDarkTheme = isDarkTheme,
+                                primaryColor = primaryColor,
+                                textColor = textColor,
+                                navController = navController
+                            )
+                        }
+                        // Dentro de tu NavHost, después de composable("estadisticas/{id}")
+                        composable("recordatorios") {
+                            PlaceholderScreen("Recordatorios", "Próximamente", navController)
+                        }
+                        composable("grupos") {
+                            PlaceholderScreen("Grupos", "Próximamente", navController)
+                        }
+                        composable("config") {
+                            PlaceholderScreen("Configuración", "Próximamente", navController)
                         }
                     }
                 }

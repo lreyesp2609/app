@@ -23,6 +23,7 @@ interface MLService {
 
     @GET("ml/stats")
     suspend fun obtenerMisEstadisticas(
-        @Header("Authorization") token: String
+        @Header("Authorization") token: String,
+        @Query("ubicacion_id") ubicacionId: Int
     ): EstadisticasResponse
 }
