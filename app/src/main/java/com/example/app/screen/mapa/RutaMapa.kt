@@ -45,7 +45,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
 import calcularDistanciaSobreRuta
 import com.example.app.models.UbicacionUsuarioResponse
+import com.example.app.screen.rutas.components.CalculadorETADinamico
+import com.example.app.screen.rutas.components.RutaEstado
 import com.example.app.screen.rutas.components.RutasBottomButtons
+import com.example.app.screen.rutas.components.actualizarHistorialPosiciones
+import com.example.app.screen.rutas.components.inicializarRutaEstado
 import com.example.app.viewmodel.decodePolyline
 import com.example.app.viewmodel.MapViewModel
 import kotlinx.coroutines.delay
@@ -103,6 +107,9 @@ fun RutaMapa(
     val mostrarOpcionesFinalizar by viewModel.mostrarOpcionesFinalizar
     val rutaIdActiva by viewModel.rutaIdActiva
 
+
+    var rutaEstado by remember { mutableStateOf(RutaEstado()) }
+
     // Actualizar selectedLocation cuando cambien las ubicaciones
     LaunchedEffect(ubicaciones) {
         if (ubicaciones.isNotEmpty()) {
@@ -111,6 +118,45 @@ fun RutaMapa(
             destinoAlcanzado = false
         }
     }
+
+    LaunchedEffect(currentRoute) {
+        currentRoute?.routes?.firstOrNull()?.let { route ->
+            val geometria = route.geometry.decodePolyline()
+            val distanciaMetros = route.summary.distance * 1000.0
+            val duracionSegundos = route.summary.duration
+
+            rutaEstado = inicializarRutaEstado(
+                rutaOriginal = geometria,
+                distanciaMetros = distanciaMetros,
+                duracionSegundos = duracionSegundos
+            )
+
+            showRouteInfo = true
+            mensajeDestinoMostrado = false
+            destinoAlcanzado = false
+        }
+    }
+
+    LaunchedEffect(userLat.value, userLon.value) {
+        if (rutaEstado.activa && userLat.value != 0.0 && userLon.value != 0.0) {
+            rutaEstado = actualizarHistorialPosiciones(
+                userLat.value,
+                userLon.value,
+                rutaEstado
+            )
+        }
+    }
+
+    CalculadorETADinamico(
+        userLat = userLat.value,
+        userLon = userLon.value,
+        rutaEstado = rutaEstado,
+        transportMode = selectedTransportMode,
+        onETACalculado = { distancia, duracion ->
+            routeDistance = distancia
+            routeDuration = duracion
+        }
+    )
 
     // GUARDAR ruta original cuando se calcula nueva ruta
     LaunchedEffect(currentRoute) {
@@ -136,92 +182,32 @@ fun RutaMapa(
     }
 
     // ACTUALIZAR distancia y tiempo continuamente cuando hay ruta activa
-    LaunchedEffect(userLat.value, userLon.value, rutaActiva) {
-        if (rutaActiva && rutaOriginal.isNotEmpty()) {
-            // Calcular distancia restante usando GPS actual
-            val distanciaRestanteMetros = calcularDistanciaSobreRuta(userLat.value, userLon.value, rutaOriginal)
-            val distanciaRestanteKm = distanciaRestanteMetros / 1000.0
-
-            // Calcular tiempo transcurrido desde que inició la ruta
-            val tiempoActual = System.currentTimeMillis() / 1000
-            val tiempoTranscurrido = tiempoActual - tiempoInicioRuta
-
-            // Calcular duración restante basada en la proporción de distancia
-            val proporcionDistanciaRestante = if (distanciaOriginal > 0) {
-                distanciaRestanteMetros / distanciaOriginal
-            } else {
-                0.0
-            }
-
-            // Tiempo estimado original para la distancia restante
-            val tiempoEstimadoRestante = duracionOriginal * proporcionDistanciaRestante
-
-            // Calcular duración usando proporción simple como Google Maps
-            val duracionFinal = if (tiempoTranscurrido > 30 && distanciaOriginal > distanciaRestanteMetros) {
-                // Calcular progreso real
-                val distanciaRecorrida = distanciaOriginal - distanciaRestanteMetros
-                val progresoReal = if (distanciaOriginal > 0) distanciaRecorrida / distanciaOriginal else 0.0
-
-                if (progresoReal > 0.01) { // Solo si hay progreso significativo (1%)
-                    // Calcular tiempo restante basado en velocidad real observada
-                    val velocidadObservada = distanciaRecorrida / tiempoTranscurrido
-                    if (velocidadObservada > 0) {
-                        distanciaRestanteMetros / velocidadObservada
-                    } else {
-                        tiempoEstimadoRestante
-                    }
-                } else {
-                    // Si no hay progreso significativo, usar estimación original
-                    tiempoEstimadoRestante
-                }
-            } else {
-                // Usar estimación proporcional simple
-                tiempoEstimadoRestante
-            }
-
-            val durationMin = (duracionFinal / 60.0).toInt()
-
-            // Actualizar valores mostrados de forma simple
-            routeDistance = String.format("%.2f km", distanciaRestanteKm)
-            routeDuration = when {
-                distanciaRestanteMetros < 50 -> "Llegando..."
-                durationMin > 0 -> "${durationMin} min"
-                distanciaRestanteKm > 0 -> {
-                    // Usar proporción simple de la estimación original
-                    val tiempoProporcionado = (duracionOriginal * proporcionDistanciaRestante / 60.0).toInt()
-                    "${maxOf(tiempoProporcionado, 1)} min"
-                }
-                else -> "Llegando..."
-            }
-
-            // 🔥 DETECCIÓN DE LLEGADA MEJORADA - CON FEEDBACK AUTOMÁTICO
+    LaunchedEffect(userLat.value, userLon.value, rutaEstado.activa) {
+        if (rutaEstado.activa && !mensajeDestinoMostrado) {
             selectedLocation?.let { destino ->
                 val distanciaAlDestino = calcularDistancia(
                     userLat.value, userLon.value,
                     destino.latitud, destino.longitud
                 )
 
-                // 🔧 DEBUG: Log para ver el estado
-                Log.d("RutaMapa", "Distancia al destino: ${distanciaAlDestino}m, mensajeDestinoMostrado: $mensajeDestinoMostrado, rutaIdActiva: ${rutaIdActiva}")
+                Log.d("RutaMapa", "Distancia al destino: ${distanciaAlDestino}m")
 
-                // Solo considerar llegada si está a menos de 30 metros del destino real
-                if (distanciaAlDestino < 30 && !mensajeDestinoMostrado) {
-                    Log.d("RutaMapa", "🎯 LLEGADA DETECTADA! Finalizando ruta automáticamente...")
+                // Llegada detectada con mayor precisión
+                if (distanciaAlDestino < 25) { // Reducido de 30 a 25 metros
+                    Log.d("RutaMapa", "🎯 LLEGADA DETECTADA!")
 
-                    rutaActiva = false
+                    rutaEstado = rutaEstado.copy(activa = false)
                     destinoAlcanzado = true
                     mensajeDestinoMostrado = true
 
-                    // 🎯 AQUÍ ESTÁ EL FIX: Enviar el feedback automáticamente
+                    // Enviar feedback automáticamente
                     rutaIdActiva?.let { id ->
                         Log.d("RutaMapa", "📤 Enviando finalizarRutaBackend con ID: $id")
-                        viewModel.finalizarRutaBackend(id) // ✅ Esto envía el feedback automáticamente
-                    } ?: Log.w("RutaMapa", "⚠️ rutaIdActiva es null!")
+                        viewModel.finalizarRutaBackend(id)
+                    }
 
                     showRouteInfo = false
                     viewModel.clearRoute()
-
-                    // 🔥 OCULTAR botones de finalizar porque ya se finalizó automáticamente
                     viewModel.ocultarOpcionesFinalizar()
                 }
             }
@@ -340,14 +326,14 @@ fun RutaMapa(
                 }
 
                 // Mostrar información de la ruta - ACTUALIZADA DINÁMICAMENTE
-                if (showRouteInfo && (currentRoute != null || rutaActiva)) {
+                if (showRouteInfo && (currentRoute != null || rutaEstado.activa)) {
                     Column(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .statusBarsPadding()
                             .padding(top = 16.dp, start = 16.dp, end = 16.dp)
                     ) {
-                        // Card con km/min
+                        // Card con km/min ACTUALIZADO DINÁMICAMENTE
                         RouteInfoCard(
                             distance = routeDistance,
                             duration = routeDuration,
@@ -355,7 +341,7 @@ fun RutaMapa(
                             onDismiss = {
                                 showRouteInfo = false
                                 viewModel.clearRoute()
-                                rutaActiva = false // RESETEAR ruta activa
+                                rutaEstado = rutaEstado.copy(activa = false)
                             },
                             modifier = Modifier.fillMaxWidth()
                         )
