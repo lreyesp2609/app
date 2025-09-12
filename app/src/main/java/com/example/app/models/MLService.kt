@@ -44,3 +44,35 @@ data class BanditStats(
     val fecha_actualizacion: String
 )
 
+data class FinalizarRutaRequest(
+    val fecha_fin: String,
+    val puntos_gps: List<PuntoGPS>? = null,
+    val siguio_ruta_recomendada: Boolean? = null,
+    val porcentaje_similitud: Double? = null
+)
+
+data class PuntoGPS(
+    val lat: Double,
+    val lng: Double,
+    val timestamp: Long
+)
+
+data class FinalizarRutaResponse(
+    val success: Boolean,
+    val ruta_id: Int,
+    val alerta_desobediencia: Boolean,
+    val mensaje_alerta: String?,
+    val similitud_calculada: Double,
+    val desobediencias_consecutivas: Int,
+    val debug_info: DebugInfo?
+)
+
+data class DebugInfo(
+    val similitud_calculada: Double,
+    val desobediencias_consecutivas: Int,
+    val puntos_gps_procesados: Int,
+    val tiene_geometria_recomendada: Boolean,
+    val ubicacion_id: Int?,
+    val es_ruta_similar: Boolean?,
+    val detalles_analisis: Map<String, Any>?
+)

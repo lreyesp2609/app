@@ -1,6 +1,10 @@
 package com.example.app.repository
 
+import android.util.Log
 import com.example.app.models.EstadisticasResponse
+import com.example.app.models.FinalizarRutaRequest
+import com.example.app.models.FinalizarRutaResponse
+import com.example.app.models.PuntoGPS
 import com.example.app.models.RutaUsuario
 import com.example.app.network.RetrofitClient
 import retrofit2.HttpException
@@ -9,6 +13,7 @@ import java.io.IOException
 class RutasRepository {
     private val api = RetrofitClient.rutasApiService
     private val mlApi = RetrofitClient.mlService
+
     suspend fun guardarRuta(token: String, ruta: RutaUsuario): Result<RutaUsuario> {
         return try {
             val response = api.crearRuta("Bearer $token", ruta)
@@ -27,7 +32,7 @@ class RutasRepository {
 
     suspend fun obtenerEstadisticas(token: String, ubicacionId: Int): Result<EstadisticasResponse> {
         return try {
-            val response = mlApi.obtenerMisEstadisticas("Bearer $token", ubicacionId) // 👈 corregido
+            val response = mlApi.obtenerMisEstadisticas("Bearer $token", ubicacionId)
             Result.success(response)
         } catch (e: IOException) {
             Result.failure(Exception("Error de red: ${e.message}"))
@@ -38,16 +43,32 @@ class RutasRepository {
         }
     }
 
-
-    // 🔥 Ahora con fechaFin
+    // 🔥 Cancelar ruta - ahora directamente con Query
     suspend fun cancelarRuta(rutaId: Int, fechaFin: String) {
         api.cancelarRuta(rutaId, fechaFin)
     }
 
-    // 🔥 Ahora con fechaFin
-    suspend fun finalizarRuta(rutaId: Int, fechaFin: String) {
-        api.finalizarRuta(rutaId, fechaFin)
+    // 🔥 Finalizar ruta con puntos GPS y análisis
+    suspend fun finalizarRuta(
+        rutaId: Int,
+        fechaFin: String,
+        puntosGPS: List<PuntoGPS>? = null,
+        siguioRutaRecomendada: Boolean? = null,
+        porcentajeSimilitud: Double? = null // Nuevo parámetro
+    ): Result<FinalizarRutaResponse> {
+        return try {
+            val request = FinalizarRutaRequest(
+                fecha_fin = fechaFin,
+                puntos_gps = puntosGPS,
+                siguio_ruta_recomendada = siguioRutaRecomendada,
+                porcentaje_similitud = porcentajeSimilitud
+            )
+
+            val response = mlApi.finalizarRuta(rutaId, request)
+            Result.success(response)
+        } catch (e: Exception) {
+            Log.e("RutasRepository", "Error finalizando ruta: ${e.message}", e)
+            Result.failure(e)
+        }
     }
-
-
 }

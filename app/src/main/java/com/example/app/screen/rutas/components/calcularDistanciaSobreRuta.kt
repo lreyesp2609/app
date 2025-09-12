@@ -83,15 +83,3 @@ fun calcularDistancia(lat1: Double, lon1: Double, lat2: Double, lon2: Double): D
     val c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return R * c
 }
-
-// Función adicional para debug - puedes usarla temporalmente
-fun debugDistanceCalculation(userLat: Double, userLon: Double, routePoints: List<GeoPoint>, destino: UbicacionUsuarioResponse) {
-    val distanciaEnRuta = calcularDistanciaSobreRuta(userLat, userLon, routePoints)
-    val distanciaDirecta = calcularDistancia(userLat, userLon, destino.latitud, destino.longitud)
-
-    println("DEBUG Navigation:")
-    println("- Distancia siguiendo ruta: ${String.format("%.2f", distanciaEnRuta/1000.0)} km")
-    println("- Distancia directa al destino: ${String.format("%.2f", distanciaDirecta/1000.0)} km")
-    println("- Posición usuario: $userLat, $userLon")
-    println("- Posición destino: ${destino.latitud}, ${destino.longitud}")
-}

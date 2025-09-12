@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -55,6 +57,7 @@ import com.example.app.viewmodel.MapViewModel
 import kotlinx.coroutines.delay
 import org.osmdroid.util.GeoPoint
 import kotlin.collections.isNotEmpty
+import androidx.compose.runtime.collectAsState
 
 @Composable
 fun RutaMapa(
@@ -107,8 +110,10 @@ fun RutaMapa(
     val mostrarOpcionesFinalizar by viewModel.mostrarOpcionesFinalizar
     val rutaIdActiva by viewModel.rutaIdActiva
 
-
     var rutaEstado by remember { mutableStateOf(RutaEstado()) }
+
+    val mostrarAlertaDesobediencia by viewModel.mostrarAlertaDesobediencia
+    val mensajeAlertaDesobediencia by viewModel.mensajeAlertaDesobediencia
 
     // Actualizar selectedLocation cuando cambien las ubicaciones
     LaunchedEffect(ubicaciones) {
@@ -229,12 +234,16 @@ fun RutaMapa(
         userLat.value = lat
         userLon.value = lon
 
+        // AGREGAR captura GPS cuando hay ruta activa:
+        if (rutaIdActiva != null) {
+            viewModel.agregarPuntoGPSReal(lat, lon)
+        }
+
         if (!locationObtained) {
             mapCenterLat = lat
             mapCenterLon = lon
             locationObtained = true
         }
-        // ❌ CÓDIGO ELIMINADO - ya no hay detección duplicada aquí
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -452,6 +461,21 @@ fun RutaMapa(
                     },
                     onError = { showGpsButton = true },
                     onGpsDisabled = { showGpsButton = true }
+                )
+            }
+        }
+        if (mostrarAlertaDesobediencia) {
+            val mensaje = mensajeAlertaDesobediencia
+            if (mensaje != null) {
+                AlertDialog(
+                    onDismissRequest = { viewModel.cerrarAlertaDesobediencia() },
+                    title = { Text("⚠️ Alerta de Seguridad") },
+                    text = { Text(mensaje) },  // Usar variable local
+                    confirmButton = {
+                        TextButton(onClick = { viewModel.cerrarAlertaDesobediencia() }) {
+                            Text("Entendido")
+                        }
+                    }
                 )
             }
         }

@@ -1,10 +1,6 @@
 package com.example.app.network
 
-import com.example.app.models.EstadisticasResponse
-import com.example.app.models.FeedbackRequest
-import com.example.app.models.FeedbackResponse
-import com.example.app.models.TipoRutaRequest
-import com.example.app.models.TipoRutaResponse
+import com.example.app.models.*
 import retrofit2.http.*
 
 interface MLService {
@@ -26,4 +22,11 @@ interface MLService {
         @Header("Authorization") token: String,
         @Query("ubicacion_id") ubicacionId: Int
     ): EstadisticasResponse
+
+    // 🔥 AGREGAR ESTE ENDPOINT:
+    @POST("rutas/{id}/finalizar")
+    suspend fun finalizarRuta(
+        @Path("id") rutaId: Int,
+        @Body request: FinalizarRutaRequest
+    ): FinalizarRutaResponse
 }
