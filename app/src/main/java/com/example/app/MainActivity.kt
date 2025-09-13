@@ -69,16 +69,10 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("rutas") {
                             val token = authViewModel.accessToken ?: ""
-                            val isDarkTheme = isSystemInDarkTheme()
-                            val primaryColor = if (isDarkTheme) Color(0xFF64B5F6) else Color(0xFF1976D2)
-                            val textColor = if (isDarkTheme) Color.White else Color.Black
 
                             AlternateRoutesScreen(
                                 navController = navController,
-                                token = token,
-                                isDarkTheme = isDarkTheme,
-                                primaryColor = primaryColor,
-                                textColor = textColor
+                                token = token
                             )
                         }
                         composable("mapa") {
@@ -127,16 +121,10 @@ class MainActivity : ComponentActivity() {
                         ) { backStackEntry ->
                             val id = backStackEntry.arguments?.getInt("id") ?: 0
                             val token = authViewModel.accessToken ?: ""
-                            val isDarkTheme = isSystemInDarkTheme()
-                            val primaryColor = if (isDarkTheme) Color(0xFF64B5F6) else Color(0xFF1976D2)
-                            val textColor = if (isDarkTheme) Color.White else Color.Black
 
                             EstadisticasScreen(
                                 ubicacionId = id,
                                 token = token,
-                                isDarkTheme = isDarkTheme,
-                                primaryColor = primaryColor,
-                                textColor = textColor,
                                 navController = navController
                             )
                         }

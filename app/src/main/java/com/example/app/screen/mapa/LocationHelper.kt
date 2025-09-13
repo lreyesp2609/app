@@ -7,7 +7,7 @@ import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -23,11 +23,11 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -173,20 +173,16 @@ fun GetCurrentLocation(
     }
 }
 
-// Componente para mostrar el botón de GPS
 @Composable
 fun GpsEnableButton(
     onEnableGps: () -> Unit,
-    modifier: Modifier = Modifier,
-    isDarkTheme: Boolean = isSystemInDarkTheme()
+    modifier: Modifier = Modifier
 ) {
-    // Definir colores según tema
-    val textColor = if (isDarkTheme) Color.White else Color.Black.copy(alpha = 0.7f)
-    val iconTint = if (isDarkTheme) Color.LightGray else Color.Gray
-    val buttonColor = if (isDarkTheme) Color(0xFF1976D2) else Color(0xFF64B5F6)
-
     Column(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -194,7 +190,7 @@ fun GpsEnableButton(
             imageVector = Icons.Default.LocationOff,
             contentDescription = "GPS deshabilitado",
             modifier = Modifier.size(64.dp),
-            tint = iconTint
+            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -202,8 +198,8 @@ fun GpsEnableButton(
         Text(
             text = "Para mejor experiencia\nhabilita el GPS",
             textAlign = TextAlign.Center,
-            fontSize = 16.sp,
-            color = textColor,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
             lineHeight = 20.sp
         )
 
@@ -211,7 +207,9 @@ fun GpsEnableButton(
 
         Button(
             onClick = onEnableGps,
-            colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            ),
             shape = RoundedCornerShape(25.dp),
             modifier = Modifier.padding(horizontal = 32.dp)
         ) {
@@ -219,13 +217,13 @@ fun GpsEnableButton(
                 imageVector = Icons.Default.LocationOn,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
-                tint = Color.White
+                tint = MaterialTheme.colorScheme.onPrimary
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "Habilitar GPS",
-                color = Color.White,
-                fontSize = 16.sp
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.labelLarge
             )
         }
     }

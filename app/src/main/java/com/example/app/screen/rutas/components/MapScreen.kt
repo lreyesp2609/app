@@ -1,6 +1,7 @@
 package com.example.app.screen.rutas.components
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
@@ -69,10 +70,9 @@ fun MapScreen(navController: NavController, onConfirmClick: () -> Unit = {}) {
                         onLocationSelected = { lat, lon ->
                             mapCenterLat = lat
                             mapCenterLon = lon
-                            // Cancelar petición anterior si el usuario sigue moviendo
                             job?.cancel()
                             job = scope.launch {
-                                delay(500) // Debounce para no saturar la API
+                                delay(500)
                                 try {
                                     val response = NominatimClient.apiService.reverseGeocode(
                                         lat = lat,
@@ -92,7 +92,8 @@ fun MapScreen(navController: NavController, onConfirmClick: () -> Unit = {}) {
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .padding(end = 16.dp),
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ) {
                         Icon(
                             imageVector = Icons.Default.MyLocation,
@@ -128,13 +129,21 @@ fun MapScreen(navController: NavController, onConfirmClick: () -> Unit = {}) {
             }
             else -> {
                 Column(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Obteniendo ubicación...")
+                    Text(
+                        "Obteniendo ubicación...",
+                        color = MaterialTheme.colorScheme.onBackground,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
 
                 GetCurrentLocation(

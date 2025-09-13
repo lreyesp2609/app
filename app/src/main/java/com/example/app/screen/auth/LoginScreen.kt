@@ -29,6 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.app.ui.theme.getBackgroundGradient
 import com.example.app.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,7 +79,7 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(getBackgroundGradient())
             .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(32.dp),
@@ -91,13 +93,13 @@ fun LoginScreen(
             Icon(
                 imageVector = Icons.Default.LocationOn,
                 contentDescription = "Ubicación",
-                tint = Color(0xFF64B5F6), // azul claro
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.fillMaxSize()
             )
             Icon(
                 imageVector = Icons.Default.AccessAlarm,
                 contentDescription = "Alarma",
-                tint = Color.Red,
+                tint = Color(0xFFFF6B6B),
                 modifier = Modifier
                     .size(36.dp)
                     .offset(x = (-10).dp, y = 10.dp)
@@ -117,10 +119,21 @@ fun LoginScreen(
             onValueChange = { email = it },
             label = { Text("Correo") },
             singleLine = true,
-            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Email,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            enabled = !authViewModel.isLoading
+            enabled = !authViewModel.isLoading,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                cursorColor = MaterialTheme.colorScheme.primary
+            )
         )
 
         // Contraseña
@@ -129,10 +142,21 @@ fun LoginScreen(
             onValueChange = { password = it },
             label = { Text("Contraseña") },
             singleLine = true,
-            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
-            enabled = !authViewModel.isLoading
+            enabled = !authViewModel.isLoading,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                cursorColor = MaterialTheme.colorScheme.primary
+            )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -153,28 +177,36 @@ fun LoginScreen(
                 .fillMaxWidth()
                 .height(50.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF1976D2),
-                contentColor = Color.White
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ),
             enabled = !authViewModel.isLoading
         ) {
             if (authViewModel.isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     strokeWidth = 2.dp
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Iniciando...", fontSize = 18.sp, color = Color.White)
+                Text(
+                    "Iniciando...",
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
             } else {
-                Text("Iniciar sesión", fontSize = 18.sp, color = Color.White)
+                Text(
+                    "Iniciar sesión",
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
             }
         }
 
         Text(
             text = "¿No tienes cuenta? Regístrate",
             fontSize = 14.sp,
-            color = Color.Gray,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             modifier = Modifier.padding(top = 8.dp)
         )
 

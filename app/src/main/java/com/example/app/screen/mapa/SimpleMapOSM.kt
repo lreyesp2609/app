@@ -7,6 +7,7 @@ import android.graphics.drawable.shapes.OvalShape
 import android.view.MotionEvent
 import android.view.View
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +45,11 @@ fun SimpleMapOSM(
 ) {
     val mapView = rememberMapView(context, zoom)
 
+    // Obtener colores del tema actual
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val secondaryColor = MaterialTheme.colorScheme.secondary
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+
     // Inicializar configuración
     LaunchedEffect(Unit) {
         Configuration.getInstance().load(
@@ -60,7 +66,7 @@ fun SimpleMapOSM(
             // Solo actualizar overlays
             map.overlays.clear()
 
-            // Ruta
+            // Ruta con colores del tema
             routeGeometry?.let { geometry ->
                 try {
                     val routePoints = geometry.decodePolyline()
@@ -68,10 +74,10 @@ fun SimpleMapOSM(
                         val polyline = Polyline().apply {
                             setPoints(routePoints)
                             color = when (transportMode) {
-                                "foot-walking" -> Color(0xFF4CAF50).toArgb()
-                                "cycling-regular" -> Color(0xFF2196F3).toArgb()
-                                "driving-car" -> Color(0xFFFF9800).toArgb()
-                                else -> Color(0xFF4CAF50).toArgb()
+                                "foot-walking" -> Color(0xFF4CAF50).toArgb() // Verde para caminar (mantener por visibilidad)
+                                "cycling-regular" -> secondaryColor.toArgb() // Usar color secundario del tema
+                                "driving-car" -> Color(0xFF9C27B0).toArgb() // Púrpura en lugar de naranja
+                                else -> primaryColor.toArgb() // Color principal del tema como fallback
                             }
                             width = 12f
                         }
@@ -82,7 +88,7 @@ fun SimpleMapOSM(
                 }
             }
 
-            // Marcador usuario
+            // Marcador usuario (azul como estaba originalmente)
             val userMarker = Marker(map).apply {
                 position = GeoPoint(userLat, userLon)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
@@ -90,7 +96,7 @@ fun SimpleMapOSM(
                     intrinsicHeight = 36
                     intrinsicWidth = 36
                     paint.apply {
-                        color = android.graphics.Color.rgb(33, 150, 243)
+                        color = android.graphics.Color.rgb(33, 150, 243) // Azul original
                         style = android.graphics.Paint.Style.FILL
                         isAntiAlias = true
                     }

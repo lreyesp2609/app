@@ -8,7 +8,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +29,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -45,7 +45,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -54,6 +53,7 @@ import androidx.navigation.NavController
 import com.example.app.screen.home.components.HomeTabContent
 import com.example.app.screen.home.components.PlaceholderTab
 import com.example.app.screen.rutas.AlternateRoutesScreen
+import com.example.app.ui.theme.getBackgroundGradient
 import com.example.app.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 
@@ -64,7 +64,6 @@ fun HomeScreen(
 ) {
     val userState = authViewModel.user
     val isLoggedIn = authViewModel.isLoggedIn
-    val isDarkTheme = isSystemInDarkTheme()
     val accessToken = authViewModel.accessToken ?: ""
 
     // Estados de animación
@@ -86,31 +85,7 @@ fun HomeScreen(
         animationSpec = tween(1000), label = ""
     )
 
-    // Colores según el tema
-    val backgroundGradient = if (isDarkTheme) {
-        Brush.verticalGradient(
-            colors = listOf(
-                Color(0xFF1A1A2E),
-                Color(0xFF16213E)
-            )
-        )
-    } else {
-        Brush.verticalGradient(
-            colors = listOf(
-                Color(0xFFF8F9FA),
-                Color(0xFFE3F2FD)
-            )
-        )
-    }
-
-    val cardColors = if (isDarkTheme) {
-        CardDefaults.cardColors(containerColor = Color(0xFF2D2D44))
-    } else {
-        CardDefaults.cardColors(containerColor = Color.White)
-    }
-
-    val primaryColor = if (isDarkTheme) Color(0xFF64B5F6) else Color(0xFF1976D2)
-    val textColor = if (isDarkTheme) Color.White else Color.Black
+    // Color de acento específico (mantener si es necesario)
     val accentColor = Color(0xFFFF6B6B)
 
     LaunchedEffect(userState, isLoggedIn) {
@@ -144,8 +119,8 @@ fun HomeScreen(
     Scaffold(
         bottomBar = {
             NavigationBar(
-                containerColor = if (isDarkTheme) Color(0xFF2D2D44) else Color.White,
-                contentColor = primaryColor
+                containerColor = MaterialTheme.colorScheme.surface, // En lugar de if (isDarkTheme)...
+                contentColor = MaterialTheme.colorScheme.primary
             ) {
                 NavigationBarItem(
                     selected = selectedTab == 0,
@@ -154,7 +129,10 @@ fun HomeScreen(
                         Icon(
                             Icons.Default.Home,
                             contentDescription = "Inicio",
-                            tint = if (selectedTab == 0) primaryColor else Color.Gray
+                            tint = if (selectedTab == 0)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant // En lugar de Color.Gray
                         )
                     }
                 )
@@ -165,7 +143,10 @@ fun HomeScreen(
                         Icon(
                             Icons.Default.Map,
                             contentDescription = "Rutas alternas",
-                            tint = if (selectedTab == 1) primaryColor else Color.Gray
+                            tint = if (selectedTab == 1)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 )
@@ -176,7 +157,10 @@ fun HomeScreen(
                         Icon(
                             Icons.Default.Notifications,
                             contentDescription = "Recordatorios",
-                            tint = if (selectedTab == 2) primaryColor else Color.Gray
+                            tint = if (selectedTab == 2)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 )
@@ -187,7 +171,10 @@ fun HomeScreen(
                         Icon(
                             Icons.Default.Group,
                             contentDescription = "Grupos colaborativos",
-                            tint = if (selectedTab == 3) primaryColor else Color.Gray
+                            tint = if (selectedTab == 3)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 )
@@ -198,7 +185,10 @@ fun HomeScreen(
                         Icon(
                             Icons.Default.Settings,
                             contentDescription = "Configuración",
-                            tint = if (selectedTab == 4) primaryColor else Color.Gray
+                            tint = if (selectedTab == 4)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 )
@@ -208,7 +198,7 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(backgroundGradient)
+                .background(getBackgroundGradient()) // Usar el gradiente global
                 .padding(paddingValues)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -230,13 +220,13 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Default.LocationOn,
                             contentDescription = "Ubicación",
-                            tint = primaryColor,
+                            tint = MaterialTheme.colorScheme.primary, // En lugar de primaryColor
                             modifier = Modifier.size(50.dp)
                         )
                         Icon(
                             imageVector = Icons.Default.AccessAlarm,
                             contentDescription = "Alarma",
-                            tint = accentColor,
+                            tint = accentColor, // Mantener el color de acento
                             modifier = Modifier
                                 .size(20.dp)
                                 .offset(x = 15.dp, y = (-15).dp)
@@ -257,7 +247,7 @@ fun HomeScreen(
                             text = "RecuerdaGo",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = primaryColor
+                            color = MaterialTheme.colorScheme.primary // En lugar de primaryColor
                         )
                     }
                 }
@@ -270,27 +260,19 @@ fun HomeScreen(
                             isLoading = isLoading,
                             errorMessage = errorMessage,
                             authViewModel = authViewModel,
-                            primaryColor = primaryColor,
-                            textColor = textColor,
-                            cardColors = cardColors,
                             showContent = showContent,
                             accentColor = accentColor,
-                            isDarkTheme = isDarkTheme,
                             onTabSelected = { selectedTab = it }
                         )
                         1 -> AlternateRoutesScreen(
                             navController = navController,
-                            token = accessToken,
-                            isDarkTheme = isDarkTheme,
-                            primaryColor = primaryColor,
-                            textColor = textColor,
+                            token = accessToken
                         )
                         2 -> PlaceholderTab("Recordatorios", "Próximamente")
                         3 -> PlaceholderTab("Grupos Colaborativos", "Próximamente")
                         4 -> PlaceholderTab("Configuración", "Próximamente")
                     }
                 }
-
             }
         }
     }

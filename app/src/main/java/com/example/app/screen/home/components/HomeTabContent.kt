@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CardColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,10 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.app.viewmodel.AuthViewModel
 import com.example.recuerdago.screens.tabs.ErrorContent
-import com.example.recuerdago.screens.tabs.LoadingContent
-import com.example.recuerdago.screens.tabs.ModulesSection
 import com.example.recuerdago.screens.tabs.NoUserContent
-import com.example.recuerdago.screens.tabs.UserWelcomeContent
 
 @Composable
 fun HomeTabContent(
@@ -26,12 +22,8 @@ fun HomeTabContent(
     isLoading: Boolean,
     errorMessage: String?,
     authViewModel: AuthViewModel,
-    primaryColor: Color,
-    textColor: Color,
-    cardColors: CardColors,
     showContent: Boolean,
     accentColor: Color,
-    isDarkTheme: Boolean,
     onTabSelected: (Int) -> Unit
 ) {
     Column(
@@ -49,16 +41,16 @@ fun HomeTabContent(
         ) {
             when {
                 isLoading -> {
-                    LoadingContent(primaryColor)
+                    LoadingContent()
                 }
                 userState != null -> {
-                    UserWelcomeContent(userState, textColor, primaryColor, cardColors)
+                    UserWelcomeContent(userState)
                 }
                 errorMessage != null -> {
-                    ErrorContent(errorMessage, authViewModel, primaryColor, textColor)
+                    ErrorContent(errorMessage, authViewModel)
                 }
                 else -> {
-                    NoUserContent(authViewModel, primaryColor, textColor)
+                    NoUserContent(authViewModel)
                 }
             }
         }
@@ -75,10 +67,7 @@ fun HomeTabContent(
 
             ModulesSection(
                 userId = currentUserId,
-                primaryColor = primaryColor,
                 accentColor = accentColor,
-                cardColors = cardColors,
-                isDarkTheme = isDarkTheme,
                 onTabSelected = onTabSelected
             )
         }

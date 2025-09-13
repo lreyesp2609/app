@@ -9,13 +9,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,8 +29,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,15 +36,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.app.models.UbicacionUsuarioResponse
-import com.example.app.ui.theme.getBackgroundGradient
 import com.example.app.viewmodel.UbicacionesViewModel
 
 @Composable
 fun AlternateRoutesScreen(
     token: String,
-    isDarkTheme: Boolean,
-    primaryColor: Color,
-    textColor: Color,
     modifier: Modifier = Modifier,
     navController: NavController
 ) {
@@ -64,9 +56,8 @@ fun AlternateRoutesScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(getBackgroundGradient(isDarkTheme))
     ) {
-        // Header Section - Simplificado ya que hay navbar
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -75,7 +66,7 @@ fun AlternateRoutesScreen(
             Column {
                 Text(
                     text = "Rutas Alternas",
-                    color = textColor,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.headlineMedium
@@ -83,7 +74,7 @@ fun AlternateRoutesScreen(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Gestiona tus ubicaciones y rutas guardadas",
-                    color = textColor.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                     fontSize = 16.sp,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -97,7 +88,7 @@ fun AlternateRoutesScreen(
                 .padding(horizontal = 24.dp)
                 .clickable { navController.navigate("mapa") },
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = primaryColor),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Row(
@@ -112,7 +103,7 @@ fun AlternateRoutesScreen(
                         modifier = Modifier
                             .size(48.dp)
                             .background(
-                                Color.White.copy(alpha = 0.2f),
+                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
                                 CircleShape
                             ),
                         contentAlignment = Alignment.Center
@@ -120,7 +111,7 @@ fun AlternateRoutesScreen(
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Agregar",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -128,13 +119,13 @@ fun AlternateRoutesScreen(
                     Column {
                         Text(
                             text = "Nueva Ubicación",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = "Agregar destino en el mapa",
-                            color = Color.White.copy(alpha = 0.8f),
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                             fontSize = 14.sp
                         )
                     }
@@ -142,7 +133,7 @@ fun AlternateRoutesScreen(
                 Icon(
                     imageVector = Icons.Default.ArrowForward,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -150,7 +141,6 @@ fun AlternateRoutesScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Content Section
         when {
             isLoading -> {
                 Box(
@@ -160,11 +150,11 @@ fun AlternateRoutesScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = primaryColor)
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = "Cargando ubicaciones...",
-                            color = textColor.copy(alpha = 0.7f),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -172,8 +162,6 @@ fun AlternateRoutesScreen(
             }
             ubicaciones.isEmpty() -> {
                 EmptyStateView(
-                    textColor = textColor,
-                    primaryColor = primaryColor,
                     onAddLocation = { navController.navigate("mapa") }
                 )
             }
@@ -189,13 +177,13 @@ fun AlternateRoutesScreen(
                     ) {
                         Text(
                             text = "Mis Ubicaciones (${ubicaciones.size})",
-                            color = textColor,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = "Desliza para más opciones",
-                            color = textColor.copy(alpha = 0.5f),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                             fontSize = 12.sp
                         )
                     }
@@ -209,9 +197,6 @@ fun AlternateRoutesScreen(
                         items(ubicaciones.size) { index ->
                             UbicacionCard(
                                 ubicacion = ubicaciones[index],
-                                isDarkTheme = isDarkTheme,
-                                textColor = textColor,
-                                primaryColor = primaryColor,
                                 onVerRuta = { navController.navigate("rutas_screen/${ubicaciones[index].id}") },
                                 onEstadisticas = { navController.navigate("estadisticas/${ubicaciones[index].id}") },
                                 onEditar = { println("Editar ${ubicaciones[index].nombre}") }
@@ -227,9 +212,6 @@ fun AlternateRoutesScreen(
 @Composable
 fun UbicacionCard(
     ubicacion: UbicacionUsuarioResponse,
-    isDarkTheme: Boolean,
-    textColor: Color,
-    primaryColor: Color,
     onVerRuta: () -> Unit,
     onEstadisticas: () -> Unit,
     onEditar: () -> Unit
@@ -240,10 +222,7 @@ fun UbicacionCard(
             .animateContentSize(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDarkTheme)
-                Color(0xFF2D2D44).copy(alpha = 0.8f)
-            else
-                Color.White.copy(alpha = 0.9f)
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
@@ -261,7 +240,7 @@ fun UbicacionCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = ubicacion.nombre,
-                        color = textColor,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,
@@ -272,13 +251,13 @@ fun UbicacionCard(
                         Icon(
                             imageVector = Icons.Default.LocationOn,
                             contentDescription = null,
-                            tint = textColor.copy(alpha = 0.6f),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = ubicacion.direccion_completa,
-                            color = textColor.copy(alpha = 0.7f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                             fontSize = 14.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -291,7 +270,7 @@ fun UbicacionCard(
                 Box(
                     modifier = Modifier
                         .size(12.dp)
-                        .background(primaryColor, CircleShape)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
                 )
             }
 
@@ -306,37 +285,37 @@ fun UbicacionCard(
                 Button(
                     onClick = onVerRuta,
                     modifier = Modifier.weight(2f),
-                    colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Directions,
                         contentDescription = "Ver Ruta",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Ver Ruta",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
                     )
                 }
 
-                // Botón Estadísticas
+                // Botón Estadísticas - Usando colores secundarios
                 OutlinedButton(
                     onClick = onEstadisticas,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Color(0xFF2196F3)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary),
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Analytics,
                         contentDescription = "Estadísticas",
-                        tint = Color(0xFF2196F3),
+                        tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -346,13 +325,13 @@ fun UbicacionCard(
                     onClick = onEditar,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, textColor.copy(alpha = 0.3f)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Editar",
-                        tint = textColor.copy(alpha = 0.7f),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -363,8 +342,6 @@ fun UbicacionCard(
 
 @Composable
 fun EmptyStateView(
-    textColor: Color,
-    primaryColor: Color,
     onAddLocation: () -> Unit
 ) {
     Column(
@@ -378,7 +355,7 @@ fun EmptyStateView(
             modifier = Modifier
                 .size(120.dp)
                 .background(
-                    primaryColor.copy(alpha = 0.1f),
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -386,7 +363,7 @@ fun EmptyStateView(
             Icon(
                 imageVector = Icons.Default.LocationOn,
                 contentDescription = null,
-                tint = primaryColor.copy(alpha = 0.6f),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                 modifier = Modifier.size(60.dp)
             )
         }
@@ -395,7 +372,7 @@ fun EmptyStateView(
 
         Text(
             text = "No hay ubicaciones guardadas",
-            color = textColor,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center
@@ -405,7 +382,7 @@ fun EmptyStateView(
 
         Text(
             text = "Comienza agregando tu primera ubicación para crear rutas personalizadas",
-            color = textColor.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             fontSize = 16.sp,
             textAlign = TextAlign.Center,
             lineHeight = 22.sp
@@ -415,19 +392,19 @@ fun EmptyStateView(
 
         Button(
             onClick = onAddLocation,
-            colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             shape = RoundedCornerShape(16.dp),
             contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = null,
-                tint = Color.White
+                tint = MaterialTheme.colorScheme.onPrimary
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "Agregar Primera Ubicación",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
             )

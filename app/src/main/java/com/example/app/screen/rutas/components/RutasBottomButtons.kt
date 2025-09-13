@@ -56,8 +56,6 @@ fun RutasBottomButtons(
     token: String,
     selectedLocationId: Int,
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
-
     Column(modifier = modifier) {
         // 🚨 NUEVA: Notificación de alerta de seguridad (PRIORIDAD ALTA)
         AnimatedVisibility(
@@ -219,11 +217,11 @@ fun RutasBottomButtons(
             }
         }
 
-        // Botones principales (sin cambios)
+        // Botones principales (refactorizado)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(getBackgroundGradient(isDarkTheme))
+                .background(brush = getBackgroundGradient())
                 .padding(vertical = 12.dp)
                 .navigationBarsPadding(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -233,14 +231,19 @@ fun RutasBottomButtons(
             FloatingActionButton(
                 onClick = onAgregarClick,
                 containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                contentColor = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(56.dp)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Agregar")
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Agregar",
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "Agregar",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -252,15 +255,20 @@ fun RutasBottomButtons(
                     onRutasClick() // ✅ Solo esta llamada, sin guardarRuta()
                 },
                 containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f),
+                contentColor = MaterialTheme.colorScheme.onSecondary,
                 modifier = Modifier.size(56.dp)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(imageVector = Icons.Default.Directions, contentDescription = "Rutas")
+                    Icon(
+                        imageVector = Icons.Default.Directions,
+                        contentDescription = "Rutas",
+                        tint = MaterialTheme.colorScheme.onSecondary
+                    )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "Rutas",
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelSmall
+                        color = MaterialTheme.colorScheme.onSecondary,
+                        style = MaterialTheme.typography.labelLarge
                     )
                 }
             }
@@ -268,16 +276,20 @@ fun RutasBottomButtons(
             // Botón centrar GPS
             FloatingActionButton(
                 onClick = onUbicacionClick,
-                containerColor = if (isDarkTheme) Color(0xFF64B5F6).copy(alpha = 0.9f)
-                else Color(0xFF1976D2).copy(alpha = 0.9f),
+                containerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.9f),
+                contentColor = MaterialTheme.colorScheme.onTertiary,
                 modifier = Modifier.size(56.dp)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(imageVector = Icons.Default.LocationOn, contentDescription = "GPS")
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = "GPS",
+                        tint = MaterialTheme.colorScheme.onTertiary
+                    )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "GPS",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onTertiary,
                         style = MaterialTheme.typography.labelSmall
                     )
                 }

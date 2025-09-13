@@ -2,7 +2,6 @@ package com.example.app.screen.rutas.components
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,8 +55,6 @@ fun MapBottomButtons(
     onLocationNameChange: (String) -> Unit = {},
     onConfirmClick: () -> Unit = {}
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
-
     Box(modifier = modifier.fillMaxSize()) {
         // Cards de ubicación
         Column(
@@ -72,21 +69,18 @@ fun MapBottomButtons(
                 title = "Tu ubicación actual",
                 location = userLocation,
                 icon = Icons.Default.MyLocation,
-                isDarkTheme = isDarkTheme,
                 cardType = LocationCardType.Current
             )
             LocationCard(
                 title = "Ubicación seleccionada",
                 location = selectedLocation,
                 icon = Icons.Default.LocationOn,
-                isDarkTheme = isDarkTheme,
                 cardType = LocationCardType.Selected
             )
 
             // Nuevo card para el nombre de la ubicación
             if (selectedLocation.isNotEmpty()) {
                 LocationNameCard(
-                    isDarkTheme = isDarkTheme,
                     locationName = locationName,
                     onLocationNameChange = onLocationNameChange
                 )
@@ -128,13 +122,10 @@ fun MapBottomButtons(
 
 @Composable
 fun LocationNameCard(
-    isDarkTheme: Boolean,
     locationName: String,
     onLocationNameChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val background = getBackgroundGradient(isDarkTheme)
-    val contentColor = if (isDarkTheme) Color.White else Color.Black
     val focusManager = LocalFocusManager.current
     val iconColor = Color(0xFF3B82F6)
 
@@ -142,13 +133,16 @@ fun LocationNameCard(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(),
-        shape = RoundedCornerShape(12.dp), // un poco más compacto
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Box(
             modifier = Modifier
-                .background(brush = background)
-                .padding(12.dp) // menos padding
+                .background(brush = getBackgroundGradient())
+                .padding(12.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -156,7 +150,7 @@ fun LocationNameCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp) // icono más pequeño
+                        .size(36.dp)
                         .background(color = iconColor.copy(alpha = 0.2f), shape = CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
@@ -164,20 +158,20 @@ fun LocationNameCard(
                         imageVector = Icons.Default.Edit,
                         contentDescription = null,
                         tint = iconColor,
-                        modifier = Modifier.size(20.dp) // icono más pequeño
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp)) // menos espacio
+                Spacer(modifier = Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Nombre de la ubicación",
-                        color = contentColor.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.labelSmall, // más pequeño
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Medium
                     )
-                    Spacer(modifier = Modifier.height(4.dp)) // menos altura
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     OutlinedTextField(
                         value = locationName,
@@ -187,15 +181,15 @@ fun LocationNameCard(
                         placeholder = {
                             Text(
                                 "ej. Casa, Trabajo...",
-                                color = contentColor.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = contentColor,
-                            unfocusedTextColor = contentColor,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                             focusedBorderColor = iconColor,
-                            unfocusedBorderColor = contentColor.copy(alpha = 0.3f),
+                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                             cursorColor = iconColor
                         ),
                         shape = RoundedCornerShape(8.dp),
@@ -213,7 +207,7 @@ fun LocationNameCard(
                         supportingText = {
                             Text(
                                 text = "${locationName.length}/100 caracteres",
-                                color = contentColor.copy(alpha = 0.6f),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 style = MaterialTheme.typography.labelSmall
                             )
                         },
@@ -225,7 +219,6 @@ fun LocationNameCard(
     }
 }
 
-
 enum class LocationCardType {
     Current,
     Selected
@@ -236,31 +229,28 @@ fun LocationCard(
     title: String,
     location: String,
     icon: ImageVector,
-    isDarkTheme: Boolean,
     cardType: LocationCardType,
     modifier: Modifier = Modifier
 ) {
-    val background = getBackgroundGradient(isDarkTheme)
-
     // Definir colores de icono según el tipo de card
     val iconColor = when (cardType) {
         LocationCardType.Current -> Color(0xFF10B981) // verde
         LocationCardType.Selected -> Color(0xFFEF4444) // rojo
     }
 
-    // Color del texto
-    val contentColor = if (isDarkTheme) Color.White else Color.Black
-
     Card(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Box(
             modifier = Modifier
-                .background(brush = background)
+                .background(brush = getBackgroundGradient())
                 .padding(16.dp)
         ) {
             Row(
@@ -282,14 +272,14 @@ fun LocationCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
-                        color = contentColor.copy(alpha = 0.8f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = if (location.isNotEmpty()) location else "Selecciona una ubicación",
-                        color = contentColor,
+                        color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 2,

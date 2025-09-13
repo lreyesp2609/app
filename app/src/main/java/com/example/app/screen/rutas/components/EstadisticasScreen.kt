@@ -29,15 +29,13 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.app.models.EstadisticasResponse
 import com.example.app.repository.RutasRepository
+import com.example.app.ui.theme.getBackgroundGradient
 import kotlinx.coroutines.launch
 
 @Composable
 fun EstadisticasScreen(
     ubicacionId: Int,
     token: String,
-    isDarkTheme: Boolean,
-    primaryColor: Color,
-    textColor: Color,
     modifier: Modifier = Modifier,
     navController: NavController
 ) {
@@ -56,10 +54,6 @@ fun EstadisticasScreen(
     val logoRotation by animateFloatAsState(if (isVisible) 0f else 360f,
         tween(1000))
 
-    val backgroundGradient = if (isDarkTheme)
-        Brush.verticalGradient(listOf(Color(0xFF1A1A2E), Color(0xFF16213E)))
-    else Brush.verticalGradient(listOf(Color(0xFFF8F9FA), Color(0xFFE3F2FD)))
-
     LaunchedEffect(ubicacionId) {
         isLoading = true
         isVisible = true
@@ -74,7 +68,7 @@ fun EstadisticasScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(backgroundGradient)
+            .background(getBackgroundGradient())
             .statusBarsPadding() // Respeta la status bar
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -92,7 +86,7 @@ fun EstadisticasScreen(
                     Icon(
                         imageVector = Icons.Default.ArrowBack,
                         contentDescription = "Volver",
-                        tint = primaryColor,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -110,7 +104,7 @@ fun EstadisticasScreen(
                     Icon(
                         Icons.Default.LocationOn,
                         contentDescription = null,
-                        tint = primaryColor,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(40.dp)
                     )
                     Icon(
@@ -132,12 +126,12 @@ fun EstadisticasScreen(
                             "RecuerdaGo",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = primaryColor
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             "Estadísticas",
                             fontSize = 14.sp,
-                            color = textColor.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -154,13 +148,13 @@ fun EstadisticasScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             CircularProgressIndicator(
-                                color = primaryColor,
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 "Cargando estadísticas...",
-                                color = textColor.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                                 fontSize = 16.sp
                             )
                         }
@@ -176,7 +170,7 @@ fun EstadisticasScreen(
                         ) {
                             Text(
                                 "Error: $error",
-                                color = Color.Red,
+                                color = MaterialTheme.colorScheme.error,
                                 fontSize = 16.sp,
                                 textAlign = TextAlign.Center
                             )
@@ -193,9 +187,12 @@ fun EstadisticasScreen(
                                         )
                                     }
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                             ) {
-                                Text("Reintentar")
+                                Text(
+                                    "Reintentar",
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
                             }
                         }
                     }
@@ -215,20 +212,22 @@ fun EstadisticasScreen(
                             val total = (completadas + canceladas).takeIf { it > 0 } ?: 1
                             val completionPercent = completadas.toFloat() / total
 
-                            StatCard("Resumen General", isDarkTheme, textColor, primaryColor) {
+                            StatCard("Resumen General") {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     StatItem(
                                         total.toString(),
                                         "Total de rutas",
-                                        Icons.Default.DirectionsCar,
-                                        textColor,
-                                        primaryColor
+                                        Icons.Default.DirectionsCar
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    Text("Completadas vs Canceladas", fontSize = 14.sp, color = textColor)
+                                    Text(
+                                        "Completadas vs Canceladas",
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                     LinearProgressIndicator(
                                         progress = completionPercent,
-                                        color = primaryColor,
+                                        color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(8.dp)
@@ -238,7 +237,7 @@ fun EstadisticasScreen(
                                     Text(
                                         "$completadas completadas / $canceladas canceladas",
                                         fontSize = 12.sp,
-                                        color = textColor.copy(alpha = 0.7f)
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                     )
                                 }
                             }
@@ -246,13 +245,17 @@ fun EstadisticasScreen(
 
                         // Tiempo promedio por tipo
                         item {
-                            StatCard("Tiempo promedio por tipo de ruta", isDarkTheme, textColor, primaryColor) {
+                            StatCard("Tiempo promedio por tipo de ruta") { // Parametros removidos
                                 estadisticas?.tiempo_promedio_por_tipo?.forEach { (tipo, tiempo) ->
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(tipo, color = textColor, fontSize = 14.sp)
+                                        Text(
+                                            tipo,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontSize = 14.sp
+                                        )
 
                                         val tiempoFormateado = when {
                                             tiempo >= 60 -> "${(tiempo / 60).toInt()} min ${(tiempo % 60).toInt()} seg"
@@ -261,7 +264,7 @@ fun EstadisticasScreen(
 
                                         Text(
                                             tiempoFormateado,
-                                            color = primaryColor,
+                                            color = MaterialTheme.colorScheme.primary,
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -274,10 +277,10 @@ fun EstadisticasScreen(
                         // Ruta más usada
                         item {
                             val rutaMasUsada = estadisticas?.bandits?.maxByOrNull { it.total_usos }?.tipo_ruta ?: "N/A"
-                            StatCard("Ruta más usada", isDarkTheme, textColor, primaryColor) {
+                            StatCard("Ruta más usada") { // Parametros removidos
                                 Text(
                                     "Ruta: $rutaMasUsada",
-                                    color = primaryColor,
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontSize = 16.sp
                                 )
                             }
@@ -292,16 +295,13 @@ fun EstadisticasScreen(
 @Composable
 fun StatCard(
     title: String,
-    isDarkTheme: Boolean,
-    textColor: Color,
-    primaryColor: Color,
     content: @Composable () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDarkTheme) Color(0xFF2D2D44) else Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
@@ -312,7 +312,7 @@ fun StatCard(
             ) {
                 Text(
                     text = title,
-                    color = textColor,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium
@@ -321,7 +321,7 @@ fun StatCard(
                 Box(
                     modifier = Modifier
                         .size(4.dp)
-                        .background(primaryColor, CircleShape)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -334,18 +334,26 @@ fun StatCard(
 fun StatItem(
     value: String,
     label: String,
-    icon: ImageVector,
-    textColor: Color,
-    primaryColor: Color
+    icon: ImageVector
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(imageVector = icon, contentDescription = label, tint = primaryColor, modifier = Modifier.size(28.dp))
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(28.dp)
+        )
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = value, color = textColor, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = value,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
-            color = textColor.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
             lineHeight = 14.sp

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,20 +25,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.app.ui.theme.getBackgroundGradient
 
 @Composable
 fun PlaceholderScreen(title: String, message: String, navController: NavController) {
-    val isDarkTheme = isSystemInDarkTheme()
-    val primaryColor = if (isDarkTheme) Color(0xFF64B5F6) else Color(0xFF1976D2)
-    val textColor = if (isDarkTheme) Color.White else Color.Black
-    val backgroundGradient = if (isDarkTheme)
-        Brush.verticalGradient(listOf(Color(0xFF1A1A2E), Color(0xFF16213E)))
-    else Brush.verticalGradient(listOf(Color(0xFFF8F9FA), Color(0xFFE3F2FD)))
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundGradient)
+            .background(getBackgroundGradient())
             .statusBarsPadding()
     ) {
         Column(
@@ -50,7 +45,7 @@ fun PlaceholderScreen(title: String, message: String, navController: NavControll
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Volver",
-                    tint = primaryColor
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -64,13 +59,13 @@ fun PlaceholderScreen(title: String, message: String, navController: NavControll
                     title,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = primaryColor
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     message,
                     fontSize = 16.sp,
-                    color = textColor
+                    color = MaterialTheme.colorScheme.onBackground
                 )
             }
         }

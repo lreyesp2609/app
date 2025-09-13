@@ -1,14 +1,14 @@
-package com.example.recuerdago.screens.tabs
+package com.example.app.screen.home.components
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.NotificationImportant
-import androidx.compose.material3.CardColors
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -16,55 +16,53 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.recuerdago.screens.tabs.ModuleCard
 
 @Composable
 fun ModulesSection(
     userId: String,
-    primaryColor: Color,
     accentColor: Color,
-    cardColors: CardColors,
-    isDarkTheme: Boolean,
     onTabSelected: (Int) -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(vertical = 16.dp)
     ) {
-        Text(
-            text = "Módulos Principales",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = primaryColor,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-        ModuleCard(
-            icon = Icons.Default.DirectionsCar,
-            title = "Rutas Alternas",
-            description = "Encuentra las mejores rutas con IA y análisis de patrones de movilidad",
-            iconColor = Color(0xFF4CAF50),
-            cardColors = cardColors,
-            isDarkTheme = isDarkTheme,
-            onClick = { onTabSelected(1) }
-        )
+        item {
+            Text(
+                text = "Módulos Disponibles",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+        }
 
-        ModuleCard(
-            icon = Icons.Default.NotificationImportant,
-            title = "Recordatorios",
-            description = "Alertas inteligentes basadas en tu ubicación geográfica",
-            iconColor = accentColor,
-            cardColors = cardColors,
-            isDarkTheme = isDarkTheme,
-            onClick = { onTabSelected(2) }
-        )
+        item {
+            ModuleCard(
+                title = "Rutas Alternas",
+                description = "Gestiona tus rutas y ubicaciones",
+                icon = Icons.Default.Map,
+                onClick = { onTabSelected(1) }
+            )
+        }
 
-        ModuleCard(
-            icon = Icons.Default.Groups,
-            title = "Grupos Colaborativos",
-            description = "Monitoreo compartido de recorridos con tu equipo",
-            iconColor = Color(0xFF9C27B0),
-            cardColors = cardColors,
-            isDarkTheme = isDarkTheme,
-            onClick = { onTabSelected(3) }
-        )
+        item {
+            ModuleCard(
+                title = "Recordatorios",
+                description = "Configura alertas personalizadas",
+                icon = Icons.Default.Notifications,
+                onClick = { onTabSelected(2) }
+            )
+        }
+
+        item {
+            ModuleCard(
+                title = "Grupos Colaborativos",
+                description = "Colabora con otros usuarios",
+                icon = Icons.Default.Group,
+                onClick = { onTabSelected(3) }
+            )
+        }
     }
 }

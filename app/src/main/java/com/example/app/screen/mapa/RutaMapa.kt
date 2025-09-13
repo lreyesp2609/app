@@ -337,7 +337,7 @@ fun RutaMapa(
                                 ) {
                                     Icon(Icons.Default.Check, contentDescription = "Finalizar", tint = Color.White)
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Finalizar")
+                                    Text("Finalizar", color = Color.White)
                                 }
 
                                 Button(
@@ -352,7 +352,7 @@ fun RutaMapa(
                                 ) {
                                     Icon(Icons.Default.Close, contentDescription = "Cancelar", tint = Color.White)
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Cancelar")
+                                    Text("Cancelar", color = Color.White)
                                 }
                             }
                         }
@@ -411,10 +411,14 @@ fun RutaMapa(
             }
             else -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
 
                 GetCurrentLocation(
@@ -480,7 +484,7 @@ fun TransportButton(
                 color = if (isSelected) {
                     MaterialTheme.colorScheme.primary
                 } else {
-                    Color.Black.copy(alpha = 0.7f)
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                 },
                 shape = CircleShape
             )
@@ -491,7 +495,7 @@ fun TransportButton(
             tint = if (isSelected) {
                 MaterialTheme.colorScheme.onPrimary
             } else {
-                Color.White
+                MaterialTheme.colorScheme.onSurface
             },
             modifier = Modifier.size(24.dp)
         )
