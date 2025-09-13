@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.IconButton
@@ -48,13 +49,68 @@ fun RutasBottomButtons(
     showTransportMessage: Boolean = false,
     transportMessage: String = "",
     onDismissTransport: () -> Unit = {},
+    showSecurityAlert: Boolean = false,
+    securityMessage: String = "",
+    onDismissSecurityAlert: () -> Unit = {},
     viewModel: MapViewModel,
     token: String,
     selectedLocationId: Int,
-    ) {
+) {
     val isDarkTheme = isSystemInDarkTheme()
 
     Column(modifier = modifier) {
+        // 🚨 NUEVA: Notificación de alerta de seguridad (PRIORIDAD ALTA)
+        AnimatedVisibility(
+            visible = showSecurityAlert,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFFF5722).copy(alpha = 0.9f) // Naranja/rojo para alertas
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = securityMessage,
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    IconButton(
+                        onClick = onDismissSecurityAlert,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Cerrar",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
+
         // Notificación de destino alcanzado
         AnimatedVisibility(
             visible = showDestinationReached,
@@ -132,9 +188,9 @@ fun RutasBottomButtons(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = when(selectedTransportMode) {
-                                "walking" -> Icons.Default.DirectionsWalk
-                                "driving" -> Icons.Default.DirectionsCar
-                                "cycling" -> Icons.Default.DirectionsBike
+                                "foot-walking" -> Icons.Default.DirectionsWalk
+                                "driving-car" -> Icons.Default.DirectionsCar
+                                "cycling-regular" -> Icons.Default.DirectionsBike
                                 else -> Icons.Default.DirectionsWalk
                             },
                             contentDescription = null,
@@ -234,6 +290,14 @@ fun RutasBottomButtons(
         if (showTransportMessage) {
             delay(2500) // 2.5 segundos
             onDismissTransport()
+        }
+    }
+
+    // 🆕 Auto-dismiss para la alerta de seguridad (más tiempo para leer)
+    LaunchedEffect(showSecurityAlert) {
+        if (showSecurityAlert) {
+            delay(5000) // 5 segundos para alertas importantes
+            onDismissSecurityAlert()
         }
     }
 }

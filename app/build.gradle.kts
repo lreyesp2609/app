@@ -20,14 +20,17 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Leer la API key desde local.properties
         val localProperties = Properties()
         val localFile = rootProject.file("local.properties")
         if (localFile.exists()) {
             localProperties.load(FileInputStream(localFile))
         }
+
         val orsApiKey = localProperties.getProperty("ORS_API_KEY", "default_key")
+        val baseUrl = localProperties.getProperty("BASE_URL", "https://default-url.com/")
+
         buildConfigField("String", "ORS_API_KEY", "\"$orsApiKey\"")
+        buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
     }
 
     buildTypes {

@@ -69,10 +69,7 @@ fun RutaMapa(
     token: String,
     selectedLocationId: Int
 ) {
-    var tiempoRecorrido by remember { mutableStateOf(0L) }
-    var tiempoInicioRuta by remember { mutableStateOf(0L) } // NUEVO: tiempo cuando inició la ruta
-
-    // Estados existentes
+    // Estados de ubicación y mapa
     val userLat = remember { mutableStateOf(defaultLat) }
     val userLon = remember { mutableStateOf(defaultLon) }
     var mapCenterLat by remember { mutableStateOf(defaultLat) }
@@ -87,33 +84,37 @@ fun RutaMapa(
     var zoomInTrigger by remember { mutableStateOf(0) }
     var zoomOutTrigger by remember { mutableStateOf(0) }
 
-    // Observar la ruta del ViewModel
+    // Estados para la ruta
     val currentRoute by viewModel.route
-
-    // Estados para mostrar información de la ruta
     var showRouteInfo by remember { mutableStateOf(false) }
     var routeDistance by remember { mutableStateOf("") }
     var routeDuration by remember { mutableStateOf("") }
+    var rutaEstado by remember { mutableStateOf(RutaEstado()) }
 
-    // NUEVOS ESTADOS para manejar la ruta original
-    var rutaOriginal by remember { mutableStateOf<List<GeoPoint>>(emptyList()) }
-    var distanciaOriginal by remember { mutableStateOf(0.0) }
-    var duracionOriginal by remember { mutableStateOf(0.0) }
-    var rutaActiva by remember { mutableStateOf(false) }
-
-    // Estados para mensajes
+    // Estados para mensajes y notificaciones
     var destinoAlcanzado by remember { mutableStateOf(false) }
     var mensajeDestinoMostrado by remember { mutableStateOf(false) }
     var showTransportMessage by remember { mutableStateOf(false) }
     var transportMessage by remember { mutableStateOf("") }
 
+    // NUEVO: Estado para la alerta de desobediencia
+    var showSecurityAlert by remember { mutableStateOf(false) }
+    var securityMessage by remember { mutableStateOf("") }
+
+    // Estados del ViewModel
     val mostrarOpcionesFinalizar by viewModel.mostrarOpcionesFinalizar
     val rutaIdActiva by viewModel.rutaIdActiva
-
-    var rutaEstado by remember { mutableStateOf(RutaEstado()) }
-
     val mostrarAlertaDesobediencia by viewModel.mostrarAlertaDesobediencia
     val mensajeAlertaDesobediencia by viewModel.mensajeAlertaDesobediencia
+
+    // NUEVO: Observar la alerta de desobediencia y convertirla en notificación
+    LaunchedEffect(mostrarAlertaDesobediencia, mensajeAlertaDesobediencia) {
+        if (mostrarAlertaDesobediencia && mensajeAlertaDesobediencia != null) {
+            securityMessage = mensajeAlertaDesobediencia ?: ""
+            showSecurityAlert = true
+            viewModel.cerrarAlertaDesobediencia() // Cerrar la alerta del ViewModel inmediatamente
+        }
+    }
 
     // Actualizar selectedLocation cuando cambien las ubicaciones
     LaunchedEffect(ubicaciones) {
@@ -163,30 +164,7 @@ fun RutaMapa(
         }
     )
 
-    // GUARDAR ruta original cuando se calcula nueva ruta
-    LaunchedEffect(currentRoute) {
-        currentRoute?.routes?.firstOrNull()?.let { route ->
-            rutaActiva = true
-            tiempoInicioRuta = System.currentTimeMillis() / 1000
-            rutaOriginal = route.geometry.decodePolyline()
-            distanciaOriginal = route.summary.distance * 1000.0 // convertir a metros
-            duracionOriginal = route.summary.duration // en segundos
-
-            // Calcular valores iniciales
-            val distanciaRestanteKm = calcularDistanciaSobreRuta(userLat.value, userLon.value, rutaOriginal) / 1000.0
-            val durationRemaining = duracionOriginal * (distanciaRestanteKm / (distanciaOriginal / 1000.0))
-            val durationMin = (durationRemaining / 60.0).toInt()
-
-            routeDistance = String.format("%.2f km", distanciaRestanteKm)
-            routeDuration = "${durationMin} min"
-            showRouteInfo = true
-
-            mensajeDestinoMostrado = false
-            destinoAlcanzado = false
-        }
-    }
-
-    // ACTUALIZAR distancia y tiempo continuamente cuando hay ruta activa
+    // Detectar llegada al destino
     LaunchedEffect(userLat.value, userLon.value, rutaEstado.activa) {
         if (rutaEstado.activa && !mensajeDestinoMostrado) {
             selectedLocation?.let { destino ->
@@ -197,15 +175,13 @@ fun RutaMapa(
 
                 Log.d("RutaMapa", "Distancia al destino: ${distanciaAlDestino}m")
 
-                // Llegada detectada con mayor precisión
-                if (distanciaAlDestino < 25) { // Reducido de 30 a 25 metros
+                if (distanciaAlDestino < 25) {
                     Log.d("RutaMapa", "🎯 LLEGADA DETECTADA!")
 
                     rutaEstado = rutaEstado.copy(activa = false)
                     destinoAlcanzado = true
                     mensajeDestinoMostrado = true
 
-                    // Enviar feedback automáticamente
                     rutaIdActiva?.let { id ->
                         Log.d("RutaMapa", "📤 Enviando finalizarRutaBackend con ID: $id")
                         viewModel.finalizarRutaBackend(id)
@@ -219,22 +195,10 @@ fun RutaMapa(
         }
     }
 
-    // Contador de tiempo para mostrar tiempo transcurrido
-    LaunchedEffect(locationObtained) {
-        if (locationObtained) {
-            while (true) {
-                delay(1000L)
-                tiempoRecorrido++
-            }
-        }
-    }
-
-    // 🔥 ELIMINAR la detección duplicada aquí
     LocationTracker { lat, lon ->
         userLat.value = lat
         userLon.value = lon
 
-        // AGREGAR captura GPS cuando hay ruta activa:
         if (rutaIdActiva != null) {
             viewModel.agregarPuntoGPSReal(lat, lon)
         }
@@ -276,7 +240,6 @@ fun RutaMapa(
                         viewModel.setMode(mode)
                         viewModel.clearRoute()
                         showRouteInfo = false
-                        rutaActiva = false // RESETEAR ruta activa
 
                         transportMessage = "Modo de transporte: ${getModeDisplayName(mode)}"
                         showTransportMessage = true
@@ -334,7 +297,7 @@ fun RutaMapa(
                     }
                 }
 
-                // Mostrar información de la ruta - ACTUALIZADA DINÁMICAMENTE
+                // Información de la ruta
                 if (showRouteInfo && (currentRoute != null || rutaEstado.activa)) {
                     Column(
                         modifier = Modifier
@@ -342,7 +305,6 @@ fun RutaMapa(
                             .statusBarsPadding()
                             .padding(top = 16.dp, start = 16.dp, end = 16.dp)
                     ) {
-                        // Card con km/min ACTUALIZADO DINÁMICAMENTE
                         RouteInfoCard(
                             distance = routeDistance,
                             duration = routeDuration,
@@ -355,7 +317,7 @@ fun RutaMapa(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        // Botones Finalizar/Cancelar debajo
+                        // Botones Finalizar/Cancelar
                         if (mostrarOpcionesFinalizar) {
                             Row(
                                 modifier = Modifier
@@ -369,7 +331,6 @@ fun RutaMapa(
                                             viewModel.finalizarRutaBackend(id)
                                         }
                                         showRouteInfo = false
-                                        rutaActiva = false
                                         viewModel.clearRoute()
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
@@ -385,7 +346,6 @@ fun RutaMapa(
                                             viewModel.cancelarRutaBackend(id)
                                         }
                                         showRouteInfo = false
-                                        rutaActiva = false
                                         viewModel.clearRoute()
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336))
@@ -399,7 +359,7 @@ fun RutaMapa(
                     }
                 }
 
-                // BOTONES INFERIORES
+                // BOTONES INFERIORES con las notificaciones bonitas
                 RutasBottomButtons(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     selectedTransportMode = selectedTransportMode,
@@ -409,6 +369,10 @@ fun RutaMapa(
                     showTransportMessage = showTransportMessage,
                     transportMessage = transportMessage,
                     onDismissTransport = { showTransportMessage = false },
+                    // NUEVO: Parámetros para la alerta de seguridad
+                    showSecurityAlert = showSecurityAlert,
+                    securityMessage = securityMessage,
+                    onDismissSecurityAlert = { showSecurityAlert = false },
                     onAgregarClick = { },
                     onRutasClick = {
                         selectedLocation?.let { destination ->
@@ -461,21 +425,6 @@ fun RutaMapa(
                     },
                     onError = { showGpsButton = true },
                     onGpsDisabled = { showGpsButton = true }
-                )
-            }
-        }
-        if (mostrarAlertaDesobediencia) {
-            val mensaje = mensajeAlertaDesobediencia
-            if (mensaje != null) {
-                AlertDialog(
-                    onDismissRequest = { viewModel.cerrarAlertaDesobediencia() },
-                    title = { Text("⚠️ Alerta de Seguridad") },
-                    text = { Text(mensaje) },  // Usar variable local
-                    confirmButton = {
-                        TextButton(onClick = { viewModel.cerrarAlertaDesobediencia() }) {
-                            Text("Entendido")
-                        }
-                    }
                 )
             }
         }

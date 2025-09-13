@@ -6,10 +6,9 @@ import okhttp3.logging.HttpLoggingInterceptor.Level
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
+import com.example.app.BuildConfig
 
 object RetrofitClient {
-    private const val BASE_URL = "https://8e7eae57f752.ngrok-free.app/"
-
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = Level.BODY
     }
@@ -23,7 +22,7 @@ object RetrofitClient {
 
     private val retrofit by lazy {
         Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(BuildConfig.BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

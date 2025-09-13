@@ -110,7 +110,6 @@ class MapViewModel(
                 val response = RetrofitInstance.api.getRoute(currentMode, request)
                 val responseWithProfile = response.copy(profile = currentMode)
 
-                // 🔥 GUARDAR datos de la ruta para el feedback
                 response.routes.firstOrNull()?.summary?.let { summary ->
                     rutaActualDistancia = summary.distance.toDouble()
                     rutaActualDuracion = summary.duration
@@ -182,8 +181,6 @@ class MapViewModel(
         _puntosGPSReales.clear()
     }
 
-    // En MapViewModel, reemplaza tu función calcularSimilitudRuta() con esta versión mejorada
-    // Versión mejorada de calcularSimilitudRuta con logging más robusto
     private fun calcularSimilitudRuta(): Pair<Boolean, Double> {
         Log.d("MapViewModel", "🚀 INICIANDO calcularSimilitudRuta()...")
 
@@ -215,8 +212,8 @@ class MapViewModel(
             return Pair(false, 0.0)
         }
 
-        // ALGORITMO MEJORADO: Detectar incorporación a la ruta
-        val tolerancia = 80.0 // 80 metros (más realista para navegación urbana)
+        // Detectar incorporación a la ruta
+        val tolerancia = 80.0
         var puntosEnRuta = 0
         var mejorSecuenciaConsecutiva = 0
         var secuenciaActual = 0
@@ -262,9 +259,6 @@ class MapViewModel(
             }
         }
 
-        Log.d("MapViewModel", "📊 Análisis de puntos completado:")
-        Log.d("MapViewModel", "- Puntos en ruta: $puntosEnRuta/${puntosReales.size}")
-        Log.d("MapViewModel", "- Mejor secuencia consecutiva: $mejorSecuenciaConsecutiva")
 
         // Analizar inicio y fin de la ruta
         val inicioEnRuta = if (puntosReales.isNotEmpty()) {
@@ -299,38 +293,6 @@ class MapViewModel(
         val similitudTotal = (puntosEnRuta.toDouble() / puntosReales.size) * 100
         val porcentajeSecuenciaConsecutiva = (mejorSecuenciaConsecutiva.toDouble() / puntosReales.size) * 100
         val porcentajeUltimoTramo = (ultimosNPuntosEnRuta.toDouble() / minOf(5, puntosReales.size)) * 100
-
-        // LOGGING DETALLADO FORZADO (con println para asegurar que aparezca)
-        println("🔥 MAPVIEWMODEL - ANÁLISIS DETALLADO:")
-        println("🔥 Total puntos GPS: ${puntosReales.size}")
-        println("🔥 Puntos recomendados: ${puntosRecomendados.size}")
-        println("🔥 Puntos en ruta: $puntosEnRuta/${puntosReales.size} (${similitudTotal.roundToInt()}%)")
-        println("🔥 Mejor secuencia consecutiva: $mejorSecuenciaConsecutiva (${porcentajeSecuenciaConsecutiva.roundToInt()}%)")
-        println("🔥 Últimos puntos en ruta: $ultimosNPuntosEnRuta/5 (${porcentajeUltimoTramo.roundToInt()}%)")
-        println("🔥 Inicio en ruta: $inicioEnRuta")
-        println("🔥 Fin en ruta: $finEnRuta")
-        println("🔥 Tolerancia usada: ${tolerancia}m")
-
-        Log.d("MapViewModel", "=== ANÁLISIS DE RUTA DETALLADO ===")
-        Log.d("MapViewModel", "Puntos GPS reales: ${puntosReales.size}")
-        Log.d("MapViewModel", "Puntos recomendados: ${puntosRecomendados.size}")
-        Log.d("MapViewModel", "Puntos en ruta: $puntosEnRuta/${puntosReales.size} (${similitudTotal.roundToInt()}%)")
-        Log.d("MapViewModel", "Mejor secuencia consecutiva: $mejorSecuenciaConsecutiva (${porcentajeSecuenciaConsecutiva.roundToInt()}%)")
-        Log.d("MapViewModel", "Últimos puntos en ruta: $ultimosNPuntosEnRuta/5 (${porcentajeUltimoTramo.roundToInt()}%)")
-        Log.d("MapViewModel", "Inicio en ruta: $inicioEnRuta")
-        Log.d("MapViewModel", "Fin en ruta: $finEnRuta")
-        Log.d("MapViewModel", "Tolerancia usada: ${tolerancia}m")
-
-        // VALIDACIÓN MANUAL con println
-        println("🔥 VALIDACIÓN MANUAL:")
-        println("🔥 Total puntos GPS: ${puntosReales.size}")
-        println("🔥 Puntos dentro de 80m de la ruta: $puntosEnRuta")
-        println("🔥 Cálculo manual: ${puntosEnRuta}/${puntosReales.size} = ${(puntosEnRuta.toDouble()/puntosReales.size)*100}%")
-
-        Log.d("MapViewModel", "VALIDACIÓN MANUAL:")
-        Log.d("MapViewModel", "Total puntos GPS: ${puntosReales.size}")
-        Log.d("MapViewModel", "Puntos dentro de 80m de la ruta: $puntosEnRuta")
-        Log.d("MapViewModel", "Cálculo manual: ${puntosEnRuta}/${puntosReales.size} = ${(puntosEnRuta.toDouble()/puntosReales.size)*100}%")
 
         // CRITERIO MEJORADO PARA DETECTAR SI SIGUIÓ LA RUTA:
         val siguioRuta = when {
@@ -389,19 +351,7 @@ class MapViewModel(
                 val fechaFin = System.currentTimeMillis().toLocalISOString()
                 val (siguioRuta, porcentajeSimilitud) = calcularSimilitudRuta()
 
-                Log.d("MapViewModel", "📊 RESULTADO FINAL CALCULADO:")
-                Log.d("MapViewModel", "- siguió ruta: $siguioRuta")
-                Log.d("MapViewModel", "- porcentaje similitud: ${porcentajeSimilitud.roundToInt()}%")
-
-                Log.d("MapViewModel", "📅 Fecha de fin generada en Android (finalizar): $fechaFin")
-                Log.d("MapViewModel", "📤 Enviando rutaId: $rutaId con ${_puntosGPSReales.size} puntos GPS")
-                Log.d("MapViewModel", "Usuario siguió ruta: $siguioRuta (${porcentajeSimilitud.roundToInt()}% similitud)")
-
-                Log.d("MapViewModel", "ANTES DE ENVIAR AL BACKEND:")
-                Log.d("MapViewModel", "- siguioRuta: $siguioRuta")
-                Log.d("MapViewModel", "- similitud: $porcentajeSimilitud")
-
-                // 🔥 ENVIAR puntos GPS reales al backend
+                //vENVIAR puntos GPS reales al backend
                 val result = rutasRepository.finalizarRuta(
                     rutaId = rutaId,
                     fechaFin = fechaFin,
@@ -413,7 +363,7 @@ class MapViewModel(
                 result.onSuccess { response ->
                     Log.d("MapViewModel", "✅ Ruta finalizada: ${response.success}")
 
-                    // 🔥 VERIFICAR si hay alerta de desobediencia
+                    // VERIFICAR si hay alerta de desobediencia
                     if (response.alerta_desobediencia && response.mensaje_alerta != null) {
                         Log.d("MapViewModel", "🚨 ALERTA DESOBEDIENCIA: ${response.mensaje_alerta}")
                         _mostrarAlertaDesobediencia.value = true
@@ -458,42 +408,6 @@ class MapViewModel(
     fun cerrarAlertaDesobediencia() {
         _mostrarAlertaDesobediencia.value = false
         _mensajeAlertaDesobediencia.value = null
-    }
-
-    // 🔥 NUEVA FUNCIÓN para enviar feedback al UCB
-    private suspend fun enviarFeedbackUCB(completada: Boolean) {
-        try {
-            val token = currentToken
-            val tipoUsado = currentMLType
-            val ubicacionId = rutaActualUbicacionId
-            val distancia = rutaActualDistancia
-            val duracion = rutaActualDuracion
-
-            if (token == null || tipoUsado == null || ubicacionId == null) {
-                Log.w("MapViewModel", "❌ Faltan datos para enviar feedback UCB")
-                return
-            }
-
-            val feedbackRequest = FeedbackRequest(
-                tipo_usado = tipoUsado,
-                completada = completada,
-                ubicacion_id = ubicacionId,
-                distancia = distancia,
-                duracion = duracion
-            )
-
-            Log.d("MapViewModel", "📤 Enviando feedback UCB: $feedbackRequest")
-
-            val response = RetrofitClient.mlService.enviarFeedback(
-                "Bearer $token",
-                feedbackRequest
-            )
-
-            Log.d("MapViewModel", "✅ Feedback UCB enviado: ${response.mensaje}")
-
-        } catch (e: Exception) {
-            Log.e("MapViewModel", "❌ Error enviando feedback UCB: ${e.message}", e)
-        }
     }
 
     fun ocultarOpcionesFinalizar() {
