@@ -29,8 +29,15 @@ interface ApiService {
     @FormUrlEncoded
     @POST("usuarios/registrar")
     suspend fun register(
-        @Field("name") name: String,
-        @Field("email") email: String,
-        @Field("password") password: String
+        @Field("nombre") nombre: String,
+        @Field("apellido") apellido: String,
+        @Field("correo") correo: String,
+        @Field("contrasenia") contrasenia: String
     ): Response<LoginResponse>
+
+    @FormUrlEncoded
+    @POST("login/logout/")
+    suspend fun logout(
+        @Field("refresh_token") refreshToken: String
+    ): Response<Unit>
 }

@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.app.screen.config.SettingsScreen
 import com.example.app.screen.home.components.HomeTabContent
 import com.example.app.screen.home.components.PlaceholderTab
 import com.example.app.screen.rutas.AlternateRoutesScreen
@@ -270,7 +271,15 @@ fun HomeScreen(
                         )
                         2 -> PlaceholderTab("Recordatorios", "Próximamente")
                         3 -> PlaceholderTab("Grupos Colaborativos", "Próximamente")
-                        4 -> PlaceholderTab("Configuración", "Próximamente")
+                        4 -> SettingsScreen(
+                            userState = userState,
+                            onLogout = {
+                                authViewModel.logout()
+                                navController.navigate("login") {
+                                    popUpTo("home") { inclusive = true }
+                                }
+                            }
+                        )
                     }
                 }
             }

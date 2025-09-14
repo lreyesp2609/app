@@ -85,4 +85,51 @@ class AuthRepository {
             }
         }
     }
+
+    suspend fun logout(refreshToken: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = api.logout(refreshToken)
+                if (response.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                    Result.failure(Exception(errorMsg))
+                }
+            } catch (e: IOException) {
+                Result.failure(Exception("Error de red: ${e.message}"))
+            } catch (e: HttpException) {
+                Result.failure(Exception("Error HTTP: ${e.message}"))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun register(
+        nombre: String,
+        apellido: String,
+        correo: String,
+        contrasenia: String
+    ): Result<LoginResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = api.register(
+                    nombre = nombre,
+                    apellido = apellido,
+                    correo = correo,
+                    contrasenia = contrasenia
+                )
+                if (response.isSuccessful) {
+                    response.body()?.let { Result.success(it) } ?: Result.failure(Exception("Respuesta vacía"))
+                } else {
+                    val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                    Result.failure(Exception(errorMsg))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
 }

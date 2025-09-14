@@ -3,7 +3,6 @@ package com.example.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -21,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.app.repository.RutasRepository
 import com.example.app.screen.auth.LoginScreen
+import com.example.app.screen.config.SettingsScreen
 import com.example.app.screen.home.HomeScreen
 import com.example.app.screen.home.components.PlaceholderScreen
 import com.example.app.screen.mapa.RutaMapa
@@ -33,6 +33,13 @@ import com.example.app.viewmodel.MapViewModelFactory
 import com.example.app.viewmodel.UbicacionesViewModel
 import com.example.app.viewmodel.UbicacionesViewModelFactory
 import com.example.app.viewmodel.MapViewModel
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import com.example.app.screen.auth.RegisterScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,88 +66,143 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val navController = rememberNavController()
-                    NavHost(navController = navController, startDestination = "login") {
-                        composable("login") {
-                            LoginScreen(navController = navController, authViewModel = authViewModel)
-                        }
-                        composable("home") {
-                            HomeScreen(authViewModel = authViewModel, navController = navController)
-                        }
-                        composable("rutas") {
-                            val token = authViewModel.accessToken ?: ""
+                    AppNavigation(authViewModel = authViewModel)
+                }
+            }
+        }
+    }
+}
 
-                            AlternateRoutesScreen(
-                                navController = navController,
-                                token = token
-                            )
-                        }
-                        composable("mapa") {
-                            MapScreen(navController = navController)
-                        }
+@Composable
+fun AppNavigation(authViewModel: AuthViewModel) {
+    val navController = rememberNavController()
 
-                        // 🔹 Rutas por ID en vez de lat/lon
-                        composable(
-                            "rutas_screen/{id}",
-                            arguments = listOf(navArgument("id") { type = NavType.IntType })
-                        ) { backStackEntry ->
-                            val id = backStackEntry.arguments?.getInt("id") ?: 0
-                            val token = authViewModel.accessToken ?: ""
+    // Estados del AuthViewModel
+    val isLoggedIn = authViewModel.isLoggedIn
+    val isLoading = authViewModel.isLoading
 
-                            val mapViewModel: MapViewModel = viewModel(
-                                factory = MapViewModelFactory(RutasRepository())
-                            )
+    // Determinar la ruta inicial basada en el estado de autenticación
+    val startDestination = if (isLoggedIn) "home" else "login"
 
-                            val viewModel: UbicacionesViewModel = viewModel(
-                                factory = UbicacionesViewModelFactory(token)
-                            )
+    // Mostrar pantalla de carga mientras se restaura la sesión
+    if (isLoading && !isLoggedIn && authViewModel.accessToken == null) {
+        // Pantalla de splash/loading mientras se verifica la sesión
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(50.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Cargando...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+        }
+        return
+    }
 
-                            LaunchedEffect(id) {
-                                viewModel.cargarUbicacionPorId(id)
-                                // Setear el token en el MapViewModel
-                                mapViewModel.setToken(token)
-                            }
+    NavHost(navController = navController, startDestination = startDestination) {
+        composable("login") {
+            LoginScreen(navController = navController, authViewModel = authViewModel)
+        }
+        composable("register") {
+            RegisterScreen(navController = navController, authViewModel = authViewModel)
+        }
 
-                            val ubicacion = viewModel.ubicacionSeleccionada
-                            val selectedLocationId = ubicacion?.id ?: 0
+        composable("home") {
+            HomeScreen(authViewModel = authViewModel, navController = navController)
+        }
+        composable("rutas") {
+            val token = authViewModel.accessToken ?: ""
 
-                            RutaMapa(
-                                defaultLat = 0.0,
-                                defaultLon = 0.0,
-                                ubicaciones = if (ubicacion != null) listOf(ubicacion) else emptyList(),
-                                viewModel = mapViewModel,
-                                token = token,  // Pasar token
-                                selectedLocationId = selectedLocationId
-                            )
-                        }
+            AlternateRoutesScreen(
+                navController = navController,
+                token = token
+            )
+        }
+        composable("mapa") {
+            MapScreen(navController = navController)
+        }
 
-                        // 🆕 Nueva ruta para estadísticas
-                        composable(
-                            "estadisticas/{id}",
-                            arguments = listOf(navArgument("id") { type = NavType.IntType })
-                        ) { backStackEntry ->
-                            val id = backStackEntry.arguments?.getInt("id") ?: 0
-                            val token = authViewModel.accessToken ?: ""
+        // 🔹 Rutas por ID en vez de lat/lon
+        composable(
+            "rutas_screen/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getInt("id") ?: 0
+            val token = authViewModel.accessToken ?: ""
 
-                            EstadisticasScreen(
-                                ubicacionId = id,
-                                token = token,
-                                navController = navController
-                            )
-                        }
-                        // Dentro de tu NavHost, después de composable("estadisticas/{id}")
-                        composable("recordatorios") {
-                            PlaceholderScreen("Recordatorios", "Próximamente", navController)
-                        }
-                        composable("grupos") {
-                            PlaceholderScreen("Grupos", "Próximamente", navController)
-                        }
-                        composable("config") {
-                            PlaceholderScreen("Configuración", "Próximamente", navController)
+            val mapViewModel: MapViewModel = viewModel(
+                factory = MapViewModelFactory(RutasRepository())
+            )
+
+            val viewModel: UbicacionesViewModel = viewModel(
+                factory = UbicacionesViewModelFactory(token)
+            )
+
+            LaunchedEffect(id) {
+                viewModel.cargarUbicacionPorId(id)
+                // Setear el token en el MapViewModel
+                mapViewModel.setToken(token)
+            }
+
+            val ubicacion = viewModel.ubicacionSeleccionada
+            val selectedLocationId = ubicacion?.id ?: 0
+
+            RutaMapa(
+                defaultLat = 0.0,
+                defaultLon = 0.0,
+                ubicaciones = if (ubicacion != null) listOf(ubicacion) else emptyList(),
+                viewModel = mapViewModel,
+                token = token,  // Pasar token
+                selectedLocationId = selectedLocationId
+            )
+        }
+
+        // 🆕 Nueva ruta para estadísticas
+        composable(
+            "estadisticas/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getInt("id") ?: 0
+            val token = authViewModel.accessToken ?: ""
+
+            EstadisticasScreen(
+                ubicacionId = id,
+                token = token,
+                navController = navController
+            )
+        }
+        // Dentro de tu NavHost, después de composable("estadisticas/{id}")
+        composable("recordatorios") {
+            PlaceholderScreen("Recordatorios", "Próximamente", navController)
+        }
+        composable("grupos") {
+            PlaceholderScreen("Grupos", "Próximamente", navController)
+        }
+        composable("settings") {
+            SettingsScreen(
+                userState = authViewModel.user,
+                onLogout = {
+                    authViewModel.logout {
+                        // Navegar a login cuando termine logout
+                        navController.navigate("login") {
+                            popUpTo("home") { inclusive = true }
                         }
                     }
                 }
-            }
+            )
         }
     }
 }
