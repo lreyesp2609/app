@@ -116,7 +116,11 @@ fun MapScreen(navController: NavController, onConfirmClick: () -> Unit = {}) {
                                     direccion_completa = selectedAddress
                                 )
                                 ubicacionesViewModel.crearUbicacion(nuevaUbicacion) {
-                                    Toast.makeText(context, "Ubicación creada exitosamente!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        "Ubicación creada exitosamente!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                     navController.popBackStack()
                                 }
                             }
@@ -124,9 +128,11 @@ fun MapScreen(navController: NavController, onConfirmClick: () -> Unit = {}) {
                     )
                 }
             }
+
             showGpsButton -> {
                 GpsEnableButton(onEnableGps = { showGpsButton = false })
             }
+
             else -> {
                 Column(
                     modifier = Modifier

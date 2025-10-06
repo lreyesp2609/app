@@ -40,6 +40,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.example.app.screen.auth.RegisterScreen
+import com.example.app.screen.recordatorios.components.ReminderMapScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -165,7 +166,7 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                 defaultLon = 0.0,
                 ubicaciones = if (ubicacion != null) listOf(ubicacion) else emptyList(),
                 viewModel = mapViewModel,
-                token = token,  // Pasar token
+                token = token,
                 selectedLocationId = selectedLocationId
             )
         }
@@ -184,13 +185,15 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                 navController = navController
             )
         }
-        // Dentro de tu NavHost, después de composable("estadisticas/{id}")
+
         composable("recordatorios") {
             PlaceholderScreen("Recordatorios", "Próximamente", navController)
         }
+
         composable("grupos") {
             PlaceholderScreen("Grupos", "Próximamente", navController)
         }
+
         composable("settings") {
             SettingsScreen(
                 userState = authViewModel.user,
@@ -201,6 +204,22 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                             popUpTo("home") { inclusive = true }
                         }
                     }
+                }
+            )
+        }
+
+        composable("reminder_map") {
+            ReminderMapScreen(
+                navController = navController,
+                onLocationSelected = { lat, lon, address ->
+                    // TODO: Aquí guardarías el recordatorio en tu base de datos
+                    println("📍 Ubicación seleccionada:")
+                    println("   Latitud: $lat")
+                    println("   Longitud: $lon")
+                    println("   Dirección: $address")
+
+                    // Volver a la pantalla anterior
+                    navController.popBackStack()
                 }
             )
         }

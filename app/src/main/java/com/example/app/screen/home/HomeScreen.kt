@@ -53,6 +53,7 @@ import androidx.navigation.NavController
 import com.example.app.screen.config.SettingsScreen
 import com.example.app.screen.home.components.HomeTabContent
 import com.example.app.screen.home.components.PlaceholderTab
+import com.example.app.screen.recordatorios.RemindersScreen
 import com.example.app.screen.rutas.AlternateRoutesScreen
 import com.example.app.ui.theme.getBackgroundGradient
 import com.example.app.viewmodel.AuthViewModel
@@ -269,7 +270,7 @@ fun HomeScreen(
                             navController = navController,
                             token = accessToken
                         )
-                        2 -> PlaceholderTab("Recordatorios", "Próximamente")
+                        2 -> RemindersScreen(navController = navController)
                         3 -> PlaceholderTab("Grupos Colaborativos", "Próximamente")
                         4 -> SettingsScreen(
                             userState = userState,
