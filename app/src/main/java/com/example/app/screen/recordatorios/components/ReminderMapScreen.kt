@@ -1,5 +1,6 @@
 package com.example.app.screen.recordatorios.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -9,7 +10,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.app.models.Feature
+import com.example.app.models.GeoJson
+import com.example.app.models.Geometry
+import com.example.app.models.PoisRequest
 import com.example.app.network.NominatimClient
+import com.example.app.network.RetrofitInstance
 import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.screen.mapa.OpenStreetMap
@@ -34,11 +40,45 @@ fun ReminderMapScreen(
     var selectedAddress by remember { mutableStateOf("") }
 
     var recenterTrigger by remember { mutableStateOf(0) }
-    var job by remember { mutableStateOf<Job?>(null) }
+    var addressJob by remember { mutableStateOf<Job?>(null) }
+    var poisJob by remember { mutableStateOf<Job?>(null) } // 🆕 Job separado para POIs
 
-    // Guardar último centro del mapa
     var mapCenterLat by remember { mutableStateOf(currentLat) }
     var mapCenterLon by remember { mutableStateOf(currentLon) }
+
+    var poisList by remember { mutableStateOf<List<Feature>>(emptyList()) }
+
+    // 🆕 Función para cargar POIs
+    fun loadPOIsForLocation(lat: Double, lon: Double) {
+        poisJob?.cancel()
+        poisJob = scope.launch {
+            delay(800) // Esperar a que el usuario deje de desplazarse
+
+            Log.d("POI_DEBUG", "🔄 Cargando POIs para: lat=$lat, lon=$lon")
+            try {
+                val poisRequest = PoisRequest(
+                    geometry = Geometry(
+                        geojson = GeoJson(
+                            type = "Point",
+                            coordinates = listOf(lon, lat)
+                        ),
+                        buffer = 500
+                    )
+                )
+
+                val poisResponse = RetrofitInstance.api.getPOIs(poisRequest)
+                val newPois = poisResponse.features ?: emptyList()
+
+                Log.d("POI_DEBUG", "✅ Nuevos POIs: ${newPois.size}")
+
+                // Reemplazar la lista completa
+                poisList = newPois
+
+            } catch (e: Exception) {
+                Log.e("POI_DEBUG", "❌ Error cargando POIs: ${e.message}", e)
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -50,12 +90,15 @@ fun ReminderMapScreen(
                     longitude = currentLon,
                     showUserLocation = true,
                     recenterTrigger = recenterTrigger,
+                    pois = poisList,
                     modifier = Modifier.fillMaxSize(),
                     onLocationSelected = { lat, lon ->
                         mapCenterLat = lat
                         mapCenterLon = lon
-                        job?.cancel()
-                        job = scope.launch {
+
+                        // Obtener dirección (con debounce)
+                        addressJob?.cancel()
+                        addressJob = scope.launch {
                             delay(500)
                             try {
                                 val response = NominatimClient.apiService.reverseGeocode(
@@ -67,10 +110,12 @@ fun ReminderMapScreen(
                                 selectedAddress = "Error obteniendo dirección"
                             }
                         }
+
+                        // 🆕 Cargar POIs de la nueva ubicación
+                        loadPOIsForLocation(lat, lon)
                     }
                 )
 
-                // 🎯 Usar el componente separado para los botones
                 ReminderMapButtons(
                     selectedAddress = selectedAddress,
                     onConfirmClick = {
@@ -85,7 +130,6 @@ fun ReminderMapScreen(
         } else if (showGpsButton) {
             GpsEnableButton(onEnableGps = { showGpsButton = false })
         } else {
-            // Loading antes de obtener ubicación
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -112,6 +156,7 @@ fun ReminderMapScreen(
                     mapCenterLon = lon
 
                     scope.launch {
+                        // Obtener dirección inicial
                         try {
                             val response = NominatimClient.apiService.reverseGeocode(
                                 lat = lat,
@@ -124,6 +169,9 @@ fun ReminderMapScreen(
                             currentAddress = "Error obteniendo dirección"
                             selectedAddress = "Error obteniendo dirección"
                         }
+
+                        // 🆕 Cargar POIs iniciales
+                        loadPOIsForLocation(lat, lon)
                     }
                 },
                 onError = { /* manejar error */ },

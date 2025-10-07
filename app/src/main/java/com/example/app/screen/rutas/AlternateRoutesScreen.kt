@@ -232,18 +232,8 @@ fun AlternateRoutesScreen(
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
                                     FeatureItem(
-                                        icon = Icons.Default.Directions,
-                                        text = "Obtén rutas alternas optimizadas"
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    FeatureItem(
                                         icon = Icons.Default.History,
                                         text = "Consulta tu historial de trayectos"
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    FeatureItem(
-                                        icon = Icons.Default.ShareLocation,
-                                        text = "Comparte ubicaciones con tu equipo"
                                     )
                                 }
                             }

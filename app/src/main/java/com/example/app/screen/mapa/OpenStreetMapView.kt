@@ -5,7 +5,9 @@ import android.graphics.Canvas
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.OvalShape
+import android.util.Log
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.add
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -18,9 +20,13 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Overlay
 import com.example.app.R
+import com.example.app.models.Feature
+import com.example.app.models.getDisplayName
+import com.example.app.screen.recordatorios.components.getIconResource
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
+import kotlin.text.clear
 
 class CenteredPinOverlay(private val context: Context) : Overlay() {
     private val pinDrawable: Drawable? = ContextCompat.getDrawable(context, R.drawable.ic_marker_red)
@@ -47,9 +53,9 @@ fun OpenStreetMap(
     showUserLocation: Boolean = true,
     recenterTrigger: Int = 0,
     context: Context = LocalContext.current,
+    pois: List<Feature> = emptyList(),
     onLocationSelected: (lat: Double, lon: Double) -> Unit = { _, _ -> }
 ) {
-    // ✅ Solo se crea una vez y se recuerda
     val mapView = rememberMapView(context, zoom)
 
     LaunchedEffect(Unit) {
@@ -65,6 +71,7 @@ fun OpenStreetMap(
         update = { map ->
             map.overlays.clear()
 
+            // Usuario
             if (showUserLocation) {
                 val geoPoint = GeoPoint(latitude, longitude)
                 val circleMarker = Marker(map).apply {
@@ -80,16 +87,46 @@ fun OpenStreetMap(
                 map.overlays.add(circleMarker)
             }
 
+            // 🆕 POIs actualizados dinámicamente
+            if (pois.isNotEmpty()) {
+                Log.d("POI_DEBUG", "🗺️ Dibujando ${pois.size} POIs en el mapa")
+                pois.forEach { feature ->
+                    val coords = feature.geometry?.coordinates
+                    if (coords != null && coords.size >= 2) {
+                        val marker = Marker(map).apply {
+                            position = GeoPoint(coords[1], coords[0])
+                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                            icon = ContextCompat.getDrawable(context, feature.getIconResource())
+                            title = feature.getDisplayName()
+                            snippet = buildString {
+                                val category = feature.properties?.category_ids?.values?.firstOrNull()
+                                if (category != null) {
+                                    append("📁 ${category.category_group} - ${category.category_name}\n")
+                                }
+                                feature.properties?.osm_tags?.forEach { (key, value) ->
+                                    if (key != "name") {
+                                        append("$key: $value\n")
+                                    }
+                                }
+                            }
+                        }
+                        map.overlays.add(marker)
+                    }
+                }
+            }
+
+            // Pin central
             map.overlays.add(CenteredPinOverlay(context))
+
+            // 🆕 Forzar redibujado
+            map.invalidate()
         }
     )
 
-    // Centrar mapa cuando se presione botón
     LaunchedEffect(recenterTrigger) {
         mapView.controller.animateTo(GeoPoint(latitude, longitude))
     }
 
-    // Detectar movimiento del mapa
     DisposableEffect(mapView) {
         val listener = object : MapListener {
             override fun onScroll(event: ScrollEvent?): Boolean {
@@ -122,4 +159,3 @@ fun rememberMapView(context: Context, zoom: Double = 16.0): MapView {
         }
     }
 }
-
