@@ -1,5 +1,6 @@
 package com.example.app
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -40,6 +41,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.example.app.screen.auth.RegisterScreen
+import com.example.app.screen.recordatorios.components.AddReminderScreen
 import com.example.app.screen.recordatorios.components.ReminderMapScreen
 
 class MainActivity : ComponentActivity() {
@@ -212,15 +214,30 @@ fun AppNavigation(authViewModel: AuthViewModel) {
             ReminderMapScreen(
                 navController = navController,
                 onLocationSelected = { lat, lon, address ->
-                    // TODO: Aquí guardarías el recordatorio en tu base de datos
-                    println("📍 Ubicación seleccionada:")
-                    println("   Latitud: $lat")
-                    println("   Longitud: $lon")
-                    println("   Dirección: $address")
-
-                    // Volver a la pantalla anterior
-                    navController.popBackStack()
+                    navController.navigate(
+                        "add_reminder/${Uri.encode(address)}/$lat/$lon"
+                    )
                 }
+            )
+        }
+
+        composable(
+            route = "add_reminder/{selectedAddress}/{latitude}/{longitude}",
+            arguments = listOf(
+                navArgument("selectedAddress") { type = NavType.StringType },
+                navArgument("latitude") { type = NavType.StringType },
+                navArgument("longitude") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val selectedAddress = backStackEntry.arguments?.getString("selectedAddress") ?: ""
+            val latitude = backStackEntry.arguments?.getString("latitude")?.toDoubleOrNull()
+            val longitude = backStackEntry.arguments?.getString("longitude")?.toDoubleOrNull()
+
+            AddReminderScreen(
+                navController = navController,
+                selectedAddress = selectedAddress,
+                latitude = latitude,
+                longitude = longitude
             )
         }
     }
