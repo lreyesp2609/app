@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.app.models.UbicacionUsuarioResponse
+import com.example.app.screen.components.AppButton
 import com.example.app.viewmodel.UbicacionesViewModel
 import kotlinx.coroutines.delay
 
@@ -115,29 +116,15 @@ fun AlternateRoutesScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Botón principal (igual que el de Recordatorios)
-                    Button(
+                    // Botón principal
+                    AppButton(
+                        text = "Agregar ubicación",
+                        icon = Icons.Default.AddLocationAlt,
                         onClick = { navController.navigate("mapa") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 32.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AddLocationAlt,
-                            contentDescription = "Agregar ubicación",
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Agregar ubicación",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                            .padding(horizontal = 32.dp)
+                    )
                 }
             }
 
@@ -448,57 +435,5 @@ fun UbicacionCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun EmptyStateView(
-    onAddLocation: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(48.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Ilustración vacía
-        Box(
-            modifier = Modifier
-                .size(120.dp)
-                .background(
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.LocationOn,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                modifier = Modifier.size(60.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "No hay ubicaciones guardadas",
-            color = MaterialTheme.colorScheme.onBackground,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Comienza agregando tu primera ubicación para crear rutas personalizadas",
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-            fontSize = 16.sp,
-            textAlign = TextAlign.Center,
-            lineHeight = 22.sp
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
     }
 }

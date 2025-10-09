@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.app.screen.components.AppButton
 import kotlinx.coroutines.delay
 
 @Composable
@@ -50,20 +51,14 @@ fun RemindersScreen(
                 enter = fadeIn(animationSpec = tween(600)) +
                         slideInVertically(initialOffsetY = { -it })
             ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Notifications,
@@ -76,45 +71,20 @@ fun RemindersScreen(
                             text = "Recordatorios",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-            // Botón para agregar recordatorio
-            AnimatedVisibility(
-                visible = showContent,
-                enter = fadeIn(animationSpec = tween(700, delayMillis = 200)) +
-                        scaleIn(initialScale = 0.9f)
-            ) {
-                Button(
-                    onClick = {
-                        // Navegar a la pantalla del mapa (pantalla completa)
-                        navController.navigate("reminder_map")
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
+                    // Botón principal
+                    AppButton(
                         text = "Agregar recordatorio",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
+                        icon = Icons.Default.AddLocationAlt,
+                        onClick = { navController.navigate("reminder_map") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp)
                     )
                 }
             }

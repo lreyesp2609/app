@@ -25,10 +25,14 @@ val LightColorScheme = lightColorScheme(
     secondary = AppColors.Chestnut,
     background = AppColors.Linen,
     surface = AppColors.Linen,
+    tertiary = AppColors.Chestnut.copy(alpha = 0.5f),
+    tertiaryContainer = AppColors.Linen.copy(alpha = 0.3f),
     onPrimary = Color.White,
     onSecondary = Color.White,
     onBackground = Color.Black,
-    onSurface = Color.Black
+    onSurface = Color.Black,
+    onTertiary = Color.White,
+    onTertiaryContainer = Color.Black
 )
 
 val DarkColorScheme = darkColorScheme(
@@ -36,10 +40,14 @@ val DarkColorScheme = darkColorScheme(
     secondary = AppColors.WaikawaGray,
     background = AppColors.Mirage,
     surface = AppColors.Mirage,
+    tertiary = AppColors.WaikawaGray.copy(alpha = 0.7f),
+    tertiaryContainer = AppColors.Mirage.copy(alpha = 0.5f),
     onPrimary = Color.White,
     onSecondary = Color.White,
     onBackground = Color.White,
-    onSurface = Color.White
+    onSurface = Color.White,
+    onTertiary = Color.White,
+    onTertiaryContainer = Color.White
 )
 
 // Función para obtener el esquema de colores según el tema

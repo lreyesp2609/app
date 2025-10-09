@@ -10,14 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.models.User
+import com.example.app.screen.components.AppButton
 
 @Composable
 fun SettingsScreen(
@@ -71,28 +68,19 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(40.dp))
 
-        // Botón de cerrar sesión
-        Button(
+        // Botón de cerrar sesión usando AppButton
+        AppButton(
+            text = "Cerrar Sesión",
             onClick = { onLogout() },
             modifier = Modifier
                 .fillMaxWidth(0.8f)
                 .height(50.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.ExitToApp,
-                contentDescription = "Cerrar sesión",
-                tint = Color.White
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Cerrar Sesión",
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-        }
+            leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null, tint = Color.White) },
+            outlined = false,
+            enabled = true,
+            disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.5f),
+            disabledContentColor = Color.White,
+            icon = null // Ya usamos leadingIcon
+        )
     }
 }

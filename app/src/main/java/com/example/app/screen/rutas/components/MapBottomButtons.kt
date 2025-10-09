@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,6 +46,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.app.ui.theme.getBackgroundGradient
 import androidx.compose.ui.text.input.ImeAction
+import com.example.app.screen.components.AppButton
+import com.example.app.screen.components.AppTextField
 
 @Composable
 fun MapBottomButtons(
@@ -90,33 +93,19 @@ fun MapBottomButtons(
         // Botón de confirmar (habilitado solo si hay nombre y ubicación seleccionada)
         val canConfirm = selectedLocation.isNotEmpty() && locationName.trim().isNotEmpty()
 
-        ExtendedFloatingActionButton(
+        AppButton(
+            text = "Confirmar ubicación",
+            icon = Icons.Default.Check,
             onClick = onConfirmClick,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(16.dp)
-                .navigationBarsPadding(),
-            containerColor = if (canConfirm) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = if (canConfirm) MaterialTheme.colorScheme.onPrimary
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-            elevation = FloatingActionButtonDefaults.elevation(
-                defaultElevation = if (canConfirm) 8.dp else 2.dp,
-                pressedElevation = if (canConfirm) 12.dp else 4.dp
-            )
-        ) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Confirmar ubicación",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
+                .imePadding()
+                .navigationBarsPadding()
+                .padding(16.dp),
+            enabled = canConfirm,
+            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+            disabledContentColor = MaterialTheme.colorScheme.onPrimary
+        )
     }
 }
 
@@ -173,45 +162,26 @@ fun LocationNameCard(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    OutlinedTextField(
+                    AppTextField(
                         value = locationName,
                         onValueChange = { newValue ->
                             if (newValue.length <= 100) onLocationNameChange(newValue)
                         },
-                        placeholder = {
-                            Text(
-                                "ej. Casa, Trabajo...",
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            focusedBorderColor = iconColor,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                            cursorColor = iconColor
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        textStyle = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        singleLine = true,
+                        label = "Nombre de la ubicación",
+                        placeholder = "ej. Casa, Trabajo...",
+                        modifier = Modifier.fillMaxWidth(),
+                        borderColor = Color(0xFF3B82F6), // color de borde opcional
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Words,
                             imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = { focusManager.clearFocus() }
-                        ),
-                        supportingText = {
-                            Text(
-                                text = "${locationName.length}/100 caracteres",
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${locationName.length}/100 caracteres",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        style = MaterialTheme.typography.labelSmall
                     )
                 }
             }

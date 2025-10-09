@@ -117,6 +117,7 @@ fun ReminderMapScreen(
                 )
 
                 ReminderMapButtons(
+                    navController = navController,
                     selectedAddress = selectedAddress,
                     onConfirmClick = {
                         if (mapCenterLat != 0.0 && mapCenterLon != 0.0 && selectedAddress.isNotBlank()) {

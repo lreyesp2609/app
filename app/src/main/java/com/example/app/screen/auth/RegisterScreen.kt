@@ -1,6 +1,5 @@
 package com.example.app.screen.auth
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -32,6 +31,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.app.screen.components.AppBackButton
+import com.example.app.screen.components.AppButton
+import com.example.app.screen.components.AppTextField
 import com.example.app.ui.theme.getBackgroundGradient
 import com.example.app.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
@@ -87,21 +89,7 @@ fun RegisterScreen(
                     horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(
-                        onClick = { navController.popBackStack() },
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                                RoundedCornerShape(12.dp)
-                            )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    AppBackButton(navController = navController)
                 }
 
                 // Logo
@@ -153,65 +141,39 @@ fun RegisterScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    OutlinedTextField(
+                    AppTextField(
                         value = nombre,
                         onValueChange = { nombre = it },
-                        label = { Text("Nombre") },
-                        placeholder = { Text("Tu nombre") },
-                        singleLine = true,
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        modifier = Modifier.weight(1f),
+                        label = "Nombre",
+                        placeholder = "Tu nombre",
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Words,
                             imeAction = ImeAction.Next
                         ),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            cursorColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                            focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                        )
+                        enabled = !authViewModel.isLoading,
+                        modifier = Modifier.weight(1f)
                     )
 
-                    OutlinedTextField(
+                    AppTextField(
                         value = apellido,
                         onValueChange = { apellido = it },
-                        label = { Text("Apellido") },
-                        placeholder = { Text("Tu apellido") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        label = "Apellido",
+                        placeholder = "Tu apellido",
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Words,
                             imeAction = ImeAction.Next
                         ),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            cursorColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                            focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                        )
+                        enabled = !authViewModel.isLoading,
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
                 // Correo electrónico
-                OutlinedTextField(
+                AppTextField(
                     value = correo,
                     onValueChange = { correo = it },
-                    label = { Text("Correo electrónico") },
-                    placeholder = { Text("tu@email.com") },
-                    singleLine = true,
+                    label = "Correo electrónico",
+                    placeholder = "tu@email.com",
                     leadingIcon = {
                         Icon(
                             Icons.Default.Email,
@@ -219,29 +181,20 @@ fun RegisterScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next
                     ),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        cursorColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                        focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                    )
+                    enabled = !authViewModel.isLoading,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 // Contraseña
-                OutlinedTextField(
+                AppTextField(
                     value = contrasenia,
                     onValueChange = { contrasenia = it },
-                    label = { Text("Contraseña") },
-                    placeholder = { Text("Mínimo 6 caracteres") },
-                    singleLine = true,
+                    label = "Contraseña",
+                    placeholder = "Mínimo 6 caracteres",
                     leadingIcon = {
                         Icon(
                             Icons.Default.Lock,
@@ -249,41 +202,21 @@ fun RegisterScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { passwordVisible = !passwordVisible }
-                        ) {
-                            Icon(
-                                imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
+                    isPassword = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Next
                     ),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        cursorColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                        focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                    )
+                    enabled = !authViewModel.isLoading,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 // Confirmar contraseña
-                OutlinedTextField(
+                AppTextField(
                     value = confirmarContrasenia,
                     onValueChange = { confirmarContrasenia = it },
-                    label = { Text("Confirmar contraseña") },
-                    placeholder = { Text("Repite tu contraseña") },
-                    singleLine = true,
+                    label = "Confirmar contraseña",
+                    placeholder = "Repite tu contraseña",
                     leadingIcon = {
                         Icon(
                             Icons.Default.LockReset,
@@ -291,34 +224,15 @@ fun RegisterScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { confirmPasswordVisible = !confirmPasswordVisible }
-                        ) {
-                            Icon(
-                                imageVector = if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (confirmPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                    visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
+                    isPassword = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Done
                     ),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = if (contrasenia == confirmarContrasenia && confirmarContrasenia.isNotEmpty())
-                            Color.Green else MaterialTheme.colorScheme.primary,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        cursorColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                        focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                    ),
-                    isError = confirmarContrasenia.isNotEmpty() && contrasenia != confirmarContrasenia
+                    enabled = !authViewModel.isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                    borderColor = if (contrasenia == confirmarContrasenia && confirmarContrasenia.isNotEmpty())
+                        Color.Green else MaterialTheme.colorScheme.primary
                 )
 
                 // Mensaje de error para contraseñas
@@ -362,10 +276,13 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Botón de registro
-            Button(
+            AppButton(
+                text = if (authViewModel.isLoading) "Creando cuenta..." else "Crear cuenta",
+                isLoading = authViewModel.isLoading,
                 onClick = {
                     when {
-                        nombre.isBlank() || apellido.isBlank() || correo.isBlank() || contrasenia.isBlank() || confirmarContrasenia.isBlank() -> {
+                        nombre.isBlank() || apellido.isBlank() || correo.isBlank() ||
+                                contrasenia.isBlank() || confirmarContrasenia.isBlank() -> {
                             errorNotificationMessage = "Completa todos los campos"
                             showErrorNotification = true
                         }
@@ -385,14 +302,10 @@ fun RegisterScreen(
                                 contrasenia
                             ) { registroExitoso ->
                                 if (registroExitoso) {
-                                    // Mostrar mensaje de éxito
-                                    successNotificationMessage =
-                                        "¡Cuenta creada! Iniciando sesión..."
+                                    successNotificationMessage = "¡Cuenta creada! Iniciando sesión..."
                                     showSuccessNotification = true
 
-                                    // LOGIN AUTOMÁTICO después de registro exitoso
                                     authViewModel.login(correo, contrasenia) {
-                                        // onSuccess del login - navega a home
                                         navController.navigate("home") {
                                             popUpTo("login") { inclusive = true }
                                             popUpTo("register") { inclusive = true }
@@ -402,41 +315,8 @@ fun RegisterScreen(
                             }
                         }
                     }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                enabled = !authViewModel.isLoading,
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 6.dp,
-                    pressedElevation = 2.dp
-                )
-            ) {
-                if (authViewModel.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        "Creando cuenta...",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                } else {
-                    Text(
-                        "Crear cuenta",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
-                    )
                 }
-            }
+            )
 
             // 🆕 Spacer adicional para asegurar que el botón sea siempre visible
             Spacer(modifier = Modifier.height(16.dp))
