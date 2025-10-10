@@ -240,5 +240,22 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                 longitude = longitude
             )
         }
+
+        composable(
+            route = "home?tab={tab}",
+            arguments = listOf(
+                navArgument("tab") {
+                    type = NavType.IntType
+                    defaultValue = 0
+                }
+            )
+        ) { backStackEntry ->
+            val initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
+            HomeScreen(
+                authViewModel = authViewModel,
+                navController = navController,
+                initialTab = initialTab
+            )
+        }
     }
 }

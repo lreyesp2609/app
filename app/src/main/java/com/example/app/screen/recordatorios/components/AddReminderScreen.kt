@@ -1,53 +1,17 @@
 package com.example.app.screen.recordatorios.components
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberTimePickerState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,16 +19,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import android.widget.Toast
+import com.example.app.models.Reminder
 import com.example.app.screen.components.AppBackButton
 import com.example.app.screen.components.AppButton
 import com.example.app.screen.components.AppSlider
 import com.example.app.screen.components.AppTextField
 import com.example.app.screen.recordatorios.ViewModel.ReminderViewModel
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,13 +51,21 @@ fun AddReminderScreen(
     var proximityRadius by remember { mutableStateOf(500f) }
     var triggerType by remember { mutableStateOf("enter") }
 
-    // NUEVOS: Configuración de notificaciones
+    // Configuración de notificaciones
     var enableVibration by remember { mutableStateOf(true) }
     var enableSound by remember { mutableStateOf(true) }
-    var selectedSoundType by remember { mutableStateOf("default") } // default, gentle, alert, chime
+    var selectedSoundType by remember { mutableStateOf("default") }
     var showSoundPicker by remember { mutableStateOf(false) }
 
+    // Estados de validación
+    var showTitleError by remember { mutableStateOf(false) }
+    var showDateError by remember { mutableStateOf(false) }
+    var showTimeError by remember { mutableStateOf(false) }
+    var showLocationError by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
 
     // DatePicker Dialog
     val datePickerState = rememberDatePickerState()
@@ -107,6 +81,7 @@ fun AddReminderScreen(
                 TextButton(onClick = {
                     selectedDate = datePickerState.selectedDateMillis
                     showDatePicker = false
+                    showDateError = false
                 }) {
                     Text("Aceptar")
                 }
@@ -129,6 +104,7 @@ fun AddReminderScreen(
                 TextButton(onClick = {
                     selectedTime = Pair(timePickerState.hour, timePickerState.minute)
                     showTimePicker = false
+                    showTimeError = false
                 }) {
                     Text("Aceptar")
                 }
@@ -225,7 +201,7 @@ fun AddReminderScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(20.dp)
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header
@@ -248,7 +224,10 @@ fun AddReminderScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                containerColor = if (showLocationError)
+                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                else
+                    MaterialTheme.colorScheme.secondaryContainer
             )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -256,13 +235,19 @@ fun AddReminderScreen(
                     Icon(
                         Icons.Default.LocationOn,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        tint = if (showLocationError)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.onSecondaryContainer
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = selectedAddress,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                        color = if (showLocationError)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
                 if (latitude != null && longitude != null) {
@@ -273,19 +258,40 @@ fun AddReminderScreen(
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                     )
                 }
+                if (showLocationError) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "⚠️ Ubicación no válida. Regresa y selecciona una ubicación.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Título
-        AppTextField(
-            value = title,
-            onValueChange = { title = it },
-            label = "Nombre del recordatorio",
-            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-            modifier = Modifier.fillMaxWidth()
-        )
+        // Título con indicador de obligatorio
+        Column {
+            AppTextField(
+                value = title,
+                onValueChange = {
+                    title = it
+                    if (it.isNotEmpty()) showTitleError = false
+                },
+                label = "Nombre del recordatorio *",
+                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (showTitleError) {
+                Text(
+                    text = "El título es obligatorio",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                )
+            }
+        }
 
         // Descripción
         AppTextField(
@@ -310,25 +316,68 @@ fun AddReminderScreen(
         ) {
             AppButton(
                 text = "Ubicación",
-                onClick = { reminderType = "location" },
+                onClick = {
+                    reminderType = "location"
+                    // Resetear errores de fecha/hora
+                    showDateError = false
+                    showTimeError = false
+                },
                 modifier = Modifier.weight(1f),
                 outlined = reminderType != "location"
             )
 
             AppButton(
                 text = "Fecha",
-                onClick = { reminderType = "datetime" },
+                onClick = {
+                    reminderType = "datetime"
+                    // Resetear error de ubicación
+                    showLocationError = false
+                },
                 modifier = Modifier.weight(1f),
                 outlined = reminderType != "datetime"
             )
 
             AppButton(
                 text = "Ambos",
-                onClick = { reminderType = "both" },
+                onClick = {
+                    reminderType = "both"
+                },
                 modifier = Modifier.weight(1f),
                 outlined = reminderType != "both"
             )
         }
+
+        // Mensaje informativo según el tipo
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = when (reminderType) {
+                        "location" -> "Se activará cuando llegues al lugar"
+                        "datetime" -> "Campos obligatorios: fecha y hora *"
+                        "both" -> "Campos obligatorios: fecha, hora y ubicación *"
+                        else -> ""
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+            }
+        }
+
         // Configuración de proximidad (solo si incluye ubicación)
         if (reminderType == "location" || reminderType == "both") {
             Card(
@@ -386,33 +435,69 @@ fun AddReminderScreen(
 
         // Selector de fecha y hora (solo si incluye fecha)
         if (reminderType == "datetime" || reminderType == "both") {
-            AppButton(
-                text = if (selectedDate != null) {
-                    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                    dateFormat.format(Date(selectedDate!!))
-                } else "Seleccionar fecha",
-                onClick = { showDatePicker = true },
-                modifier = Modifier.fillMaxWidth(),
-                outlined = true,
-                leadingIcon = { Icon(Icons.Default.DateRange, contentDescription = null) },
-                trailingIcon = { Icon(Icons.Default.KeyboardArrowRight, contentDescription = null) }
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column {
+                    AppButton(
+                        text = if (selectedDate != null) {
+                            val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                            dateFormat.format(Date(selectedDate!!))
+                        } else "Seleccionar fecha *",
+                        onClick = {
+                            showDatePicker = true
+                            if (selectedDate != null) showDateError = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        outlined = true,
+                        leadingIcon = { Icon(Icons.Default.DateRange, contentDescription = null) },
+                        trailingIcon = { Icon(Icons.Default.KeyboardArrowRight, contentDescription = null) }
+                    )
+                    AnimatedVisibility(
+                        visible = showDateError,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Text(
+                            text = "Debes seleccionar una fecha",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                        )
+                    }
+                }
 
-            AppButton(
-                text = if (selectedTime != null) {
-                    String.format("%02d:%02d", selectedTime!!.first, selectedTime!!.second)
-                } else "Seleccionar hora",
-                onClick = { showTimePicker = true },
-                modifier = Modifier.fillMaxWidth(),
-                outlined = true,
-                leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) },
-                trailingIcon = { Icon(Icons.Default.KeyboardArrowRight, contentDescription = null) }
-            )
+                Column {
+                    AppButton(
+                        text = if (selectedTime != null) {
+                            String.format("%02d:%02d", selectedTime!!.first, selectedTime!!.second)
+                        } else "Seleccionar hora *",
+                        onClick = {
+                            showTimePicker = true
+                            if (selectedTime != null) showTimeError = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        outlined = true,
+                        leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) },
+                        trailingIcon = { Icon(Icons.Default.KeyboardArrowRight, contentDescription = null) }
+                    )
+                    AnimatedVisibility(
+                        visible = showTimeError,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Text(
+                            text = "Debes seleccionar una hora",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                        )
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // NUEVA SECCIÓN: Configuración de notificaciones
+        // Configuración de notificaciones
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -495,7 +580,7 @@ fun AddReminderScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Add, // Usar como ícono de volumen
+                            imageVector = Icons.Default.Add,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -544,29 +629,85 @@ fun AddReminderScreen(
         AppButton(
             text = "Guardar recordatorio",
             onClick = {
-                println("🕒 Recordatorio guardado:")
-                println(" - Título: $title")
-                println(" - Descripción: $description")
-                println(" - Tipo: $reminderType")
-                println(" - Ubicación: $selectedAddress")
-                println(" - Coordenadas: Lat $latitude, Lng $longitude")
-                println(" - Radio: ${proximityRadius}m")
-                println(" - Activación: $triggerType")
-                println(" - Fecha: ${selectedDate?.let { Date(it) }}")
-                println(" - Hora: ${selectedTime?.let { "${it.first}:${it.second}" }}")
-                println(" - Vibración: $enableVibration")
-                println(" - Sonido: $enableSound")
-                println(" - Tipo de sonido: $selectedSoundType")
-                navController.popBackStack()
+                // Validar campos según el tipo de recordatorio
+                var hasError = false
+
+                // Validar título (siempre obligatorio)
+                if (title.isEmpty()) {
+                    showTitleError = true
+                    hasError = true
+                    coroutineScope.launch {
+                        scrollState.animateScrollTo(0) // Scroll al inicio donde está el título
+                    }
+                    Toast.makeText(context, "Debes ingresar un título", Toast.LENGTH_SHORT).show()
+                    return@AppButton
+                }
+
+                // Validar fecha y hora si es necesario
+                if (reminderType == "datetime" || reminderType == "both") {
+                    if (selectedDate == null) {
+                        showDateError = true
+                        hasError = true
+                        Toast.makeText(context, "Debes seleccionar una fecha", Toast.LENGTH_SHORT).show()
+                        return@AppButton
+                    }
+                    if (selectedTime == null) {
+                        showTimeError = true
+                        hasError = true
+                        Toast.makeText(context, "Debes seleccionar una hora", Toast.LENGTH_SHORT).show()
+                        return@AppButton
+                    }
+                }
+
+                // Validar ubicación si es necesario
+                if ((reminderType == "location" || reminderType == "both") &&
+                    (latitude == null || longitude == null)) {
+                    showLocationError = true
+                    hasError = true
+                    coroutineScope.launch {
+                        scrollState.animateScrollTo(0) // Scroll al inicio donde está la ubicación
+                    }
+                    Toast.makeText(context, "Debes seleccionar una ubicación válida", Toast.LENGTH_SHORT).show()
+                    return@AppButton
+                }
+
+                // Si todo está bien, crear el recordatorio
+                if (!hasError) {
+                    val dateStr = selectedDate?.let {
+                        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                        sdf.format(Date(it))
+                    }
+                    val timeStr = selectedTime?.let {
+                        "${it.first.toString().padStart(2,'0')}:${it.second.toString().padStart(2,'0')}:00"
+                    }
+
+                    val reminder = Reminder(
+                        title = title,
+                        description = description.ifEmpty { null },
+                        reminder_type = reminderType,
+                        trigger_type = triggerType,
+                        vibration = enableVibration,
+                        sound = enableSound,
+                        sound_type = if (enableSound) selectedSoundType else null,
+                        date = dateStr,
+                        time = timeStr,
+                        location = selectedAddress,
+                        latitude = latitude,
+                        longitude = longitude,
+                        radius = proximityRadius.toDouble()
+                    )
+
+                    viewModel.createReminder(reminder, context) {
+                        navController.navigate("home?tab=2") {
+                            popUpTo("home") { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    }
+                }
             },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
-            outlined = false,
-            enabled = title.isNotEmpty() &&
-                    ((reminderType == "location" || reminderType == "both") ||
-                            (reminderType == "datetime" && selectedDate != null && selectedTime != null)) &&
-                    ((reminderType == "datetime" || reminderType == "both") ||
-                            (reminderType == "location" && latitude != null && longitude != null)),
+            outlined = false
         )
     }
 }

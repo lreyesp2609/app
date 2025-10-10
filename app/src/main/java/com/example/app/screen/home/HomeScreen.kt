@@ -62,7 +62,8 @@ import kotlinx.coroutines.delay
 @Composable
 fun HomeScreen(
     authViewModel: AuthViewModel,
-    navController: NavController
+    navController: NavController,
+    initialTab: Int = 0
 ) {
     val userState = authViewModel.user
     val isLoggedIn = authViewModel.isLoggedIn
@@ -71,7 +72,7 @@ fun HomeScreen(
     // Estados de animación
     var isVisible by remember { mutableStateOf(false) }
     var showContent by remember { mutableStateOf(false) }
-    var selectedTab by rememberSaveable { mutableStateOf(0) }
+    var selectedTab by rememberSaveable { mutableStateOf(initialTab) }
 
     // Animaciones
     val logoScale by animateFloatAsState(
@@ -270,7 +271,10 @@ fun HomeScreen(
                             navController = navController,
                             token = accessToken
                         )
-                        2 -> RemindersScreen(navController = navController)
+                        2 -> RemindersScreen(
+                            navController = navController,
+                            token = accessToken
+                        )
                         3 -> PlaceholderTab("Grupos Colaborativos", "Próximamente")
                         4 -> SettingsScreen(
                             userState = userState,

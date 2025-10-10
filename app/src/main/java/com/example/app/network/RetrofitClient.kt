@@ -43,4 +43,8 @@ object RetrofitClient {
     val mlService: MLService by lazy {
         retrofit.create(MLService::class.java)
     }
+
+    val reminderService: ReminderApiService by lazy {
+        retrofit.create(ReminderApiService::class.java)
+    }
 }
