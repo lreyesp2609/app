@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,11 +22,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import android.widget.Toast
 import com.example.app.models.Reminder
+import com.example.app.network.AppDatabase
 import com.example.app.screen.components.AppBackButton
 import com.example.app.screen.components.AppButton
 import com.example.app.screen.components.AppSlider
 import com.example.app.screen.components.AppTextField
-import com.example.app.screen.recordatorios.ViewModel.ReminderViewModel
+import com.example.app.viewmodel.ReminderRepository
+import com.example.app.viewmodel.ReminderViewModel
+import com.example.app.viewmodel.ReminderViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
@@ -39,7 +41,6 @@ fun AddReminderScreen(
     selectedAddress: String,
     latitude: Double? = null,
     longitude: Double? = null,
-    viewModel: ReminderViewModel = viewModel(),
 ) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -73,6 +74,13 @@ fun AddReminderScreen(
 
     // TimePicker Dialog
     var showTimePicker by remember { mutableStateOf(false) }
+
+    // ViewModel CON el repository
+    val database = remember { AppDatabase.getDatabase(context) }
+    val repository = remember { ReminderRepository(database.reminderDao()) }
+    val viewModel: ReminderViewModel = viewModel(
+        factory = ReminderViewModelFactory(repository)
+    )
 
     if (showDatePicker) {
         DatePickerDialog(

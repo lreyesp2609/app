@@ -18,23 +18,36 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.app.models.Reminder
+import com.example.app.network.AppDatabase
 import com.example.app.screen.components.AppButton
-import com.example.app.screen.recordatorios.ViewModel.ReminderViewModel
+import com.example.app.viewmodel.ReminderRepository
+import com.example.app.viewmodel.ReminderViewModel
+import com.example.app.viewmodel.ReminderViewModelFactory
 import kotlinx.coroutines.delay
 
 @Composable
 fun RemindersScreen(
     navController: NavController,
-    viewModel: ReminderViewModel = viewModel(),
     token: String,
     modifier: Modifier = Modifier
 ) {
+    // Obtener el contexto
+    val context = LocalContext.current
+
+    // Crear el repositorio y el ViewModel con el factory
+    val database = AppDatabase.getDatabase(context)
+    val repository = ReminderRepository(database.reminderDao())
+    val viewModel: ReminderViewModel = viewModel(
+        factory = ReminderViewModelFactory(repository)
+    )
+
     var showContent by remember { mutableStateOf(false) }
     var showStats by remember { mutableStateOf(false) }
 

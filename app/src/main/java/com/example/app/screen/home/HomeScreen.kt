@@ -1,5 +1,12 @@
 package com.example.app.screen.home
 
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -27,13 +34,14 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,9 +54,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.example.app.screen.config.SettingsScreen
 import com.example.app.screen.home.components.HomeTabContent
@@ -56,8 +66,11 @@ import com.example.app.screen.home.components.PlaceholderTab
 import com.example.app.screen.recordatorios.RemindersScreen
 import com.example.app.screen.rutas.AlternateRoutesScreen
 import com.example.app.ui.theme.getBackgroundGradient
+import com.example.app.utils.NotificationHelper
 import com.example.app.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
+import android.net.Uri
+import android.provider.Settings
 
 @Composable
 fun HomeScreen(
@@ -65,6 +78,7 @@ fun HomeScreen(
     navController: NavController,
     initialTab: Int = 0
 ) {
+    val context = LocalContext.current
     val userState = authViewModel.user
     val isLoggedIn = authViewModel.isLoggedIn
     val accessToken = authViewModel.accessToken ?: ""
@@ -73,6 +87,47 @@ fun HomeScreen(
     var isVisible by remember { mutableStateOf(false) }
     var showContent by remember { mutableStateOf(false) }
     var selectedTab by rememberSaveable { mutableStateOf(initialTab) }
+
+    // 🔔 Estado para el permiso de notificaciones
+    var showPermissionDialog by remember { mutableStateOf(false) }
+
+    // 🔔 Launcher para solicitar permiso de notificaciones (Android 13+)
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Log.d("HomeScreen", "✅ Permiso de notificaciones concedido")
+            Toast.makeText(context, "Notificaciones activadas", Toast.LENGTH_SHORT).show()
+        } else {
+            Log.w("HomeScreen", "⚠️ Permiso de notificaciones denegado")
+            showPermissionDialog = true
+        }
+    }
+
+    // 🔔 Solicitar permiso al iniciar
+    LaunchedEffect(Unit) {
+        delay(1000) // Esperar un poco después de que cargue la pantalla
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val permission = android.Manifest.permission.POST_NOTIFICATIONS
+
+            when {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    permission
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    Log.d("HomeScreen", "✅ Permiso de notificaciones ya concedido")
+                }
+                else -> {
+                    Log.d("HomeScreen", "🔔 Solicitando permiso de notificaciones")
+                    notificationPermissionLauncher.launch(permission)
+                }
+            }
+        }
+
+        // Crear el canal de notificaciones
+        NotificationHelper.createNotificationChannel(context)
+    }
 
     // Animaciones
     val logoScale by animateFloatAsState(
@@ -88,7 +143,6 @@ fun HomeScreen(
         animationSpec = tween(1000), label = ""
     )
 
-    // Color de acento específico (mantener si es necesario)
     val accentColor = Color(0xFFFF6B6B)
 
     LaunchedEffect(userState, isLoggedIn) {
@@ -119,10 +173,56 @@ fun HomeScreen(
         "N/A"
     }
 
+    // 🔔 Diálogo para cuando el usuario deniega el permiso
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Notificaciones desactivadas",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    "Para recibir recordatorios, necesitas activar las notificaciones en la configuración de tu dispositivo.\n\n" +
+                            "Ve a: Ajustes → Apps → RecuerdaGo → Notificaciones"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPermissionDialog = false
+                        // Abrir configuración de la app
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text("Ir a ajustes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDialog = false }) {
+                    Text("Ahora no")
+                }
+            }
+        )
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface, // En lugar de if (isDarkTheme)...
+                containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary
             ) {
                 NavigationBarItem(
@@ -135,7 +235,7 @@ fun HomeScreen(
                             tint = if (selectedTab == 0)
                                 MaterialTheme.colorScheme.primary
                             else
-                                MaterialTheme.colorScheme.onSurfaceVariant // En lugar de Color.Gray
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 )
@@ -201,7 +301,7 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(getBackgroundGradient()) // Usar el gradiente global
+                .background(getBackgroundGradient())
                 .padding(paddingValues)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -223,13 +323,13 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Default.LocationOn,
                             contentDescription = "Ubicación",
-                            tint = MaterialTheme.colorScheme.primary, // En lugar de primaryColor
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(50.dp)
                         )
                         Icon(
                             imageVector = Icons.Default.AccessAlarm,
                             contentDescription = "Alarma",
-                            tint = accentColor, // Mantener el color de acento
+                            tint = accentColor,
                             modifier = Modifier
                                 .size(20.dp)
                                 .offset(x = 15.dp, y = (-15).dp)
@@ -250,7 +350,7 @@ fun HomeScreen(
                             text = "RecuerdaGo",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary // En lugar de primaryColor
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }

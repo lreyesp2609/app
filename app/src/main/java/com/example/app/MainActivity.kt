@@ -43,10 +43,13 @@ import androidx.compose.ui.unit.dp
 import com.example.app.screen.auth.RegisterScreen
 import com.example.app.screen.recordatorios.components.AddReminderScreen
 import com.example.app.screen.recordatorios.components.ReminderMapScreen
+import com.example.app.utils.NotificationHelper
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        NotificationHelper.createNotificationChannel(this)
 
         val authViewModel: AuthViewModel = ViewModelProvider(
             this,
