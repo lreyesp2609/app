@@ -1,5 +1,6 @@
 package com.example.app.viewmodel
 
+import android.app.NotificationManager
 import android.content.Context
 import android.media.Ringtone
 import android.media.RingtoneManager
@@ -8,19 +9,23 @@ import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.app.NotificationCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.app.models.Reminder
 import com.example.app.models.ReminderEntity
 import com.example.app.network.RetrofitClient
+import com.example.app.screen.mapa.calcularDistancia
 import com.example.app.screen.recordatorios.components.scheduleReminder
+import com.example.app.utils.NotificationHelper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 class ReminderViewModel(
     private val repository: ReminderRepository
@@ -235,6 +240,74 @@ class ReminderViewModel(
     // Limpiar error
     fun clearError() {
         _error.value = null
+    }
+
+    private val activeGeofences = mutableSetOf<Int>()
+
+    // 🔹 Llamar esta función desde tu LocationTracker
+    fun handleLocationUpdate(context: Context, lat: Double, lon: Double) {
+        viewModelScope.launch {
+            val reminders = repository.getLocalReminders().filter {
+                it.reminder_type == "location" || it.reminder_type == "both"
+            }
+
+            for (reminder in reminders) {
+                val distance = calcularDistancia(
+                    lat, lon,
+                    reminder.latitude ?: continue,
+                    reminder.longitude ?: continue
+                )
+
+                val inside = distance <= (reminder.radius ?: 0f)
+                val wasInside = activeGeofences.contains(reminder.id)
+
+                if (inside && !wasInside) {
+                    // 🔹 Entró al área
+                    activeGeofences.add(reminder.id)
+
+                    if (reminder.trigger_type == "enter" || reminder.trigger_type == "both") {
+                        Log.d("ReminderVM", "🚪 Entró al área de ${reminder.title}")
+                        triggerLocationNotification(context, reminder, "Entraste en la zona")
+                    }
+                } else if (!inside && wasInside) {
+                    // 🔹 Salió del área
+                    activeGeofences.remove(reminder.id)
+
+                    if (reminder.trigger_type == "exit" || reminder.trigger_type == "both") {
+                        Log.d("ReminderVM", "🏃‍♂️ Salió del área de ${reminder.title}")
+                        triggerLocationNotification(context, reminder, "Saliste de la zona")
+                    }
+                }
+            }
+        }
+    }
+
+    // 🔹 Muestra una notificación igual que ReminderReceiver
+    private fun triggerLocationNotification(
+        context: Context,
+        reminder: ReminderEntity,
+        transition: String
+    ) {
+        NotificationHelper.createNotificationChannel(context)
+
+        val builder = NotificationCompat.Builder(context, NotificationHelper.CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(reminder.title)
+            .setContentText("${reminder.description ?: ""} ($transition)")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setDefaults(0)
+
+        if (reminder.sound) {
+            builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+        }
+        if (reminder.vibration) {
+            builder.setVibrate(longArrayOf(0, 400, 200, 400))
+        }
+
+        val manager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(Random.nextInt(), builder.build())
     }
 
     override fun onCleared() {
