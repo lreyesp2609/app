@@ -5,29 +5,26 @@ import com.example.app.network.ReminderDao
 
 class ReminderRepository(private val dao: ReminderDao) {
 
-    // Obtener todos los recordatorios locales
     suspend fun getLocalReminders(): List<ReminderEntity> = dao.getAllReminders()
 
-    // Obtener un recordatorio por ID
     suspend fun getReminderById(id: Int): ReminderEntity? = dao.getReminderById(id)
 
-    // Guardar un solo recordatorio
     suspend fun saveReminder(reminder: ReminderEntity) {
-        dao.insertReminder(reminder)
+        dao.insertReminder(reminder) // Por defecto is_active=true, is_deleted=false
     }
 
-    // Actualizar un recordatorio existente
     suspend fun updateReminder(reminder: ReminderEntity) {
         dao.updateReminder(reminder)
     }
 
-    // Eliminar un recordatorio
-    suspend fun deleteReminder(reminder: ReminderEntity) {
-        dao.deleteReminder(reminder)
-    }
-
-    // Eliminar un recordatorio por ID
+    // Eliminación
     suspend fun deleteReminderById(id: Int) {
         dao.deleteReminderById(id)
     }
+
+    // Habilitar/deshabilitar
+    suspend fun setReminderActive(reminderId: Int, active: Boolean) {
+        dao.setReminderActive(reminderId, active)
+    }
 }
+

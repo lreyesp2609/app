@@ -1,12 +1,15 @@
 package com.example.app.network
 
+import com.example.app.BuildConfig
+import com.example.app.utils.DaysTypeAdapter
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import okhttp3.logging.HttpLoggingInterceptor.Level
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
-import com.example.app.BuildConfig
 
 object RetrofitClient {
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -20,11 +23,18 @@ object RetrofitClient {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    private val gson = GsonBuilder()
+        .registerTypeAdapter(
+            object : TypeToken<List<String>?>() {}.type,
+            DaysTypeAdapter()
+        )
+        .create()
+
     private val retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(BuildConfig.BASE_URL)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))  // ✅ Usar gson personalizado
             .build()
     }
 

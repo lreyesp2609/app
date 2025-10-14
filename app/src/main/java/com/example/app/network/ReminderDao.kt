@@ -6,10 +6,10 @@ import com.example.app.models.ReminderEntity
 @Dao
 interface ReminderDao {
 
-    @Query("SELECT * FROM reminders ORDER BY id DESC")
+    @Query("SELECT * FROM reminders WHERE is_deleted = 0 AND is_active = 1 ORDER BY id DESC")
     suspend fun getAllReminders(): List<ReminderEntity>
 
-    @Query("SELECT * FROM reminders WHERE id = :reminderId LIMIT 1")
+    @Query("SELECT * FROM reminders WHERE id = :reminderId AND is_deleted = 0 LIMIT 1")
     suspend fun getReminderById(reminderId: Int): ReminderEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -18,9 +18,9 @@ interface ReminderDao {
     @Update
     suspend fun updateReminder(reminder: ReminderEntity)
 
-    @Delete
-    suspend fun deleteReminder(reminder: ReminderEntity)
-
-    @Query("DELETE FROM reminders WHERE id = :reminderId")
+    @Query("UPDATE reminders SET is_deleted = 1 WHERE id = :reminderId")
     suspend fun deleteReminderById(reminderId: Int)
+
+    @Query("UPDATE reminders SET is_active = :active WHERE id = :reminderId")
+    suspend fun setReminderActive(reminderId: Int, active: Boolean)
 }

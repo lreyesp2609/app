@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -50,6 +51,8 @@ fun RemindersScreen(
 
     var showContent by remember { mutableStateOf(false) }
     var showStats by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
 
     // Animación de entrada
     LaunchedEffect(Unit) {
@@ -63,6 +66,48 @@ fun RemindersScreen(
     val reminders = viewModel.reminders
     val isLoading = viewModel.isLoading
     val hasReminders = reminders.isNotEmpty()
+
+    // Diálogo de confirmación de eliminación
+    if (showDeleteDialog && reminderToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = {
+                Text(text = "Eliminar recordatorio")
+            },
+            text = {
+                Text(text = "¿Estás seguro de que deseas eliminar \"${reminderToDelete?.title}\"?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        reminderToDelete?.id?.let { id ->
+                            viewModel.deleteReminder(context, id) {
+                                showDeleteDialog = false
+                                reminderToDelete = null
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 
     Box(
         modifier = modifier
@@ -206,7 +251,15 @@ fun RemindersScreen(
                                     reminder = reminder,
                                     onClick = { /* TODO: Navegar a detalle */ },
                                     onEdit = { /* TODO: Editar */ },
-                                    onDelete = { /* TODO: Eliminar */ }
+                                    onDelete = {
+                                        reminderToDelete = reminder
+                                        showDeleteDialog = true
+                                    },
+                                    onToggleActive = { isActive ->
+                                        reminder.id?.let { id ->
+                                            viewModel.toggleReminderActive(id, isActive, context)
+                                        }
+                                    }
                                 )
                             }
 
@@ -387,22 +440,28 @@ fun ReminderCard(
     reminder: Reminder,
     onClick: () -> Unit = {},
     onEdit: () -> Unit = {},
-    onDelete: () -> Unit = {}
+    onDelete: () -> Unit = {},
+    onToggleActive: (Boolean) -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var isActive by remember(reminder.is_active) { mutableStateOf(reminder.is_active) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { expanded = !expanded },
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isActive) {
+                MaterialTheme.colorScheme.surface
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            }
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header del recordatorio
+            // Header del recordatorio con Switch
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -423,7 +482,8 @@ fun ReminderCard(
                                     else -> MaterialTheme.colorScheme.primaryContainer
                                 },
                                 shape = CircleShape
-                            ),
+                            )
+                            .alpha(if (isActive) 1f else 0.5f),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -449,7 +509,9 @@ fun ReminderCard(
                             text = reminder.title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface.copy(
+                                alpha = if (isActive) 1f else 0.5f
+                            )
                         )
                         Text(
                             text = when (reminder.reminder_type) {
@@ -458,10 +520,27 @@ fun ReminderCard(
                                 else -> "Ubicación y fecha"
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(
+                                alpha = if (isActive) 0.6f else 0.3f
+                            )
                         )
                     }
                 }
+
+                // Switch para activar/desactivar
+                Switch(
+                    checked = isActive,
+                    onCheckedChange = { newState ->
+                        isActive = newState
+                        onToggleActive(newState)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
 
                 IconButton(onClick = { expanded = !expanded }) {
                     Icon(

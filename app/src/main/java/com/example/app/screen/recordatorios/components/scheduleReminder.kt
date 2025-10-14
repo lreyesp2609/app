@@ -12,7 +12,6 @@ import kotlin.jvm.java
 fun scheduleReminder(context: Context, reminder: ReminderEntity) {
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    // ✅ IMPORTANTE: reminder.days ahora es UN SOLO DÍA (no múltiples)
     Log.d("ScheduleReminder", "🔹 Programando alarma para UN día:")
     Log.d("ScheduleReminder", "   Título: ${reminder.title}")
     Log.d("ScheduleReminder", "   Día: ${reminder.days}")
@@ -36,7 +35,6 @@ fun scheduleReminder(context: Context, reminder: ReminderEntity) {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
-    // 🔹 Calcular la próxima ocurrencia del día de la semana
     val triggerAtMillis = calculateNextOccurrence(reminder.days, reminder.time)
 
     if (triggerAtMillis == null) {
@@ -68,7 +66,6 @@ private fun calculateNextOccurrence(dayName: String?, time: String?): Long? {
         return null
     }
 
-    // ✅ VALIDAR: dayName debe ser UN SOLO DÍA, no múltiples
     if (dayName.contains(",")) {
         Log.e("ScheduleReminder", "❌ ERROR: Se recibieron múltiples días: '$dayName'")
         Log.e("ScheduleReminder", "   Esta función solo acepta UN día a la vez")
