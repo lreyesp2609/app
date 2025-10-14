@@ -30,8 +30,6 @@ import com.example.app.screen.components.AppTextField
 import com.example.app.viewmodel.ReminderRepository
 import com.example.app.viewmodel.ReminderViewModel
 import com.example.app.viewmodel.ReminderViewModelFactory
-import java.text.SimpleDateFormat
-import java.util.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,7 +42,9 @@ fun AddReminderScreen(
 ) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var selectedDate by remember { mutableStateOf<Long?>(null) }
+
+    // 🔹 NUEVO: Lista de días seleccionados
+    var selectedDays by remember { mutableStateOf(setOf<String>()) }
     var selectedTime by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
     // Campos para geolocalización
@@ -60,17 +60,13 @@ fun AddReminderScreen(
 
     // Estados de validación
     var showTitleError by remember { mutableStateOf(false) }
-    var showDateError by remember { mutableStateOf(false) }
+    var showDaysError by remember { mutableStateOf(false) }
     var showTimeError by remember { mutableStateOf(false) }
     var showLocationError by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
-
-    // DatePicker Dialog
-    val datePickerState = rememberDatePickerState()
-    var showDatePicker by remember { mutableStateOf(false) }
 
     // TimePicker Dialog
     var showTimePicker by remember { mutableStateOf(false) }
@@ -81,28 +77,6 @@ fun AddReminderScreen(
     val viewModel: ReminderViewModel = viewModel(
         factory = ReminderViewModelFactory(repository)
     )
-
-    if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    selectedDate = datePickerState.selectedDateMillis
-                    showDatePicker = false
-                    showDateError = false
-                }) {
-                    Text("Aceptar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancelar")
-                }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
 
     if (showTimePicker) {
         val timePickerState = rememberTimePickerState()
@@ -326,8 +300,7 @@ fun AddReminderScreen(
                 text = "Ubicación",
                 onClick = {
                     reminderType = "location"
-                    // Resetear errores de fecha/hora
-                    showDateError = false
+                    showDaysError = false
                     showTimeError = false
                 },
                 modifier = Modifier.weight(1f),
@@ -335,10 +308,9 @@ fun AddReminderScreen(
             )
 
             AppButton(
-                text = "Fecha",
+                text = "Hora",
                 onClick = {
                     reminderType = "datetime"
-                    // Resetear error de ubicación
                     showLocationError = false
                 },
                 modifier = Modifier.weight(1f),
@@ -376,13 +348,149 @@ fun AddReminderScreen(
                 Text(
                     text = when (reminderType) {
                         "location" -> "Se activará cuando llegues al lugar"
-                        "datetime" -> "Campos obligatorios: fecha y hora *"
-                        "both" -> "Campos obligatorios: fecha, hora y ubicación *"
+                        "datetime" -> "Campos obligatorios: días y hora *"
+                        "both" -> "Campos obligatorios: días, hora y ubicación *"
                         else -> ""
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
+            }
+        }
+
+        // 🔹 SELECTOR DE DÍAS DE LA SEMANA (solo si incluye tiempo)
+        if (reminderType == "datetime" || reminderType == "both") {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "Días de la semana *",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (showDaysError)
+                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        val daysOfWeek = listOf(
+                            "Lunes", "Martes", "Miércoles", "Jueves",
+                            "Viernes", "Sábado", "Domingo"
+                        )
+
+                        // Botones rápidos
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AppButton(
+                                text = "Todos",
+                                onClick = {
+                                    selectedDays = daysOfWeek.toSet()
+                                    showDaysError = false
+                                },
+                                modifier = Modifier.weight(1f),
+                                outlined = true
+                            )
+                            AppButton(
+                                text = "Limpiar",
+                                onClick = { selectedDays = emptySet() },
+                                modifier = Modifier.weight(1f),
+                                outlined = true
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Días individuales
+                        daysOfWeek.forEach { day ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        selectedDays = if (selectedDays.contains(day)) {
+                                            selectedDays - day
+                                        } else {
+                                            selectedDays + day
+                                        }
+                                        if (selectedDays.isNotEmpty()) showDaysError = false
+                                    }
+                                    .background(
+                                        if (selectedDays.contains(day))
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        else
+                                            Color.Transparent
+                                    )
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = day,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (selectedDays.contains(day))
+                                        FontWeight.SemiBold
+                                    else
+                                        FontWeight.Normal
+                                )
+                                Checkbox(
+                                    checked = selectedDays.contains(day),
+                                    onCheckedChange = {
+                                        selectedDays = if (it) {
+                                            selectedDays + day
+                                        } else {
+                                            selectedDays - day
+                                        }
+                                        if (selectedDays.isNotEmpty()) showDaysError = false
+                                    }
+                                )
+                            }
+                        }
+
+                        if (showDaysError) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Debes seleccionar al menos un día",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+
+                // 🔹 SELECTOR DE HORA
+                Column {
+                    AppButton(
+                        text = if (selectedTime != null) {
+                            String.format("%02d:%02d", selectedTime!!.first, selectedTime!!.second)
+                        } else "Seleccionar hora *",
+                        onClick = {
+                            showTimePicker = true
+                            if (selectedTime != null) showTimeError = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        outlined = true,
+                        leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) },
+                        trailingIcon = { Icon(Icons.Default.KeyboardArrowRight, contentDescription = null) }
+                    )
+                    AnimatedVisibility(
+                        visible = showTimeError,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Text(
+                            text = "Debes seleccionar una hora",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                        )
+                    }
+                }
             }
         }
 
@@ -437,68 +545,6 @@ fun AddReminderScreen(
                         modifier = Modifier.fillMaxWidth(),
                         outlined = triggerType != "both"
                     )
-                }
-            }
-        }
-
-        // Selector de fecha y hora (solo si incluye fecha)
-        if (reminderType == "datetime" || reminderType == "both") {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column {
-                    AppButton(
-                        text = if (selectedDate != null) {
-                            val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                            dateFormat.format(Date(selectedDate!!))
-                        } else "Seleccionar fecha *",
-                        onClick = {
-                            showDatePicker = true
-                            if (selectedDate != null) showDateError = false
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        outlined = true,
-                        leadingIcon = { Icon(Icons.Default.DateRange, contentDescription = null) },
-                        trailingIcon = { Icon(Icons.Default.KeyboardArrowRight, contentDescription = null) }
-                    )
-                    AnimatedVisibility(
-                        visible = showDateError,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut()
-                    ) {
-                        Text(
-                            text = "Debes seleccionar una fecha",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-                        )
-                    }
-                }
-
-                Column {
-                    AppButton(
-                        text = if (selectedTime != null) {
-                            String.format("%02d:%02d", selectedTime!!.first, selectedTime!!.second)
-                        } else "Seleccionar hora *",
-                        onClick = {
-                            showTimePicker = true
-                            if (selectedTime != null) showTimeError = false
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        outlined = true,
-                        leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) },
-                        trailingIcon = { Icon(Icons.Default.KeyboardArrowRight, contentDescription = null) }
-                    )
-                    AnimatedVisibility(
-                        visible = showTimeError,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut()
-                    ) {
-                        Text(
-                            text = "Debes seleccionar una hora",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-                        )
-                    }
                 }
             }
         }
@@ -637,26 +683,30 @@ fun AddReminderScreen(
         AppButton(
             text = "Guardar recordatorio",
             onClick = {
-                // Validar campos según el tipo de recordatorio
+                // ✅ Evitar múltiples clics si ya está cargando
+                if (viewModel.isLoading) {
+                    return@AppButton
+                }
+
                 var hasError = false
 
-                // Validar título (siempre obligatorio)
+                // Validar título
                 if (title.isEmpty()) {
                     showTitleError = true
                     hasError = true
                     coroutineScope.launch {
-                        scrollState.animateScrollTo(0) // Scroll al inicio donde está el título
+                        scrollState.animateScrollTo(0)
                     }
                     Toast.makeText(context, "Debes ingresar un título", Toast.LENGTH_SHORT).show()
                     return@AppButton
                 }
 
-                // Validar fecha y hora si es necesario
+                // Validar días y hora si es necesario
                 if (reminderType == "datetime" || reminderType == "both") {
-                    if (selectedDate == null) {
-                        showDateError = true
+                    if (selectedDays.isEmpty()) {
+                        showDaysError = true
                         hasError = true
-                        Toast.makeText(context, "Debes seleccionar una fecha", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Debes seleccionar al menos un día", Toast.LENGTH_SHORT).show()
                         return@AppButton
                     }
                     if (selectedTime == null) {
@@ -673,21 +723,20 @@ fun AddReminderScreen(
                     showLocationError = true
                     hasError = true
                     coroutineScope.launch {
-                        scrollState.animateScrollTo(0) // Scroll al inicio donde está la ubicación
+                        scrollState.animateScrollTo(0)
                     }
                     Toast.makeText(context, "Debes seleccionar una ubicación válida", Toast.LENGTH_SHORT).show()
                     return@AppButton
                 }
 
-                // Si todo está bien, crear el recordatorio
+                // CAMBIADO: Crear UN SOLO recordatorio con TODOS los días
                 if (!hasError) {
-                    val dateStr = selectedDate?.let {
-                        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                        sdf.format(Date(it))
-                    }
                     val timeStr = selectedTime?.let {
                         "${it.first.toString().padStart(2,'0')}:${it.second.toString().padStart(2,'0')}:00"
                     }
+
+                    // Si no hay días seleccionados (solo ubicación), enviar null
+                    val daysList = if (selectedDays.isEmpty()) null else selectedDays.toList()
 
                     val reminder = Reminder(
                         title = title,
@@ -697,7 +746,7 @@ fun AddReminderScreen(
                         vibration = enableVibration,
                         sound = enableSound,
                         sound_type = if (enableSound) selectedSoundType else null,
-                        date = dateStr,
+                        days = daysList,
                         time = timeStr,
                         location = selectedAddress,
                         latitude = latitude,
@@ -715,7 +764,8 @@ fun AddReminderScreen(
             },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
-            outlined = false
+            outlined = false,
+            enabled = !viewModel.isLoading
         )
     }
 }

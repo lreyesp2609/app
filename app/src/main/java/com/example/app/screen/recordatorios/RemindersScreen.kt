@@ -555,7 +555,7 @@ fun ReminderCard(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "${reminder.date ?: "-"} • ${reminder.time ?: "-"}",
+                                text = "${reminder.days ?: "-"} • ${reminder.time ?: "-"}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )

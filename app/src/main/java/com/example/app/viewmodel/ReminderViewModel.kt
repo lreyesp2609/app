@@ -16,7 +16,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.app.models.Reminder
 import com.example.app.models.ReminderEntity
 import com.example.app.network.RetrofitClient
-import com.example.app.screen.mapa.calcularDistancia
 import com.example.app.screen.recordatorios.components.scheduleReminder
 import com.example.app.utils.NotificationHelper
 import kotlinx.coroutines.Job
@@ -37,7 +36,7 @@ class ReminderViewModel(
     var reminders by mutableStateOf<List<Reminder>>(emptyList())
         private set
 
-    // Estados para UI (compatible con el código anterior)
+    // Estados para UI
     var isLoading by mutableStateOf(false)
         private set
 
@@ -102,13 +101,15 @@ class ReminderViewModel(
                     } catch (e: Exception) {
                         Log.e("ReminderViewModel", "⚠️ Error al enviar a API: ${e.message}")
                         Toast.makeText(context, "Error de red: ${e.message}", Toast.LENGTH_SHORT).show()
-                        // Continuar de todas formas para guardar localmente
                     }
                 }
 
                 // 2️⃣ GUARDAR LOCALMENTE (siempre se hace)
                 val localId = reminderId ?: System.currentTimeMillis().toInt()
                 Log.d("ReminderViewModel", "🔹 Creando ReminderEntity con ID: $localId")
+
+                // Convertir List<String> a String separado por comas
+                val daysString = reminder.days?.joinToString(",")
 
                 val reminderEntity = ReminderEntity(
                     id = localId,
@@ -119,7 +120,7 @@ class ReminderViewModel(
                     sound_type = reminder.sound_type,
                     vibration = reminder.vibration,
                     sound = reminder.sound,
-                    date = reminder.date,
+                    days = daysString,
                     time = reminder.time,
                     location = reminder.location,
                     latitude = reminder.latitude,
@@ -132,21 +133,47 @@ class ReminderViewModel(
                 repository.saveReminder(reminderEntity)
                 Log.d("ReminderViewModel", "💾 Recordatorio guardado localmente")
 
-                // 3️⃣ PROGRAMAR ALARMA (funciona sin internet una vez programada)
+                // 3️⃣ PROGRAMAR ALARMA - ⚠️ SOLO para recordatorios con TIEMPO
                 Log.d("ReminderViewModel", "🔹 Verificando si programar alarma...")
                 Log.d("ReminderViewModel", "   reminder_type: ${reminder.reminder_type}")
-                Log.d("ReminderViewModel", "   date: ${reminder.date}, time: ${reminder.time}")
+                Log.d("ReminderViewModel", "   días: ${reminder.days}, hora: ${reminder.time}")
 
-                if (reminder.reminder_type == "datetime" || reminder.reminder_type == "both") {
-                    if (reminder.date != null && reminder.time != null) {
-                        Log.d("ReminderViewModel", "🔹 Llamando a scheduleReminder()...")
-                        scheduleReminder(context, reminderEntity)
-                        Log.d("ReminderViewModel", "⏰ Alarma programada para: ${reminder.date} ${reminder.time}")
+                val shouldScheduleAlarm = when (reminder.reminder_type) {
+                    "datetime" -> true  // ✅ Fecha y hora
+                    "location" -> false // Solo ubicación
+                    "both" -> true      // Tiempo + ubicación
+                    else -> false
+                }
+
+                if (shouldScheduleAlarm) {
+                    // Validar que tenga días Y hora
+                    if (!reminder.days.isNullOrEmpty() && !reminder.time.isNullOrEmpty()) {
+                        Log.d("ReminderViewModel", "⏰ Programando alarmas para ${reminder.days.size} días...")
+
+                        // ✅ PROGRAMAR UNA ALARMA POR CADA DÍA
+                        reminder.days.forEachIndexed { index, day ->
+                            // Crear un ReminderEntity temporal con un solo día
+                            // Usar IDs únicos para cada día (base_id * 100 + index)
+                            val uniqueId = localId * 100 + index
+
+                            val singleDayReminder = reminderEntity.copy(
+                                id = uniqueId,  // ID único para cada alarma
+                                days = day      // Un solo día: "Lunes", "Martes", etc.
+                            )
+
+                            scheduleReminder(context, singleDayReminder)
+                            Log.d("ReminderViewModel", "   ✅ Alarma $index: $day a las ${reminder.time} (ID: $uniqueId)")
+                        }
+
+                        Log.d("ReminderViewModel", "✅ ${reminder.days.size} alarmas programadas exitosamente")
                     } else {
-                        Log.w("ReminderViewModel", "⚠️ No se puede programar alarma: falta fecha/hora")
+                        Log.w("ReminderViewModel", "⚠️ No se puede programar alarma: faltan días u hora")
+                        Log.w("ReminderViewModel", "   Días recibidos: ${reminder.days}")
+                        Log.w("ReminderViewModel", "   Hora recibida: ${reminder.time}")
                     }
                 } else {
                     Log.d("ReminderViewModel", "ℹ️ No se programa alarma (tipo: ${reminder.reminder_type})")
+                    Log.d("ReminderViewModel", "📍 El LocationReminderService manejará este recordatorio")
                 }
 
                 // 4️⃣ RECARGAR LA LISTA
@@ -175,13 +202,40 @@ class ReminderViewModel(
                 if (response.isSuccessful) {
                     reminders = response.body() ?: emptyList()
                 } else {
-                    // Manejar error
                     Log.e("ReminderVM", "Error: ${response.errorBody()?.string()}")
                 }
             } catch (e: Exception) {
                 Log.e("ReminderVM", "Error de red: ${e.message}")
             }
             isLoading = false
+        }
+    }
+
+    // Eliminar recordatorio
+    fun deleteReminder(context: Context, reminderId: Int, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                isLoading = true
+
+                Log.d("ReminderViewModel", "🗑️ Eliminando recordatorio ID: $reminderId")
+
+                // 2️⃣ Eliminar de la base de datos local
+                repository.deleteReminderById(reminderId)
+
+                Log.d("ReminderViewModel", "✅ Recordatorio eliminado")
+                Toast.makeText(context, "Recordatorio eliminado", Toast.LENGTH_SHORT).show()
+
+                // 3️⃣ Recargar lista
+                loadReminders()
+
+                onSuccess()
+
+            } catch (e: Exception) {
+                Log.e("ReminderViewModel", "❌ Error al eliminar: ${e.message}")
+                Toast.makeText(context, "Error al eliminar: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isLoading = false
+            }
         }
     }
 
@@ -240,74 +294,6 @@ class ReminderViewModel(
     // Limpiar error
     fun clearError() {
         _error.value = null
-    }
-
-    private val activeGeofences = mutableSetOf<Int>()
-
-    // 🔹 Llamar esta función desde tu LocationTracker
-    fun handleLocationUpdate(context: Context, lat: Double, lon: Double) {
-        viewModelScope.launch {
-            val reminders = repository.getLocalReminders().filter {
-                it.reminder_type == "location" || it.reminder_type == "both"
-            }
-
-            for (reminder in reminders) {
-                val distance = calcularDistancia(
-                    lat, lon,
-                    reminder.latitude ?: continue,
-                    reminder.longitude ?: continue
-                )
-
-                val inside = distance <= (reminder.radius ?: 0f)
-                val wasInside = activeGeofences.contains(reminder.id)
-
-                if (inside && !wasInside) {
-                    // 🔹 Entró al área
-                    activeGeofences.add(reminder.id)
-
-                    if (reminder.trigger_type == "enter" || reminder.trigger_type == "both") {
-                        Log.d("ReminderVM", "🚪 Entró al área de ${reminder.title}")
-                        triggerLocationNotification(context, reminder, "Entraste en la zona")
-                    }
-                } else if (!inside && wasInside) {
-                    // 🔹 Salió del área
-                    activeGeofences.remove(reminder.id)
-
-                    if (reminder.trigger_type == "exit" || reminder.trigger_type == "both") {
-                        Log.d("ReminderVM", "🏃‍♂️ Salió del área de ${reminder.title}")
-                        triggerLocationNotification(context, reminder, "Saliste de la zona")
-                    }
-                }
-            }
-        }
-    }
-
-    // 🔹 Muestra una notificación igual que ReminderReceiver
-    private fun triggerLocationNotification(
-        context: Context,
-        reminder: ReminderEntity,
-        transition: String
-    ) {
-        NotificationHelper.createNotificationChannel(context)
-
-        val builder = NotificationCompat.Builder(context, NotificationHelper.CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(reminder.title)
-            .setContentText("${reminder.description ?: ""} ($transition)")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setDefaults(0)
-
-        if (reminder.sound) {
-            builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
-        }
-        if (reminder.vibration) {
-            builder.setVibrate(longArrayOf(0, 400, 200, 400))
-        }
-
-        val manager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(Random.nextInt(), builder.build())
     }
 
     override fun onCleared() {

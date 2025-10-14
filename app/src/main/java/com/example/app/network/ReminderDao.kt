@@ -1,26 +1,26 @@
 package com.example.app.network
 
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
+import androidx.room.*
 import com.example.app.models.ReminderEntity
 
 @Dao
 interface ReminderDao {
-    @Query("SELECT * FROM reminders")
+
+    @Query("SELECT * FROM reminders ORDER BY id DESC")
     suspend fun getAllReminders(): List<ReminderEntity>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertReminder(reminder: ReminderEntity)
+    @Query("SELECT * FROM reminders WHERE id = :reminderId LIMIT 1")
+    suspend fun getReminderById(reminderId: Int): ReminderEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertReminders(reminders: List<ReminderEntity>)
+    suspend fun insertReminder(reminder: ReminderEntity): Long
+
+    @Update
+    suspend fun updateReminder(reminder: ReminderEntity)
 
     @Delete
     suspend fun deleteReminder(reminder: ReminderEntity)
 
-    @Query("DELETE FROM reminders")
-    suspend fun clearAll()
+    @Query("DELETE FROM reminders WHERE id = :reminderId")
+    suspend fun deleteReminderById(reminderId: Int)
 }
