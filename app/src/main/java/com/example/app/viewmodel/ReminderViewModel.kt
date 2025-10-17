@@ -103,7 +103,7 @@ class ReminderViewModel(
 
                 var reminderId: Int? = null
 
-                // 1️⃣ ENVIAR A LA API
+                // 1️⃣ ENVIAR A LA API (OBLIGATORIO)
                 if (token != null) {
                     try {
                         Log.d("ReminderViewModel", "🌐 Enviando recordatorio a la API...")
@@ -120,29 +120,50 @@ class ReminderViewModel(
                             Log.d("ReminderViewModel", "✅ Recordatorio creado en API con ID: $reminderId")
                             Toast.makeText(context, "Recordatorio creado", Toast.LENGTH_SHORT).show()
                         } else {
-                            Log.e("ReminderViewModel", "⚠️ Error en API: ${response.code()}")
-                            val error = response.errorBody()?.string()
-                            Toast.makeText(context, "Error: $error", Toast.LENGTH_LONG).show()
+                            // ❌ ERROR EN API - DETENER EJECUCIÓN
+                            val errorBody = response.errorBody()?.string()
+                            val errorMessage = try {
+                                // Intentar parsear el JSON de error
+                                val jsonError = org.json.JSONObject(errorBody ?: "{}")
+                                jsonError.optString("detail", "Error desconocido")
+                            } catch (e: Exception) {
+                                errorBody ?: "Error ${response.code()}"
+                            }
+
+                            Log.e("ReminderViewModel", "❌ Error en API: ${response.code()}")
+                            Log.e("ReminderViewModel", "   Detalle: $errorMessage")
+
+                            Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+
+                            // ✅ IMPORTANTE: Detener ejecución
+                            _error.value = errorMessage
+                            return@launch  // ← SALIR AQUÍ, NO CONTINUAR
                         }
                     } catch (e: Exception) {
-                        Log.e("ReminderViewModel", "⚠️ Error al enviar a API: ${e.message}")
+                        Log.e("ReminderViewModel", "❌ Error de red: ${e.message}")
                         e.printStackTrace()
-                        Toast.makeText(context, "Error de red: ${e.message}", Toast.LENGTH_SHORT).show()
+
+                        val errorMsg = "Error de red: ${e.message}"
+                        Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
+                        _error.value = errorMsg
+
+                        // ✅ IMPORTANTE: Detener ejecución
+                        return@launch  // ← SALIR AQUÍ, NO CONTINUAR
                     }
+                } else {
+                    // Sin token
+                    val errorMsg = "No hay sesión activa"
+                    Log.e("ReminderViewModel", "❌ $errorMsg")
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
+                    _error.value = errorMsg
+                    return@launch
                 }
 
-                // 2️⃣ GUARDAR LOCALMENTE
+                // 2️⃣ GUARDAR LOCALMENTE (solo si API fue exitosa)
                 val localId = reminderId ?: System.currentTimeMillis().toInt()
                 Log.d("ReminderViewModel", "🔹 Creando ReminderEntity con ID: $localId")
 
-                // ✅ CORRECCIÓN: Convertir List<String> a String con joinToString
                 val daysString = reminder.days?.joinToString(",")
-
-                Log.d("ReminderViewModel", "━━━━━━━━━━━━━━━━━━━━━━━━━━")
-                Log.d("ReminderViewModel", "🔍 DEBUG DÍAS:")
-                Log.d("ReminderViewModel", "   reminder.days (List): ${reminder.days}")
-                Log.d("ReminderViewModel", "   daysString (String): $daysString")
-                Log.d("ReminderViewModel", "━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
                 val reminderEntity = ReminderEntity(
                     id = localId,
@@ -153,7 +174,7 @@ class ReminderViewModel(
                     sound_type = reminder.sound_type,
                     vibration = reminder.vibration,
                     sound = reminder.sound,
-                    days = daysString,  // ✅ CORRECTO: String, no List
+                    days = daysString,
                     time = reminder.time,
                     location = reminder.location,
                     latitude = reminder.latitude,

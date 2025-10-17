@@ -73,6 +73,7 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import com.example.app.screen.grupos.CollaborativeGroupsScreen
 import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.services.LocationReminderService
@@ -465,7 +466,10 @@ fun HomeScreen(
                                 navController = navController,
                                 token = accessToken
                             )
-                            3 -> PlaceholderTab("Grupos Colaborativos", "Próximamente")
+                            3 -> CollaborativeGroupsScreen(
+                                navController = navController,
+                                token = accessToken
+                            )
                             4 -> SettingsScreen(
                                 userState = userState,
                                 onLogout = {

@@ -69,14 +69,3 @@ fun getBackgroundGradient(isDarkTheme: Boolean = isSystemInDarkTheme()): Brush {
         )
     }
 }
-
-// Función adicional para obtener colores específicos
-@Composable
-fun getPrimaryColor(isDarkTheme: Boolean = isSystemInDarkTheme()): Color {
-    return if (isDarkTheme) AppColors.WaikawaGray else AppColors.Chestnut
-}
-
-@Composable
-fun getBackgroundColor(isDarkTheme: Boolean = isSystemInDarkTheme()): Color {
-    return if (isDarkTheme) AppColors.Mirage else AppColors.Linen
-}

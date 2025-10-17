@@ -9,6 +9,9 @@ class ReminderRepository(private val dao: ReminderDao) {
 
     suspend fun getReminderById(id: Int): ReminderEntity? = dao.getReminderById(id)
 
+    suspend fun getAllRemindersForLocationService(): List<ReminderEntity> =
+        dao.getAllRemindersIncludingInactive()
+
     suspend fun saveReminder(reminder: ReminderEntity) {
         dao.insertReminder(reminder) // Por defecto is_active=true, is_deleted=false
     }
@@ -27,4 +30,3 @@ class ReminderRepository(private val dao: ReminderDao) {
         dao.setReminderActive(reminderId, active)
     }
 }
-

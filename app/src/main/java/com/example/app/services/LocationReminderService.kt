@@ -148,33 +148,68 @@ class LocationReminderService : Service() {
             stopSelf()
         }
     }
+
     private fun handleLocationUpdate(lat: Double, lon: Double) {
         serviceScope.launch {
             try {
                 Log.d("LocationService", "━━━━━━━━━━━━━━━━━━━━━━━━━━")
                 Log.d("LocationService", "📍 TU UBICACIÓN ACTUAL: $lat, $lon")
 
-                val allReminders = repository.getLocalReminders()
+                // ✅ CORRECCIÓN: Obtener TODOS (incluidos inactivos)
+                val allReminders = repository.getAllRemindersForLocationService()
                 Log.d("LocationService", "📋 Total recordatorios en BD: ${allReminders.size}")
 
-                val reminders = allReminders.filter {
+                // ✅ DEBUG: Mostrar estado de TODOS
+                allReminders.forEach {
+                    Log.d("LocationService", "   🔍 ID: ${it.id} | ${it.title}")
+                    Log.d("LocationService", "      ✓ is_active: ${it.is_active}")
+                    Log.d("LocationService", "      ✓ is_deleted: ${it.is_deleted}")
+                    Log.d("LocationService", "      ✓ type: ${it.reminder_type}")
+                }
+                Log.d("LocationService", "")
+
+                // ✅ Filtrar solo los ACTIVOS
+                val activeReminders = allReminders.filter {
                     val isLocationType = (it.reminder_type == "location" || it.reminder_type == "both")
                     val hasCoords = it.latitude != null && it.longitude != null
-                    val isActive = it.is_active
-                    val notDeleted = !it.is_deleted
+                    val isActive = it.is_active == true
+                    val notDeleted = it.is_deleted == false
 
-                    isLocationType && hasCoords && isActive && notDeleted
+                    val passes = isLocationType && hasCoords && isActive && notDeleted
+
+                    if (!passes && isLocationType) {
+                        Log.d("LocationService", "   ❌ ID ${it.id} rechazado:")
+                        Log.d("LocationService", "      hasCoords: $hasCoords")
+                        Log.d("LocationService", "      isActive: $isActive")
+                        Log.d("LocationService", "      notDeleted: $notDeleted")
+                    }
+
+                    passes
                 }
 
-                Log.d("LocationService", "✅ Recordatorios válidos: ${reminders.size}")
+                Log.d("LocationService", "✅ Recordatorios ACTIVOS: ${activeReminders.size}")
 
-                if (reminders.isEmpty()) {
-                    Log.w("LocationService", "⚠️ NO HAY RECORDATORIOS VÁLIDOS PARA PROCESAR")
+                // ✅ IMPORTANTE: Limpiar geofences de recordatorios inactivos
+                val inactiveIds = allReminders
+                    .filter { !it.is_active || it.is_deleted }
+                    .map { it.id }
+
+                if (inactiveIds.isNotEmpty()) {
+                    val removed = activeGeofences.intersect(inactiveIds.toSet())
+                    if (removed.isNotEmpty()) {
+                        Log.d("LocationService", "🧹 Limpiando geofences inactivos: $removed")
+                        activeGeofences.removeAll(inactiveIds.toSet())
+                    }
+                }
+
+                if (activeReminders.isEmpty()) {
+                    Log.w("LocationService", "⚠️ NO HAY RECORDATORIOS ACTIVOS")
                     Log.d("LocationService", "━━━━━━━━━━━━━━━━━━━━━━━━━━")
                     return@launch
                 }
 
-                for (reminder in reminders) {
+                // ✅ Procesar solo los ACTIVOS
+                for (reminder in activeReminders) {
                     try {
                         val reminderLat = reminder.latitude ?: continue
                         val reminderLon = reminder.longitude ?: continue
@@ -185,37 +220,59 @@ class LocationReminderService : Service() {
                         val inside = distance <= radius
                         val wasInside = activeGeofences.contains(reminder.id)
 
+                        Log.d("LocationService", "")
+                        Log.d("LocationService", "📌 ${reminder.title} (ID: ${reminder.id})")
+                        Log.d("LocationService", "   Distancia: ${distance.toInt()}m / Radio: ${radius.toInt()}m")
+                        Log.d("LocationService", "   Estado: inside=$inside | wasInside=$wasInside")
+                        Log.d("LocationService", "   Trigger: ${reminder.trigger_type}")
+
                         when {
                             inside && !wasInside -> {
                                 activeGeofences.add(reminder.id)
                                 if (reminder.trigger_type == "enter" || reminder.trigger_type == "both") {
+                                    Log.d("LocationService", "   🔔 DISPARANDO: ENTRADA")
                                     triggerLocationNotification(reminder, "Entraste en la zona")
+                                } else {
+                                    Log.d("LocationService", "   ⏭️ No dispara (trigger: ${reminder.trigger_type})")
                                 }
                             }
                             !inside && wasInside -> {
                                 activeGeofences.remove(reminder.id)
                                 if (reminder.trigger_type == "exit" || reminder.trigger_type == "both") {
+                                    Log.d("LocationService", "   🔔 DISPARANDO: SALIDA")
                                     triggerLocationNotification(reminder, "Saliste de la zona")
+                                } else {
+                                    Log.d("LocationService", "   ⏭️ No dispara (trigger: ${reminder.trigger_type})")
                                 }
+                            }
+                            inside && wasInside -> {
+                                Log.d("LocationService", "   ℹ️ Sigue dentro")
+                            }
+                            else -> {
+                                Log.d("LocationService", "   ℹ️ Fuera de zona")
                             }
                         }
 
                     } catch (e: Exception) {
-                        Log.e("LocationService", "❌ Error procesando ID ${reminder.id}: ${e.message}")
+                        Log.e("LocationService", "❌ Error ID ${reminder.id}: ${e.message}")
                     }
                 }
 
+                Log.d("LocationService", "🗺️ Geofences activos: $activeGeofences")
                 Log.d("LocationService", "━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
             } catch (e: Exception) {
                 Log.e("LocationService", "❌ ERROR CRÍTICO: ${e.message}")
+                e.printStackTrace()
             }
         }
     }
+
     private fun triggerLocationNotification(reminder: ReminderEntity, transition: String) {
         Log.d("LocationService", "🔔 CREANDO NOTIFICACIÓN:")
         Log.d("LocationService", "   Título: ${reminder.title}")
         Log.d("LocationService", "   Transición: $transition")
+        Log.d("LocationService", "   Estado activo: ${reminder.is_active}") // ✅ Log adicional
 
         NotificationHelper.createNotificationChannel(applicationContext)
 

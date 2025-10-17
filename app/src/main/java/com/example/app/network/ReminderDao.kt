@@ -12,6 +12,9 @@ interface ReminderDao {
     @Query("SELECT * FROM reminders WHERE id = :reminderId AND is_deleted = 0 LIMIT 1")
     suspend fun getReminderById(reminderId: Int): ReminderEntity?
 
+    @Query("SELECT * FROM reminders WHERE is_deleted = 0 ORDER BY id DESC")
+    suspend fun getAllRemindersIncludingInactive(): List<ReminderEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReminder(reminder: ReminderEntity): Long
 

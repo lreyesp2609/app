@@ -45,6 +45,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.app.screen.auth.RegisterScreen
+import com.example.app.screen.grupos.CollaborativeGroupsScreen
+import com.example.app.screen.grupos.components.CreateGroupScreen
 import com.example.app.screen.recordatorios.components.AddReminderScreen
 import com.example.app.screen.recordatorios.components.ReminderMapScreen
 import com.example.app.services.LocationReminderService
@@ -214,12 +216,12 @@ fun AppNavigation(authViewModel: AuthViewModel) {
             )
         }
 
-        composable("recordatorios") {
-            PlaceholderScreen("Recordatorios", "Próximamente", navController)
-        }
-
         composable("grupos") {
-            PlaceholderScreen("Grupos", "Próximamente", navController)
+            val token = authViewModel.accessToken ?: ""
+            CollaborativeGroupsScreen(
+                navController = navController,
+                token = token
+            )
         }
 
         composable("settings") {
@@ -281,6 +283,13 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                 authViewModel = authViewModel,
                 navController = navController,
                 initialTab = initialTab
+            )
+        }
+        composable("create_group") {
+            val token = authViewModel.accessToken ?: ""
+            CreateGroupScreen(
+                token = token,
+                navController = navController
             )
         }
     }

@@ -57,4 +57,8 @@ object RetrofitClient {
     val reminderService: ReminderApiService by lazy {
         retrofit.create(ReminderApiService::class.java)
     }
+
+    val grupoService: GrupoService by lazy {
+        retrofit.create(GrupoService::class.java)
+    }
 }
