@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.app.models.GrupoCreate
 import com.example.app.network.GrupoResponse
+import com.example.app.repository.GrupoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -12,6 +13,7 @@ sealed class GrupoState {
     object Idle : GrupoState()
     object Loading : GrupoState()
     data class Success(val grupo: GrupoResponse, val message: String) : GrupoState()
+    data class ListSuccess(val grupos: List<GrupoResponse>) : GrupoState()
     data class Error(val message: String) : GrupoState()
 }
 
@@ -68,6 +70,22 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
                         else -> e.localizedMessage ?: "Error desconocido al crear el grupo"
                     }
                 )
+            }
+        }
+    }
+
+    fun listarGrupos(token: String) {
+        viewModelScope.launch {
+            _grupoState.value = GrupoState.Loading
+            try {
+                val response = repository.listarGrupos(token)
+                if (response.isSuccessful && response.body() != null) {
+                    _grupoState.value = GrupoState.ListSuccess(response.body()!!)
+                } else {
+                    _grupoState.value = GrupoState.Error("Error al obtener grupos: ${response.message()}")
+                }
+            } catch (e: Exception) {
+                _grupoState.value = GrupoState.Error("Error: ${e.localizedMessage}")
             }
         }
     }

@@ -1,4 +1,4 @@
-package com.example.app.viewmodel
+package com.example.app.repository
 
 import com.example.app.models.ReminderEntity
 import com.example.app.network.ReminderDao

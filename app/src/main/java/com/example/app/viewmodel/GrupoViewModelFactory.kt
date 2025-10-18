@@ -2,6 +2,7 @@ package com.example.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.example.app.repository.GrupoRepository
 
 class GrupoViewModelFactory(
     private val repository: GrupoRepository

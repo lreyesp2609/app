@@ -1,4 +1,3 @@
-import com.example.app.models.UbicacionUsuarioResponse
 import org.osmdroid.util.GeoPoint
 import kotlin.math.*
 

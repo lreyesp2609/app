@@ -15,7 +15,7 @@ import androidx.core.content.ContextCompat
 import com.example.app.models.ReminderEntity
 import com.example.app.network.AppDatabase
 import com.example.app.utils.NotificationHelper
-import com.example.app.viewmodel.ReminderRepository
+import com.example.app.repository.ReminderRepository
 import com.google.android.gms.location.*
 import kotlinx.coroutines.*
 import kotlin.random.Random

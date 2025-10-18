@@ -28,7 +28,7 @@ import androidx.navigation.NavController
 import com.example.app.models.Reminder
 import com.example.app.network.AppDatabase
 import com.example.app.screen.components.AppButton
-import com.example.app.viewmodel.ReminderRepository
+import com.example.app.repository.ReminderRepository
 import com.example.app.viewmodel.ReminderViewModel
 import com.example.app.viewmodel.ReminderViewModelFactory
 import kotlinx.coroutines.delay

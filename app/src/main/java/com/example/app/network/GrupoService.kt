@@ -4,6 +4,7 @@ import com.example.app.models.GrupoCreate
 import com.google.gson.annotations.SerializedName
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 
@@ -13,6 +14,11 @@ interface GrupoService {
         @Body grupo: GrupoCreate,
         @Header("Authorization") token: String
     ): Response<GrupoResponse>
+
+    @GET("grupos/listar")
+    suspend fun listarGrupos(
+        @Header("Authorization") token: String
+    ): Response<List<GrupoResponse>>
 }
 
 data class GrupoResponse(

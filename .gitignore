@@ -13,3 +13,4 @@
 .externalNativeBuild
 .cxx
 local.properties
+app/schemas/com.example.app.network.AppDatabase/2.json

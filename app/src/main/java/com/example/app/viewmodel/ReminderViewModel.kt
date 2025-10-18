@@ -16,6 +16,7 @@ import com.example.app.models.ReminderEntity
 import com.example.app.models.toReminder
 import com.example.app.models.toReminderResponse
 import com.example.app.network.RetrofitClient
+import com.example.app.repository.ReminderRepository
 import com.example.app.screen.recordatorios.components.scheduleReminder
 import com.example.app.services.LocationReminderService
 import kotlinx.coroutines.Job
