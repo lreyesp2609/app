@@ -7,6 +7,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 interface GrupoService {
     @POST("grupos/crear")
@@ -19,6 +20,12 @@ interface GrupoService {
     suspend fun listarGrupos(
         @Header("Authorization") token: String
     ): Response<List<GrupoResponse>>
+
+    @POST("grupos/unirse/{codigo}")
+    suspend fun unirseAGrupo(
+        @Path("codigo") codigo: String,
+        @Header("Authorization") token: String
+    ): Response<GrupoResponse>
 }
 
 data class GrupoResponse(

@@ -1,6 +1,9 @@
 package com.example.app.viewmodel
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.util.Log
@@ -17,6 +20,7 @@ import com.example.app.models.toReminder
 import com.example.app.models.toReminderResponse
 import com.example.app.network.RetrofitClient
 import com.example.app.repository.ReminderRepository
+import com.example.app.screen.recordatorios.components.ReminderReceiver
 import com.example.app.screen.recordatorios.components.scheduleReminder
 import com.example.app.services.LocationReminderService
 import kotlinx.coroutines.Job
@@ -395,6 +399,54 @@ class ReminderViewModel(
                 Log.e("ReminderViewModel", "Error al reproducir sonido: ${e.message}")
             }
         }
+    }
+
+    fun cancelAllReminders(context: Context) {
+        viewModelScope.launch {
+            try {
+                Log.d("ReminderViewModel", "🧹 Cancelando todas las alarmas...")
+
+                // Obtener todos los recordatorios locales
+                val allReminders = repository.getLocalReminders()
+
+                allReminders.forEach { reminder ->
+                    // Cancelar alarmas de fecha/hora
+                    if (reminder.reminder_type == "datetime" || reminder.reminder_type == "both") {
+                        val days = reminder.days?.split(",") ?: emptyList()
+                        days.forEachIndexed { index, _ ->
+                            val uniqueId = reminder.id * 100 + index
+                            cancelAlarm(context, uniqueId)
+                        }
+                    }
+                }
+
+                // Detener servicio de ubicación
+                LocationReminderService.stop(context)
+
+                // Limpiar base de datos local
+                repository.clearAllReminders()
+
+                Log.d("ReminderViewModel", "✅ Todas las alarmas canceladas y BD limpiada")
+            } catch (e: Exception) {
+                Log.e("ReminderViewModel", "❌ Error al cancelar alarmas: ${e.message}")
+            }
+        }
+    }
+
+    private fun cancelAlarm(context: Context, reminderId: Int) {
+        val intent = Intent(context, ReminderReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            reminderId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.cancel(pendingIntent)
+        pendingIntent.cancel()
+
+        Log.d("ReminderViewModel", "🚫 Alarma cancelada - ID: $reminderId")
     }
 
     // Limpiar error

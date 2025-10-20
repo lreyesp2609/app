@@ -4,11 +4,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,14 +48,23 @@ import kotlinx.coroutines.delay
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.GroupOff
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Login
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.app.network.RetrofitClient
 import com.example.app.repository.GrupoRepository
+import com.example.app.screen.components.AppTextField
+import com.example.app.screen.components.rememberAppSnackbarState
+import com.example.app.screen.components.showSuccessSnackbar
 import com.example.app.viewmodel.GrupoViewModelFactory
+import com.example.app.screen.components.AppSnackbarHost
+import com.example.app.screen.components.showErrorSnackbar
 
 @Composable
 fun CollaborativeGroupsScreen(
@@ -72,25 +79,55 @@ fun CollaborativeGroupsScreen(
     val grupoState by viewModel.grupoState.collectAsState()
     var showContent by remember { mutableStateOf(false) }
     var showStats by remember { mutableStateOf(false) }
+    var showJoinDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    val (snackbarHostState, scope) = rememberAppSnackbarState()
+
+    // ✅ Recargar cuando se crea un grupo
+    val grupoCreado = navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow("grupo_creado", false)
+        ?.collectAsState()
+
+    LaunchedEffect(Unit, grupoCreado?.value) {
         viewModel.listarGrupos(token)
         delay(200)
         showContent = true
         delay(400)
         showStats = true
+
+        if (grupoCreado?.value == true) {
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.set("grupo_creado", false)
+        }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
+    LaunchedEffect(grupoState) {
+        when (val state = grupoState) {
+            is GrupoState.JoinSuccess -> {
+                snackbarHostState.showSuccessSnackbar(
+                    message = state.message
+                )
+            }
+            is GrupoState.Error -> {
+                snackbarHostState.showErrorSnackbar(
+                    message = state.message
+                )
+            }
+            else -> Unit
+        }
+    }
+
+    // 🔥 BOX PRINCIPAL CON SNACKBAR EN LA PARTE INFERIOR
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header con título y botón
+            // Header con título y botones
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(600)) +
@@ -108,14 +145,14 @@ fun CollaborativeGroupsScreen(
                             imageVector = Icons.Default.Group,
                             contentDescription = "Grupos",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(32.dp)
                         )
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "Mis Grupos",
-                            fontSize = 22.sp,
+                            fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
 
@@ -125,7 +162,21 @@ fun CollaborativeGroupsScreen(
                         text = "Crear Nuevo Grupo",
                         icon = Icons.Default.GroupAdd,
                         onClick = { navController.navigate("create_group") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    AppButton(
+                        text = "Unirse a un Grupo",
+                        icon = Icons.Default.Login,
+                        onClick = { showJoinDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp),
+                        outlined = true
                     )
                 }
             }
@@ -144,7 +195,21 @@ fun CollaborativeGroupsScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    "Cargando grupos...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
                         }
                     }
 
@@ -153,121 +218,279 @@ fun CollaborativeGroupsScreen(
                             EmptyGroupsMessage()
                         } else {
                             LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                items(state.grupos) { grupo ->
-                                    GrupoCard(grupo = grupo)
+                                items(
+                                    count = state.grupos.size,
+                                    key = { index -> state.grupos[index].id ?: index }
+                                ) { index ->
+                                    val grupo = state.grupos[index]
+                                    GrupoCard(
+                                        grupo = grupo,
+                                        onClick = { /* TODO: Navegar a detalle */ }
+                                    )
+                                }
+
+                                item {
+                                    Spacer(modifier = Modifier.height(16.dp))
                                 }
                             }
                         }
                     }
 
                     is GrupoState.Error -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    imageVector = Icons.Default.ErrorOutline,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(48.dp)
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = state.message,
-                                    color = MaterialTheme.colorScheme.error,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.padding(horizontal = 32.dp)
-                                )
-                            }
-                        }
+                        EmptyGroupsMessage()
                     }
 
                     else -> Unit
                 }
             }
         }
+
+        // 🔥 SNACKBAR HOST EN LA PARTE INFERIOR
+        AppSnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+        )
+    }
+
+    // Dialog para unirse a un grupo
+    if (showJoinDialog) {
+        JoinGroupDialog(
+            onDismiss = { showJoinDialog = false },
+            onJoin = { codigo ->
+                viewModel.unirseAGrupo(token, codigo)
+                showJoinDialog = false
+            }
+        )
     }
 }
 
 @Composable
-fun GrupoCard(grupo: GrupoResponse) {
+fun JoinGroupDialog(
+    onDismiss: () -> Unit,
+    onJoin: (String) -> Unit
+) {
+    var codigoInvitacion by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Login,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Unirse a un Grupo",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Ingresa el código de invitación del grupo",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                AppTextField(
+                    value = codigoInvitacion,
+                    onValueChange = {
+                        codigoInvitacion = it.uppercase().take(8)
+                        errorMessage = null
+                    },
+                    label = "Código de invitación",
+                    placeholder = "Ej: C6FB334B",
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Key,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    borderColor = if (errorMessage != null)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.primary
+                )
+
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, top = 4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "El código debe tener 8 caracteres",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            AppButton(
+                text = "Unirse",
+                onClick = {
+                    when {
+                        codigoInvitacion.isBlank() -> {
+                            errorMessage = "Ingresa un código"
+                        }
+                        codigoInvitacion.length != 8 -> {
+                            errorMessage = "El código debe tener 8 caracteres"
+                        }
+                        else -> {
+                            onJoin(codigoInvitacion)
+                        }
+                    }
+                },
+                enabled = codigoInvitacion.length == 8,
+                modifier = Modifier.width(120.dp)
+            )
+        },
+        dismissButton = {
+            AppButton(
+                text = "Cancelar",
+                onClick = onDismiss,
+                outlined = true,
+                modifier = Modifier.width(120.dp)
+            )
+        },
+        shape = RoundedCornerShape(20.dp)
+    )
+}
+
+@Composable
+fun GrupoCard(
+    grupo: GrupoResponse,
+    onClick: () -> Unit = {}
+) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(2.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 4.dp
+        ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp)
         ) {
-            // Icono del grupo
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(56.dp)
+            // Header con nombre y código
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Group,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(14.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Información del grupo
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = grupo.nombre,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                if (!grupo.descripcion.isNullOrBlank()) {
-                    Text(
-                        text = grupo.descripcion,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier.padding(top = 8.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        text = "Código: ${grupo.codigoInvitacion}",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Group,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = grupo.nombre,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Text(
+                                text = "Código: ${grupo.codigoInvitacion}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
                 }
+
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
             }
 
-            // Flecha indicadora
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp)
-            )
+            // Descripción (si existe)
+            if (!grupo.descripcion.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = grupo.descripcion,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 18.sp
+                )
+            }
         }
     }
 }
@@ -295,7 +518,7 @@ fun EmptyGroupsMessage() {
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "Crea tu primer grupo para empezar",
+                text = "Crea tu primer grupo o únete a uno existente",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),

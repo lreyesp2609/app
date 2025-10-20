@@ -26,4 +26,11 @@ interface ReminderDao {
 
     @Query("UPDATE reminders SET is_active = :active WHERE id = :reminderId")
     suspend fun setReminderActive(reminderId: Int, active: Boolean)
+
+    @Query("DELETE FROM reminders")
+    suspend fun clearAllReminders()
+
+    // También necesitas filtrar por user_id
+    @Query("SELECT * FROM reminders WHERE user_id = :userId AND is_deleted = 0 AND is_active = 1 ORDER BY id DESC")
+    suspend fun getRemindersByUserId(userId: Int): List<ReminderEntity>
 }

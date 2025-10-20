@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.app.viewmodel.AuthViewModel
@@ -21,6 +22,8 @@ fun ErrorContent(
     errorMessage: String,
     authViewModel: AuthViewModel
 ) {
+    val context = LocalContext.current
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(16.dp)
@@ -35,7 +38,7 @@ fun ErrorContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { authViewModel.logout() },
+            onClick = { authViewModel.logout(context) },
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary
             )

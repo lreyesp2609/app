@@ -1,9 +1,5 @@
 package com.example.app.screen.grupos.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,26 +20,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -63,6 +49,11 @@ import com.example.app.network.RetrofitClient
 import com.example.app.screen.components.AppBackButton
 import com.example.app.screen.components.AppButton
 import com.example.app.repository.GrupoRepository
+import com.example.app.screen.components.AppSnackbarHost
+import com.example.app.screen.components.AppTextField
+import com.example.app.screen.components.rememberAppSnackbarState
+import com.example.app.screen.components.showErrorSnackbar
+import com.example.app.screen.components.showSuccessSnackbar
 import com.example.app.viewmodel.GrupoState
 import com.example.app.viewmodel.GrupoViewModel
 import com.example.app.viewmodel.GrupoViewModelFactory
@@ -86,8 +77,8 @@ fun CreateGroupScreen(
     var groupDescription by remember { mutableStateOf("") }
     var showContent by remember { mutableStateOf(false) }
 
-    // SnackbarHostState para manejar el Snackbar
-    val snackbarHostState = remember { SnackbarHostState() }
+    // ✅ Usar el Snackbar global
+    val (snackbarHostState, scope) = rememberAppSnackbarState()
     val scrollState = rememberScrollState()
 
     // Animación de entrada
@@ -96,23 +87,23 @@ fun CreateGroupScreen(
         showContent = true
     }
 
-    // Observar el estado del grupo
+    // Observar el estado del grupo - OPTIMIZADO
     LaunchedEffect(grupoState) {
         when (val state = grupoState) {
             is GrupoState.Success -> {
-                snackbarHostState.showSnackbar(
-                    message = state.message,
-                    duration = SnackbarDuration.Short
-                )
-                delay(2000)
+                // ✅ Usar función de extensión
+                snackbarHostState.showSuccessSnackbar(state.message)
+                delay(500)
+
+                navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.set("grupo_creado", true)
+
                 navController.popBackStack()
             }
             is GrupoState.Error -> {
-                snackbarHostState.showSnackbar(
-                    message = state.message,
-                    duration = SnackbarDuration.Long,
-                    withDismissAction = true
-                )
+                // ✅ Usar función de extensión
+                snackbarHostState.showErrorSnackbar(state.message)
                 viewModel.resetState()
             }
             else -> {}
@@ -121,28 +112,7 @@ fun CreateGroupScreen(
 
     Scaffold(
         snackbarHost = {
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.navigationBarsPadding()
-            ) { data ->
-                Snackbar(
-                    snackbarData = data,
-                    containerColor = when {
-                        data.visuals.message.contains("exitosamente", ignoreCase = true) ||
-                                data.visuals.message.contains("éxito", ignoreCase = true) ||
-                                data.visuals.message.contains("creado", ignoreCase = true) ->
-                            MaterialTheme.colorScheme.primaryContainer
-                        else -> MaterialTheme.colorScheme.errorContainer
-                    },
-                    contentColor = when {
-                        data.visuals.message.contains("exitosamente", ignoreCase = true) ||
-                                data.visuals.message.contains("éxito", ignoreCase = true) ||
-                                data.visuals.message.contains("creado", ignoreCase = true) ->
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else -> MaterialTheme.colorScheme.onErrorContainer
-                    }
-                )
-            }
+            AppSnackbarHost(hostState = snackbarHostState)
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
@@ -215,22 +185,19 @@ fun CreateGroupScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
+                    AppTextField(
                         value = groupName,
                         onValueChange = { groupName = it },
-                        placeholder = {
-                            Text(
-                                "Ej: Familia, Amigos, Trabajo...",
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        label = "Nombre",
+                        placeholder = "Ej: Familia, Amigos, Trabajo...",
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Group,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                        ),
-                        singleLine = true
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(modifier = Modifier.height(20.dp))
@@ -243,23 +210,20 @@ fun CreateGroupScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
+                    AppTextField(
                         value = groupDescription,
                         onValueChange = { groupDescription = it },
-                        placeholder = {
-                            Text(
-                                "Describe el propósito del grupo...",
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        label = "Descripción",
+                        placeholder = "Describe el propósito del grupo...",
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Description,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
                         maxLines = 4
                     )
                 }
@@ -277,18 +241,9 @@ fun CreateGroupScreen(
                     viewModel.createGrupo(token, grupoCreate)
                 },
                 enabled = groupName.isNotBlank() && grupoState !is GrupoState.Loading,
+                isLoading = grupoState is GrupoState.Loading,
                 modifier = Modifier.fillMaxWidth()
             )
-
-            // Mostrar loading
-            if (grupoState is GrupoState.Loading) {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .align(Alignment.CenterHorizontally)
-                )
-            }
 
             // Información adicional
             Card(

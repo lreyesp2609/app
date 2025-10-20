@@ -1,15 +1,28 @@
 package com.example.app.viewmodel
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.app.models.Reminder
+import com.example.app.models.ReminderEntity
 import com.example.app.models.User
+import com.example.app.models.toReminder
+import com.example.app.network.AppDatabase
+import com.example.app.network.RetrofitClient
 import com.example.app.repository.AuthRepository
+import com.example.app.repository.ReminderRepository
+import com.example.app.screen.recordatorios.components.ReminderReceiver
+import com.example.app.screen.recordatorios.components.scheduleReminder
+import com.example.app.services.LocationReminderService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -59,25 +72,27 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                         sessionManager.saveTokens(response.accessToken, response.refreshToken)
                         sessionManager.saveLoginState(true)
 
-                        // Solo obtener usuario si no lo tenemos guardado
                         if (user == null) {
-                            getCurrentUser()
+                            getCurrentUser {
+                                // ✅ Cambiado: usar context en lugar de applicationContext
+                                restoreUserReminders(context, response.accessToken)
+                            }
                         } else {
+                            // ✅ Cambiado: usar context en lugar de applicationContext
+                            restoreUserReminders(context, response.accessToken)
                             isLoading = false
                         }
                     },
                     onFailure = {
-                        clearLocalSession() // Cambiar logout() por clearLocalSession()
+                        clearLocalSession()
                         isLoading = false
                     }
                 )
             }
         } else if (!sessionManager.hasValidSession()) {
-            // Si no hay sesión válida, limpiar estado pero sin loading
             clearLocalSession()
-            isLoading = false // Asegurar que loading sea false
+            isLoading = false
         } else {
-            // Caso donde no hay refresh token
             isLoading = false
         }
     }
@@ -97,14 +112,15 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                         sessionManager.saveTokens(loginResponse.accessToken, loginResponse.refreshToken)
                         sessionManager.saveLoginState(true)
 
-                        getCurrentUser(onSuccess)
-                    },
+                        getCurrentUser {
+                            // ✅ NUEVO: Restaurar recordatorios después del login
+                            restoreUserReminders(context, loginResponse.accessToken)
+                            onSuccess()
+                        }                    },
                     onFailure = { exception ->
                         isLoggedIn = false
                         sessionManager.saveLoginState(false)
                         isLoading = false
-
-                        // Manejar errores de login de manera amigable
                         errorMessage = when {
                             exception.message?.contains("INVALID_CREDENTIALS") == true -> {
                                 "Correo o contraseña incorrectos"
@@ -132,7 +148,100 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                 )
         }
     }
+    private fun restoreUserReminders(context: Context, token: String) {
+        viewModelScope.launch {
+            try {
+                Log.d("AuthViewModel", "🔄 Restaurando recordatorios del usuario...")
 
+                val database = AppDatabase.getDatabase(context)
+                val repository = ReminderRepository(database.reminderDao())
+
+                // 1️⃣ Obtener recordatorios desde la API
+                val response = RetrofitClient.reminderService.getReminders("Bearer $token")
+
+                if (response.isSuccessful) {
+                    val apiReminders = response.body() ?: emptyList()
+                    Log.d("AuthViewModel", "📥 ${apiReminders.size} recordatorios obtenidos de la API")
+
+                    // 2️⃣ Guardar en BD local y reprogramar alarmas
+                    apiReminders.forEach { reminderResponse ->
+                        val reminder = reminderResponse.toReminder()
+
+                        // Convertir a ReminderEntity
+                        val reminderEntity = ReminderEntity(
+                            id = reminderResponse.id,
+                            title = reminderResponse.title,
+                            description = reminderResponse.description,
+                            reminder_type = reminderResponse.reminder_type,
+                            trigger_type = reminderResponse.trigger_type,
+                            sound_type = reminderResponse.sound_type,
+                            vibration = reminderResponse.vibration,
+                            sound = reminderResponse.sound,
+                            days = reminderResponse.days,
+                            time = reminderResponse.time,
+                            location = reminderResponse.location,
+                            latitude = reminderResponse.latitude,
+                            longitude = reminderResponse.longitude,
+                            radius = reminderResponse.radius?.toFloat(),
+                            user_id = reminderResponse.user_id,
+                            is_active = reminderResponse.is_active,
+                            is_deleted = reminderResponse.is_deleted
+                        )
+
+                        // Guardar localmente
+                        repository.saveReminder(reminderEntity)
+
+                        // Reprogramar alarmas solo si está activo
+                        if (reminderEntity.is_active && !reminderEntity.is_deleted) {
+                            when (reminderEntity.reminder_type) {
+                                "datetime" -> {
+                                    reprogramarAlarmasFechaHora(context, reminder, reminderEntity)
+                                }
+                                "location" -> {
+                                    LocationReminderService.start(context)
+                                }
+                                "both" -> {
+                                    reprogramarAlarmasFechaHora(context, reminder, reminderEntity)
+                                    LocationReminderService.start(context)
+                                }
+                            }
+                        }
+                    }
+
+                    Log.d("AuthViewModel", "✅ Recordatorios restaurados y alarmas reprogramadas")
+                } else {
+                    Log.e("AuthViewModel", "❌ Error al obtener recordatorios: ${response.code()}")
+                }
+
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "❌ Error restaurando recordatorios: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun reprogramarAlarmasFechaHora(
+        context: Context,
+        reminder: Reminder,
+        reminderEntity: ReminderEntity
+    ) {
+        if (reminder.days.isNullOrEmpty() || reminder.time.isNullOrEmpty()) {
+            return
+        }
+
+        Log.d("AuthViewModel", "⏰ Reprogramando alarmas para: ${reminder.title}")
+
+        reminder.days.forEachIndexed { index, day ->
+            val uniqueId = reminderEntity.id * 100 + index
+
+            val singleDayReminder = reminderEntity.copy(
+                id = uniqueId,
+                days = day
+            )
+
+            scheduleReminder(context, singleDayReminder)
+        }
+    }
     // 🔹 Función para obtener usuario (actualizada)
     fun getCurrentUser(onSuccess: () -> Unit = {}) {
         accessToken?.let { token ->
@@ -166,29 +275,81 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         }
     }
 
-    // 🔹 Logout (actualizado)
-    fun logout(onComplete: (() -> Unit)? = null) {
+    // Dentro de AuthViewModel
+    private lateinit var reminderViewModel: ReminderViewModel // O inyecta el repository
+
+    fun logout(context: Context, onComplete: (() -> Unit)? = null) {
         val savedRefresh = sessionManager.getRefreshToken()
 
-        if (savedRefresh != null) {
-            viewModelScope.launch {
+        viewModelScope.launch {
+            // 1️⃣ Cancelar todas las alarmas y limpiar BD local
+            try {
+                cancelAllRemindersAndCleanup(context)
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Error limpiando recordatorios: ${e.message}")
+            }
+
+            // 2️⃣ Hacer logout en backend
+            if (savedRefresh != null) {
                 repository.logout(savedRefresh).fold(
                     onSuccess = {
                         clearLocalSession()
                         onComplete?.invoke()
                     },
                     onFailure = { exception ->
-                        // Aunque falle el logout en backend, limpiamos localmente
                         clearLocalSession()
                         onComplete?.invoke()
                     }
                 )
+            } else {
+                clearLocalSession()
+                onComplete?.invoke()
             }
-        } else {
-            // Si no hay refresh token, solo limpiar localmente
-            clearLocalSession()
-            onComplete?.invoke()
         }
+    }
+
+    private suspend fun cancelAllRemindersAndCleanup(context: Context) {
+        // Necesitas acceso al ReminderRepository aquí
+        val database = AppDatabase.getDatabase(context)
+        val repository = ReminderRepository(database.reminderDao())
+
+        Log.d("AuthViewModel", "🧹 Limpiando recordatorios del usuario anterior...")
+
+        // Obtener todos los recordatorios
+        val allReminders = repository.getLocalReminders()
+
+        // Cancelar alarmas
+        allReminders.forEach { reminder ->
+            if (reminder.reminder_type == "datetime" || reminder.reminder_type == "both") {
+                val days = reminder.days?.split(",") ?: emptyList()
+                days.forEachIndexed { index, _ ->
+                    val uniqueId = reminder.id * 100 + index
+                    cancelAlarm(context, uniqueId)
+                }
+            }
+        }
+
+        // Detener servicio de ubicación
+        LocationReminderService.stop(context)
+
+        // Limpiar base de datos
+        repository.clearAllReminders()
+
+        Log.d("AuthViewModel", "✅ Limpieza completada")
+    }
+
+    private fun cancelAlarm(context: Context, reminderId: Int) {
+        val intent = Intent(context, ReminderReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            reminderId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.cancel(pendingIntent)
+        pendingIntent.cancel()
     }
 
     // 🔹 Helper para limpiar sesión local
@@ -214,14 +375,14 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                             sessionManager.saveTokens(response.accessToken, response.refreshToken)
                         },
                         onFailure = {
-                            logout()
+                            // ✅ Agregado: pasar context
+                            logout(context)
                         }
                     )
                 }
             }
         }
     }
-
 
     fun obtenerIp(): String {
         return try {

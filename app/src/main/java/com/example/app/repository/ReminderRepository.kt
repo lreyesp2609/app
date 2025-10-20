@@ -29,4 +29,9 @@ class ReminderRepository(private val dao: ReminderDao) {
     suspend fun setReminderActive(reminderId: Int, active: Boolean) {
         dao.setReminderActive(reminderId, active)
     }
+
+    // En ReminderRepository
+    suspend fun clearAllReminders() {
+        dao.clearAllReminders()
+    }
 }

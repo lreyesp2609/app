@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,6 +21,8 @@ import com.example.app.viewmodel.AuthViewModel
 
 @Composable
 fun NoUserContent(authViewModel: AuthViewModel) {
+    val context = LocalContext.current  // ✅ Obtener el contexto
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(16.dp)
@@ -34,7 +37,7 @@ fun NoUserContent(authViewModel: AuthViewModel) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { authViewModel.logout() },
+            onClick = { authViewModel.logout(context) },
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary
             )

@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.app.screen.auth.RegisterScreen
@@ -225,10 +226,12 @@ fun AppNavigation(authViewModel: AuthViewModel) {
         }
 
         composable("settings") {
+            val context = LocalContext.current  // ✅ Obtener el contexto
+
             SettingsScreen(
                 userState = authViewModel.user,
                 onLogout = {
-                    authViewModel.logout {
+                    authViewModel.logout(context) {  // ✅ Pasar el contexto
                         // Navegar a login cuando termine logout
                         navController.navigate("login") {
                             popUpTo("home") { inclusive = true }

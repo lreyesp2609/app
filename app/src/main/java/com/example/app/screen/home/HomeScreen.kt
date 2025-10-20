@@ -237,9 +237,10 @@ fun HomeScreen(
 
     LaunchedEffect(userState, isLoggedIn) {
         if (!isLoggedIn || (userState != null && !userState.activo)) {
-            authViewModel.logout()
-            navController.navigate("login") {
-                popUpTo("home") { inclusive = true }
+            authViewModel.logout(context) {  // ✅ Pasar el contexto
+                navController.navigate("login") {
+                    popUpTo("home") { inclusive = true }
+                }
             }
         }
     }
@@ -470,15 +471,20 @@ fun HomeScreen(
                                 navController = navController,
                                 token = accessToken
                             )
-                            4 -> SettingsScreen(
-                                userState = userState,
-                                onLogout = {
-                                    authViewModel.logout()
-                                    navController.navigate("login") {
-                                        popUpTo("home") { inclusive = true }
+                            4 -> {
+                                val context = LocalContext.current  // ✅ Obtener el contexto
+
+                                SettingsScreen(
+                                    userState = userState,
+                                    onLogout = {
+                                        authViewModel.logout(context) {  // ✅ Pasar el contexto
+                                            navController.navigate("login") {
+                                                popUpTo("home") { inclusive = true }
+                                            }
+                                        }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }
