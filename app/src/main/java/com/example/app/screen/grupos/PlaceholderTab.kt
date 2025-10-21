@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -228,7 +229,13 @@ fun CollaborativeGroupsScreen(
                                     val grupo = state.grupos[index]
                                     GrupoCard(
                                         grupo = grupo,
-                                        onClick = { /* TODO: Navegar a detalle */ }
+                                        mensajesNoLeidos = (0..15).random(), // 🆕 Temporal para demo
+                                        onClick = {
+                                            // 🆕 Navegar al chat del grupo
+                                            navController.navigate(
+                                                "chat_grupo/${grupo.id}/${grupo.nombre}"
+                                            )
+                                        }
                                     )
                                 }
 
@@ -248,7 +255,6 @@ fun CollaborativeGroupsScreen(
             }
         }
 
-        // 🔥 SNACKBAR HOST EN LA PARTE INFERIOR
         AppSnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
@@ -401,6 +407,7 @@ fun JoinGroupDialog(
 @Composable
 fun GrupoCard(
     grupo: GrupoResponse,
+    mensajesNoLeidos: Int = 0, // 🆕 Parámetro para mensajes no leídos
     onClick: () -> Unit = {}
 ) {
     Card(
@@ -430,17 +437,44 @@ fun GrupoCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Group,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(8.dp)
-                        )
+                    // 🆕 Icono con badge de notificaciones
+                    Box {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Group,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+
+                        // 🔔 Badge de notificaciones
+                        if (mensajesNoLeidos > 0) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 4.dp, y = (-4).dp)
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Text(
+                                        text = if (mensajesNoLeidos > 99) "99+" else mensajesNoLeidos.toString(),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onError
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))

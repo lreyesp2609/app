@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.app.screen.auth.RegisterScreen
 import com.example.app.screen.grupos.CollaborativeGroupsScreen
+import com.example.app.screen.grupos.components.ChatGrupoScreen
 import com.example.app.screen.grupos.components.CreateGroupScreen
 import com.example.app.screen.recordatorios.components.AddReminderScreen
 import com.example.app.screen.recordatorios.components.ReminderMapScreen
@@ -292,6 +293,22 @@ fun AppNavigation(authViewModel: AuthViewModel) {
             val token = authViewModel.accessToken ?: ""
             CreateGroupScreen(
                 token = token,
+                navController = navController
+            )
+        }
+        composable(
+            route = "chat_grupo/{grupoId}/{grupoNombre}",
+            arguments = listOf(
+                navArgument("grupoId") { type = NavType.IntType },
+                navArgument("grupoNombre") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
+            val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
+
+            ChatGrupoScreen(
+                grupoId = grupoId,
+                grupoNombre = grupoNombre,
                 navController = navController
             )
         }
