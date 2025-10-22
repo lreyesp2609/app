@@ -18,11 +18,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.app.models.MensajeUI
+import com.example.app.viewmodel.ChatGrupoViewModel
+import com.example.app.viewmodel.ChatGrupoViewModelFactory
+import java.time.OffsetDateTime
 
 @Composable
 fun ChatGrupoScreen(
@@ -30,8 +36,31 @@ fun ChatGrupoScreen(
     grupoNombre: String,
     navController: NavController
 ) {
+    val context = LocalContext.current
+    val viewModel: ChatGrupoViewModel = viewModel(
+        factory = ChatGrupoViewModelFactory(context)
+    )
+
+    // Estados del ViewModel
+    val mensajes by viewModel.mensajes.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+
     var mensajeTexto by remember { mutableStateOf("") }
-    var mensajes by remember { mutableStateOf(getMensajesDemoData()) }
+
+    // Cargar mensajes al iniciar
+    LaunchedEffect(grupoId) {
+        viewModel.cargarMensajes(grupoId)
+    }
+
+    // Mostrar error si existe
+    error?.let { errorMessage ->
+        LaunchedEffect(errorMessage) {
+            // Aquí puedes mostrar un Snackbar o Toast
+            println("Error: $errorMessage")
+            viewModel.limpiarError()
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -47,25 +76,45 @@ fun ChatGrupoScreen(
                 onMensajeChange = { mensajeTexto = it },
                 onEnviarClick = {
                     if (mensajeTexto.isNotBlank()) {
-                        // Agregar mensaje temporalmente (luego lo harás con WebSocket)
-                        mensajes = mensajes + MensajeDemo(
-                            id = mensajes.size + 1,
-                            contenido = mensajeTexto,
-                            esMio = true,
-                            hora = "Ahora",
-                            leido = false
+                        // TODO: Enviar mensaje por WebSocket
+                        // Por ahora solo lo agregamos localmente
+                        viewModel.agregarMensaje(
+                            MensajeUI(
+                                id = -1, // Temporal
+                                contenido = mensajeTexto,
+                                esMio = true,
+                                hora = "Ahora",
+                                leido = false,
+                                leidoPor = 0,
+                                nombreRemitente = null,
+                                remitenteId = -1, // Se obtendrá del WebSocket
+                                tipo = "texto",
+                                fechaCreacion = obtenerFechaActualISO() // 👈 aquí
+                            )
                         )
                         mensajeTexto = ""
                     }
                 }
             )
         },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0) // ✅ Dejar que bottomBar maneje los insets
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
-        ChatMessageList(
-            mensajes = mensajes,
-            modifier = Modifier.padding(paddingValues)
-        )
+        Box(modifier = Modifier.padding(paddingValues)) {
+            if (isLoading && mensajes.isEmpty()) {
+                // Mostrar loading solo si no hay mensajes
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else {
+                ChatMessageList(
+                    mensajes = mensajes,
+                    onMensajeVisible = { mensajeId ->
+                        // Marcar como leído cuando el mensaje sea visible
+                        viewModel.marcarComoLeido(grupoId, mensajeId)
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -104,7 +153,7 @@ fun ChatTopBar(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "5 miembros",
+                        text = "Cargando...",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -135,7 +184,8 @@ fun ChatTopBar(
 
 @Composable
 fun ChatMessageList(
-    mensajes: List<MensajeDemo>,
+    mensajes: List<MensajeUI>,
+    onMensajeVisible: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -162,21 +212,49 @@ fun ChatMessageList(
             }
         }
 
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(mensajes.size) { index ->
-                MensajeBubble(mensaje = mensajes[index])
+        if (mensajes.isEmpty()) {
+            // Mensaje vacío
+            Text(
+                text = "No hay mensajes aún.\n¡Sé el primero en escribir! 💬",
+                modifier = Modifier.align(Alignment.Center),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                var fechaAnterior: String? = null
+
+                mensajes.forEachIndexed { index, mensaje ->
+                    val fechaActual = formatearFechaHeader(mensaje.fechaCreacion)
+
+                    if (fechaActual != fechaAnterior) {
+                        fechaAnterior = fechaActual
+                        item {
+                            FechaHeader(fechaActual)
+                        }
+                    }
+
+                    item {
+                        if (!mensaje.esMio && !mensaje.leido) {
+                            LaunchedEffect(mensaje.id) {
+                                onMensajeVisible(mensaje.id)
+                            }
+                        }
+                        MensajeBubble(mensaje = mensaje)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun MensajeBubble(mensaje: MensajeDemo) {
+fun MensajeBubble(mensaje: MensajeUI) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (mensaje.esMio) Alignment.End else Alignment.Start
@@ -201,9 +279,9 @@ fun MensajeBubble(mensaje: MensajeDemo) {
                 modifier = Modifier.padding(12.dp)
             ) {
                 // Nombre del remitente (si no es mío)
-                if (!mensaje.esMio) {
+                if (!mensaje.esMio && mensaje.nombreRemitente != null) {
                     Text(
-                        text = mensaje.nombreRemitente ?: "Usuario",
+                        text = mensaje.nombreRemitente,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -242,9 +320,9 @@ fun MensajeBubble(mensaje: MensajeDemo) {
                     if (mensaje.esMio) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
-                            imageVector = if (mensaje.leido) Icons.Default.DoneAll else Icons.Default.Done,
-                            contentDescription = if (mensaje.leido) "Leído" else "Enviado",
-                            tint = if (mensaje.leido)
+                            imageVector = if (mensaje.leidoPor > 0) Icons.Default.DoneAll else Icons.Default.Done,
+                            contentDescription = if (mensaje.leidoPor > 0) "Leído" else "Enviado",
+                            tint = if (mensaje.leidoPor > 0)
                                 Color(0xFF34B7F1) // Azul WhatsApp
                             else
                                 MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
@@ -253,6 +331,28 @@ fun MensajeBubble(mensaje: MensajeDemo) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun FechaHeader(texto: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = texto,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            )
         }
     }
 }
@@ -268,7 +368,7 @@ fun ChatInputBar(
         shadowElevation = 8.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .navigationBarsPadding() // ✅ Respeta barra de navegación y gestos
+            .navigationBarsPadding()
     ) {
         Row(
             modifier = Modifier
@@ -352,23 +452,3 @@ fun ChatInputBar(
         }
     }
 }
-
-// 📦 Data class temporal para demo
-data class MensajeDemo(
-    val id: Int,
-    val contenido: String,
-    val esMio: Boolean,
-    val hora: String,
-    val leido: Boolean,
-    val nombreRemitente: String? = null
-)
-
-// 🎨 Datos de prueba
-fun getMensajesDemoData() = listOf(
-    MensajeDemo(1, "Hola a todos! 👋", false, "10:30", true, "Juan"),
-    MensajeDemo(2, "Hey! ¿Cómo están?", true, "10:31", true),
-    MensajeDemo(3, "Todo bien por aquí, ¿y tú?", false, "10:32", true, "María"),
-    MensajeDemo(4, "Excelente! Tengo una idea para el proyecto", true, "10:33", true),
-    MensajeDemo(5, "Cuéntanos! 🤔", false, "10:34", false, "Pedro"),
-    MensajeDemo(6, "¿Qué tal si nos reunimos mañana para discutirlo?", true, "10:35", false)
-)

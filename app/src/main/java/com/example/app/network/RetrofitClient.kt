@@ -61,4 +61,8 @@ object RetrofitClient {
     val grupoService: GrupoService by lazy {
         retrofit.create(GrupoService::class.java)
     }
+
+    val mensajesService: MensajesApiService by lazy {
+        retrofit.create(MensajesApiService::class.java)
+    }
 }
