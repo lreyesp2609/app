@@ -23,6 +23,7 @@ import com.example.app.repository.ReminderRepository
 import com.example.app.screen.recordatorios.components.ReminderReceiver
 import com.example.app.screen.recordatorios.components.scheduleReminder
 import com.example.app.services.LocationReminderService
+import com.example.app.utils.SessionManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -102,7 +103,7 @@ class ReminderViewModel(
 
                 Log.d("ReminderViewModel", "🚀 INICIANDO creación de recordatorio: ${reminder.title}")
 
-                val sessionManager = SessionManager(context)
+                val sessionManager = SessionManager.getInstance(context)
                 val token = sessionManager.getAccessToken()
                 val userId = sessionManager.getUser()?.id ?: 1
 
@@ -276,7 +277,7 @@ class ReminderViewModel(
 
     fun toggleReminderActive(reminderId: Int, active: Boolean, context: Context) {
         viewModelScope.launch {
-            val sessionManager = SessionManager(context)
+            val sessionManager = SessionManager.getInstance(context)
             val token = sessionManager.getAccessToken()
 
             if (!token.isNullOrEmpty()) {
@@ -311,7 +312,7 @@ class ReminderViewModel(
                 isLoading = true
                 Log.d("ReminderViewModel", "🗑️ Eliminando recordatorio ID: $reminderId")
 
-                val sessionManager = SessionManager(context)
+                val sessionManager = SessionManager.getInstance(context)
                 val token = sessionManager.getAccessToken()
 
                 // 1️⃣ Eliminar en la API

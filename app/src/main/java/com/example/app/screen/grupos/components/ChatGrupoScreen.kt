@@ -1,7 +1,9 @@
 package com.example.app.screen.grupos.components
 
+import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +22,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,6 +48,7 @@ fun ChatGrupoScreen(
     val mensajes by viewModel.mensajes.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val isConnected by viewModel.isConnected.collectAsState()
 
     var mensajeTexto by remember { mutableStateOf("") }
 
@@ -57,7 +61,7 @@ fun ChatGrupoScreen(
     error?.let { errorMessage ->
         LaunchedEffect(errorMessage) {
             // Aquí puedes mostrar un Snackbar o Toast
-            println("Error: $errorMessage")
+            Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
             viewModel.limpiarError()
         }
     }
@@ -67,6 +71,7 @@ fun ChatGrupoScreen(
         topBar = {
             ChatTopBar(
                 grupoNombre = grupoNombre,
+                isConnected = isConnected,
                 onBackClick = { navController.popBackStack() }
             )
         },
@@ -76,32 +81,18 @@ fun ChatGrupoScreen(
                 onMensajeChange = { mensajeTexto = it },
                 onEnviarClick = {
                     if (mensajeTexto.isNotBlank()) {
-                        // TODO: Enviar mensaje por WebSocket
-                        // Por ahora solo lo agregamos localmente
-                        viewModel.agregarMensaje(
-                            MensajeUI(
-                                id = -1, // Temporal
-                                contenido = mensajeTexto,
-                                esMio = true,
-                                hora = "Ahora",
-                                leido = false,
-                                leidoPor = 0,
-                                nombreRemitente = null,
-                                remitenteId = -1, // Se obtendrá del WebSocket
-                                tipo = "texto",
-                                fechaCreacion = obtenerFechaActualISO() // 👈 aquí
-                            )
-                        )
+                        // 🔹 Enviar mensaje por WebSocket
+                        viewModel.enviarMensaje(grupoId, mensajeTexto)
                         mensajeTexto = ""
                     }
-                }
+                },
+                enabled = isConnected
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             if (isLoading && mensajes.isEmpty()) {
-                // Mostrar loading solo si no hay mensajes
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center)
                 )
@@ -109,7 +100,6 @@ fun ChatGrupoScreen(
                 ChatMessageList(
                     mensajes = mensajes,
                     onMensajeVisible = { mensajeId ->
-                        // Marcar como leído cuando el mensaje sea visible
                         viewModel.marcarComoLeido(grupoId, mensajeId)
                     }
                 )
@@ -122,6 +112,7 @@ fun ChatGrupoScreen(
 @Composable
 fun ChatTopBar(
     grupoNombre: String,
+    isConnected: Boolean,
     onBackClick: () -> Unit
 ) {
     TopAppBar(
@@ -152,11 +143,25 @@ fun ChatTopBar(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = "Cargando...",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Indicador de conexión
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(
+                                    color = if (isConnected) Color(0xFF4CAF50) else Color.Gray,
+                                    shape = CircleShape
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (isConnected) "En línea" else "Conectando...",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         },
@@ -213,12 +218,12 @@ fun ChatMessageList(
         }
 
         if (mensajes.isEmpty()) {
-            // Mensaje vacío
             Text(
                 text = "No hay mensajes aún.\n¡Sé el primero en escribir! 💬",
                 modifier = Modifier.align(Alignment.Center),
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
             )
         } else {
             LazyColumn(
@@ -278,7 +283,6 @@ fun MensajeBubble(mensaje: MensajeUI) {
             Column(
                 modifier = Modifier.padding(12.dp)
             ) {
-                // Nombre del remitente (si no es mío)
                 if (!mensaje.esMio && mensaje.nombreRemitente != null) {
                     Text(
                         text = mensaje.nombreRemitente,
@@ -289,7 +293,6 @@ fun MensajeBubble(mensaje: MensajeUI) {
                     )
                 }
 
-                // Contenido del mensaje
                 Text(
                     text = mensaje.contenido,
                     fontSize = 15.sp,
@@ -302,7 +305,6 @@ fun MensajeBubble(mensaje: MensajeUI) {
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Hora y estado de lectura
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End,
@@ -323,7 +325,7 @@ fun MensajeBubble(mensaje: MensajeUI) {
                             imageVector = if (mensaje.leidoPor > 0) Icons.Default.DoneAll else Icons.Default.Done,
                             contentDescription = if (mensaje.leidoPor > 0) "Leído" else "Enviado",
                             tint = if (mensaje.leidoPor > 0)
-                                Color(0xFF34B7F1) // Azul WhatsApp
+                                Color(0xFF34B7F1)
                             else
                                 MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
                             modifier = Modifier.size(16.dp)
@@ -361,7 +363,8 @@ fun FechaHeader(texto: String) {
 fun ChatInputBar(
     mensaje: String,
     onMensajeChange: (String) -> Unit,
-    onEnviarClick: () -> Unit
+    onEnviarClick: () -> Unit,
+    enabled: Boolean = true
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -376,7 +379,6 @@ fun ChatInputBar(
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.Bottom
         ) {
-            // Campo de texto
             Surface(
                 shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -400,6 +402,7 @@ fun ChatInputBar(
                     BasicTextField(
                         value = mensaje,
                         onValueChange = onMensajeChange,
+                        enabled = enabled,
                         modifier = Modifier.weight(1f),
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -407,7 +410,7 @@ fun ChatInputBar(
                         decorationBox = { innerTextField ->
                             if (mensaje.isEmpty()) {
                                 Text(
-                                    text = "Escribe un mensaje...",
+                                    text = if (enabled) "Escribe un mensaje..." else "Conectando...",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                 )
@@ -419,7 +422,8 @@ fun ChatInputBar(
 
                     IconButton(
                         onClick = { /* TODO: Adjuntar archivo */ },
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(24.dp),
+                        enabled = enabled
                     ) {
                         Icon(
                             imageVector = Icons.Default.AttachFile,
@@ -433,11 +437,10 @@ fun ChatInputBar(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Botón enviar
             FloatingActionButton(
                 onClick = onEnviarClick,
                 modifier = Modifier.size(48.dp),
-                containerColor = MaterialTheme.colorScheme.primary,
+                containerColor = if (enabled) MaterialTheme.colorScheme.primary else Color.Gray,
                 elevation = FloatingActionButtonDefaults.elevation(
                     defaultElevation = 2.dp,
                     pressedElevation = 4.dp

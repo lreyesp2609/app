@@ -2,37 +2,40 @@ package com.example.app.models
 
 import com.google.gson.annotations.SerializedName
 
-/**
- * Modelo que representa un mensaje del grupo
- * Corresponde a MensajeOut del backend
- */
 data class MensajeResponse(
     @SerializedName("id")
-    val id: Int,
+    val id: Int? = null,
 
     @SerializedName("remitente_id")
-    val remitenteId: Int,
+    val remitenteId: Int? = null,
 
     @SerializedName("remitente_nombre")
-    val remitenteNombre: String?,
+    val remitenteNombre: String? = null,
 
     @SerializedName("grupo_id")
-    val grupoId: Int,
+    val grupoId: Int? = null,
 
     @SerializedName("contenido")
-    val contenido: String,
+    val contenido: String? = null,
 
     @SerializedName("tipo")
-    val tipo: String,
+    val tipo: String? = null,
 
     @SerializedName("fecha_creacion")
-    val fechaCreacion: String,
+    val fechaCreacion: String? = null,
 
     @SerializedName("leido")
-    val leido: Boolean,
+    val leido: Boolean? = null,
 
     @SerializedName("leido_por")
-    val leidoPor: Int
+    val leidoPor: Int? = null,
+
+    // 🔹 Campos adicionales para mensajes del sistema
+    @SerializedName("type")
+    val type: String? = null,
+
+    @SerializedName("message")
+    val message: String? = null
 )
 
 /**

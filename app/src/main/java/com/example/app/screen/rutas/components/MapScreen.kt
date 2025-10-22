@@ -21,7 +21,7 @@ import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.screen.mapa.OpenStreetMap
 import com.example.app.network.NominatimClient
-import com.example.app.viewmodel.SessionManager
+import com.example.app.utils.SessionManager
 import com.example.app.viewmodel.UbicacionesViewModel
 import com.example.app.viewmodel.UbicacionesViewModelFactory
 import kotlinx.coroutines.Job
@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun MapScreen(navController: NavController, onConfirmClick: () -> Unit = {}) {
     val context = LocalContext.current
-    val sessionManager = remember { SessionManager(context) }
+    val sessionManager = remember { SessionManager.getInstance(context) }
     val token = sessionManager.getAccessToken() ?: return
 
     var currentLat by remember { mutableStateOf(0.0) }

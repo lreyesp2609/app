@@ -23,6 +23,7 @@ import com.example.app.repository.ReminderRepository
 import com.example.app.screen.recordatorios.components.ReminderReceiver
 import com.example.app.screen.recordatorios.components.scheduleReminder
 import com.example.app.services.LocationReminderService
+import com.example.app.utils.SessionManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -31,7 +32,11 @@ import java.net.NetworkInterface
 
 class AuthViewModel(private val context: Context) : ViewModel() {
     private val repository = AuthRepository()
-    private val sessionManager = SessionManager(context)
+    private val sessionManager = SessionManager.getInstance(context)
+
+    companion object {
+        private const val TAG = "WS_SessionManager"
+    }
 
     // Estados de la UI
     var isLoading by mutableStateOf(false)
@@ -151,7 +156,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
     private fun restoreUserReminders(context: Context, token: String) {
         viewModelScope.launch {
             try {
-                Log.d("AuthViewModel", "🔄 Restaurando recordatorios del usuario...")
+                Log.d(TAG, "🔄 Restaurando recordatorios del usuario...")
 
                 val database = AppDatabase.getDatabase(context)
                 val repository = ReminderRepository(database.reminderDao())
@@ -161,7 +166,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
 
                 if (response.isSuccessful) {
                     val apiReminders = response.body() ?: emptyList()
-                    Log.d("AuthViewModel", "📥 ${apiReminders.size} recordatorios obtenidos de la API")
+                    Log.d(TAG, "📥 ${apiReminders.size} recordatorios obtenidos de la API")
 
                     // 2️⃣ Guardar en BD local y reprogramar alarmas
                     apiReminders.forEach { reminderResponse ->
@@ -208,13 +213,13 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                         }
                     }
 
-                    Log.d("AuthViewModel", "✅ Recordatorios restaurados y alarmas reprogramadas")
+                    Log.d(TAG, "✅ Recordatorios restaurados y alarmas reprogramadas")
                 } else {
-                    Log.e("AuthViewModel", "❌ Error al obtener recordatorios: ${response.code()}")
+                    Log.e(TAG, "❌ Error al obtener recordatorios: ${response.code()}")
                 }
 
             } catch (e: Exception) {
-                Log.e("AuthViewModel", "❌ Error restaurando recordatorios: ${e.message}")
+                Log.e(TAG, "❌ Error restaurando recordatorios: ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -229,7 +234,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
             return
         }
 
-        Log.d("AuthViewModel", "⏰ Reprogramando alarmas para: ${reminder.title}")
+        Log.d(TAG, "⏰ Reprogramando alarmas para: ${reminder.title}")
 
         reminder.days.forEachIndexed { index, day ->
             val uniqueId = reminderEntity.id * 100 + index
@@ -286,7 +291,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
             try {
                 cancelAllRemindersAndCleanup(context)
             } catch (e: Exception) {
-                Log.e("AuthViewModel", "Error limpiando recordatorios: ${e.message}")
+                Log.e(TAG, "Error limpiando recordatorios: ${e.message}")
             }
 
             // 2️⃣ Hacer logout en backend
@@ -313,7 +318,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         val database = AppDatabase.getDatabase(context)
         val repository = ReminderRepository(database.reminderDao())
 
-        Log.d("AuthViewModel", "🧹 Limpiando recordatorios del usuario anterior...")
+        Log.d(TAG, "🧹 Limpiando recordatorios del usuario anterior...")
 
         // Obtener todos los recordatorios
         val allReminders = repository.getLocalReminders()
@@ -335,7 +340,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         // Limpiar base de datos
         repository.clearAllReminders()
 
-        Log.d("AuthViewModel", "✅ Limpieza completada")
+        Log.d(TAG, "✅ Limpieza completada")
     }
 
     private fun cancelAlarm(context: Context, reminderId: Int) {
@@ -368,17 +373,29 @@ class AuthViewModel(private val context: Context) : ViewModel() {
             while (isActive) {
                 delay(5 * 60 * 1000) // 5 minutos
                 val savedRefresh = sessionManager.getRefreshToken()
+
                 if (savedRefresh != null && isLoggedIn) {
+                    Log.d(TAG, "🔄 Iniciando auto-refresh del token...")
+
                     repository.refreshToken(savedRefresh).fold(
                         onSuccess = { response ->
+                            Log.d(TAG, "✅ Token renovado exitosamente")
+                            Log.d(TAG, "   Nuevo token: ${response.accessToken.take(20)}...")
+
                             accessToken = response.accessToken
+
+                            // 🆕 CRÍTICO: Guardar tokens (esto notifica a ChatGrupoViewModel)
                             sessionManager.saveTokens(response.accessToken, response.refreshToken)
+
+                            Log.d(TAG, "📢 Token guardado, listeners deberían ser notificados")
                         },
-                        onFailure = {
-                            // ✅ Agregado: pasar context
+                        onFailure = { error ->
+                            Log.e(TAG, "❌ Error en auto-refresh: ${error.message}")
                             logout(context)
                         }
                     )
+                } else {
+                    Log.w(TAG, "⚠️ No hay refresh token o usuario no logueado")
                 }
             }
         }

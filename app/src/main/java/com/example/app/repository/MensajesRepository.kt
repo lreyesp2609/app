@@ -6,14 +6,14 @@ import com.example.app.models.MarcarLeidoResponse
 import com.example.app.models.MensajeResponse
 import com.example.app.network.MensajesApiService
 import com.example.app.network.RetrofitClient
-import com.example.app.viewmodel.SessionManager
+import com.example.app.utils.SessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class MensajesRepository(private val context: Context) {
 
     private val apiService: MensajesApiService = RetrofitClient.mensajesService
-    private val sessionManager = SessionManager(context)
+    private val sessionManager = SessionManager.getInstance(context)
 
     /**
      * Obtiene el token de acceso guardado
