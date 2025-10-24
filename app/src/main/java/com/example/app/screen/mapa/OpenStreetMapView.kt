@@ -21,6 +21,7 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Overlay
 import com.example.app.R
 import com.example.app.models.Feature
+import com.example.app.models.MiembroUbicacion
 import com.example.app.models.getDisplayName
 import com.example.app.screen.recordatorios.components.getIconResource
 import org.osmdroid.events.MapListener
@@ -54,6 +55,8 @@ fun OpenStreetMap(
     recenterTrigger: Int = 0,
     context: Context = LocalContext.current,
     pois: List<Feature> = emptyList(),
+    showCenterPin: Boolean = true,
+    miembrosGrupo: List<MiembroUbicacion> = emptyList(),  // 🆕 Nuevo parámetro
     onLocationSelected: (lat: Double, lon: Double) -> Unit = { _, _ -> }
 ) {
     val mapView = rememberMapView(context, zoom)
@@ -71,7 +74,7 @@ fun OpenStreetMap(
         update = { map ->
             map.overlays.clear()
 
-            // Usuario
+            // Usuario (punto azul)
             if (showUserLocation) {
                 val geoPoint = GeoPoint(latitude, longitude)
                 val circleMarker = Marker(map).apply {
@@ -83,11 +86,32 @@ fun OpenStreetMap(
                         paint.color = android.graphics.Color.BLUE
                         paint.style = android.graphics.Paint.Style.FILL
                     }
+                    title = "Tú"
                 }
                 map.overlays.add(circleMarker)
             }
 
-            // 🆕 POIs actualizados dinámicamente
+            // 🆕 Miembros del grupo (puntos verdes)
+            if (miembrosGrupo.isNotEmpty()) {
+                Log.d("OpenStreetMap", "🗺️ Dibujando ${miembrosGrupo.size} miembros en el mapa")
+                miembrosGrupo.forEach { miembro ->
+                    val marker = Marker(map).apply {
+                        position = GeoPoint(miembro.lat, miembro.lon)
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                        icon = ShapeDrawable(OvalShape()).apply {
+                            intrinsicHeight = 36
+                            intrinsicWidth = 36
+                            paint.color = android.graphics.Color.GREEN  // Verde para miembros
+                            paint.style = android.graphics.Paint.Style.FILL
+                        }
+                        title = miembro.nombre
+                        snippet = "Última actualización: ${miembro.timestamp}"
+                    }
+                    map.overlays.add(marker)
+                }
+            }
+
+            // POIs
             if (pois.isNotEmpty()) {
                 Log.d("POI_DEBUG", "🗺️ Dibujando ${pois.size} POIs en el mapa")
                 pois.forEach { feature ->
@@ -116,9 +140,11 @@ fun OpenStreetMap(
             }
 
             // Pin central
-            map.overlays.add(CenteredPinOverlay(context))
+            if (showCenterPin) {
+                map.overlays.add(CenteredPinOverlay(context))
+            }
 
-            // 🆕 Forzar redibujado
+            // Forzar redibujado
             map.invalidate()
         }
     )
@@ -147,7 +173,6 @@ fun OpenStreetMap(
         onDispose { mapView.removeMapListener(listener) }
     }
 }
-
 @Composable
 fun rememberMapView(context: Context, zoom: Double = 16.0): MapView {
     return remember {

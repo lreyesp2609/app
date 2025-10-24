@@ -71,4 +71,3 @@ fun calcularDistancia(lat1: Double, lon1: Double, lat2: Double, lon2: Double): F
     }
     return start.distanceTo(end) // en metros
 }
-

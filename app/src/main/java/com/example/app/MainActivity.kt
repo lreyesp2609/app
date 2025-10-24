@@ -1,8 +1,12 @@
 package com.example.app
 
 import android.Manifest
+import android.app.ActivityManager
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -52,6 +56,7 @@ import com.example.app.screen.grupos.components.CreateGroupScreen
 import com.example.app.screen.recordatorios.components.AddReminderScreen
 import com.example.app.screen.recordatorios.components.ReminderMapScreen
 import com.example.app.services.LocationReminderService
+import com.example.app.services.LocationService
 import com.example.app.utils.NotificationHelper
 
 class MainActivity : ComponentActivity() {
@@ -305,12 +310,44 @@ fun AppNavigation(authViewModel: AuthViewModel) {
         ) { backStackEntry ->
             val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
             val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
+            val context = LocalContext.current
+
+            // ✅ Iniciar servicio SOLO si no está corriendo
+            LaunchedEffect(grupoId) {
+                // Verificar si el servicio ya está activo para este grupo
+                if (!isServiceRunning(context, LocationService::class.java)) {
+                    val intent = Intent(context, LocationService::class.java).apply {
+                        action = LocationService.ACTION_START
+                        putExtra(LocationService.EXTRA_GRUPO_ID, grupoId)
+                    }
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        context.startForegroundService(intent)
+                    } else {
+                        context.startService(intent)
+                    }
+
+                    Log.d("ChatGrupo", "🚀 Servicio de ubicación iniciado para grupo $grupoId")
+                } else {
+                    Log.d("ChatGrupo", "ℹ️ Servicio ya está corriendo")
+                }
+            }
+
+            // ❌ ELIMINADO: Ya no detener servicio al salir del chat
+            // El servicio debe seguir corriendo en background
 
             ChatGrupoScreen(
                 grupoId = grupoId,
                 grupoNombre = grupoNombre,
-                navController = navController
+                navController = navController,
             )
         }
     }
+}
+
+private fun isServiceRunning(context: Context, serviceClass: Class<*>): Boolean {
+    val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    @Suppress("DEPRECATION")
+    return manager.getRunningServices(Integer.MAX_VALUE)
+        .any { it.service.className == serviceClass.name }
 }

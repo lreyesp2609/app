@@ -64,3 +64,11 @@ data class MensajeUI(
     val tipo: String,
     val fechaCreacion: String
 )
+
+data class MiembroUbicacion(
+    val userId: Int,
+    val nombre: String,
+    val lat: Double,
+    val lon: Double,
+    val timestamp: String
+)

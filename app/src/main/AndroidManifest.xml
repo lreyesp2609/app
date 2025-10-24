@@ -41,6 +41,12 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <service
+            android:name=".services.LocationService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

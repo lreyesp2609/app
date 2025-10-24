@@ -1,5 +1,6 @@
 package com.example.app.screen.grupos.components
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
@@ -8,6 +9,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -31,6 +34,7 @@ import androidx.navigation.NavController
 import com.example.app.models.MensajeUI
 import com.example.app.viewmodel.ChatGrupoViewModel
 import com.example.app.viewmodel.ChatGrupoViewModelFactory
+import kotlinx.coroutines.launch
 import java.time.OffsetDateTime
 
 @Composable
@@ -44,7 +48,6 @@ fun ChatGrupoScreen(
         factory = ChatGrupoViewModelFactory(context)
     )
 
-    // Estados del ViewModel
     val mensajes by viewModel.mensajes.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -52,15 +55,15 @@ fun ChatGrupoScreen(
 
     var mensajeTexto by remember { mutableStateOf("") }
 
-    // Cargar mensajes al iniciar
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
+    val coroutineScope = rememberCoroutineScope()
+
     LaunchedEffect(grupoId) {
         viewModel.cargarMensajes(grupoId)
     }
 
-    // Mostrar error si existe
     error?.let { errorMessage ->
         LaunchedEffect(errorMessage) {
-            // Aquí puedes mostrar un Snackbar o Toast
             Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
             viewModel.limpiarError()
         }
@@ -76,37 +79,72 @@ fun ChatGrupoScreen(
             )
         },
         bottomBar = {
-            ChatInputBar(
-                mensaje = mensajeTexto,
-                onMensajeChange = { mensajeTexto = it },
-                onEnviarClick = {
-                    if (mensajeTexto.isNotBlank()) {
-                        // 🔹 Enviar mensaje por WebSocket
-                        viewModel.enviarMensaje(grupoId, mensajeTexto)
-                        mensajeTexto = ""
-                    }
-                },
-                enabled = isConnected
-            )
+            if (pagerState.currentPage == 0) {
+                ChatInputBar(
+                    mensaje = mensajeTexto,
+                    onMensajeChange = { mensajeTexto = it },
+                    onEnviarClick = {
+                        if (mensajeTexto.isNotBlank()) {
+                            viewModel.enviarMensaje(grupoId, mensajeTexto)
+                            mensajeTexto = ""
+                        }
+                    },
+                    enabled = isConnected
+                )
+            }
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues)) {
-            if (isLoading && mensajes.isEmpty()) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            } else {
-                ChatMessageList(
-                    mensajes = mensajes,
-                    onMensajeVisible = { mensajeId ->
-                        viewModel.marcarComoLeido(grupoId, mensajeId)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            userScrollEnabled = pagerState.currentPage == 0
+        ) { page ->
+            when (page) {
+                0 -> {
+                    // Pantalla del chat
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (isLoading && mensajes.isEmpty()) {
+                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        } else {
+                            ChatMessageList(
+                                mensajes = mensajes,
+                                onMensajeVisible = { mensajeId ->
+                                    viewModel.marcarComoLeido(grupoId, mensajeId)
+                                }
+                            )
+                        }
                     }
-                )
+                }
+
+                1 -> {
+                    // ✅ Pantalla del mapa CON grupoId
+                    GrupoMapScreen(
+                        navController = navController,
+                        grupoId = grupoId,  // 🆕 Pasar el grupoId
+                        onLocationSelected = { lat, lon, address ->
+                            viewModel.enviarMensaje(
+                                grupoId,
+                                "📍 Ubicación compartida: $address"
+                            )
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(0)
+                            }
+                        },
+                        onBackToChat = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(0)
+                            }
+                        }
+                    )
+                }
             }
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
