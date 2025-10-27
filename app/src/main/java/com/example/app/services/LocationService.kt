@@ -7,13 +7,14 @@ import android.app.Service
 import android.content.Intent
 import android.location.Location
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.app.BuildConfig
 import com.example.app.R
-import com.example.app.network.WebSocketLocationManager
+import com.example.app.websocket.WebSocketLocationManager
 import com.example.app.utils.SessionManager
 import com.google.android.gms.location.*
 import com.google.gson.Gson
@@ -121,7 +122,7 @@ class LocationService : Service() {
                 Log.e(TAG, "❌ Error en WebSocket: ${t.message}")
 
                 // Reintentar conexión después de 5 segundos
-                android.os.Handler(Looper.getMainLooper()).postDelayed({
+                Handler(Looper.getMainLooper()).postDelayed({
                     if (currentGrupoId != -1) {
                         Log.d(TAG, "🔄 Reintentando conexión WebSocket...")
                         conectarWebSocket()

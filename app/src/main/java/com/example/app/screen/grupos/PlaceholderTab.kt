@@ -54,7 +54,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +65,7 @@ import com.example.app.screen.components.showSuccessSnackbar
 import com.example.app.viewmodel.GrupoViewModelFactory
 import com.example.app.screen.components.AppSnackbarHost
 import com.example.app.screen.components.showErrorSnackbar
+import com.example.app.websocket.NotificationWebSocketManager
 
 @Composable
 fun CollaborativeGroupsScreen(
@@ -84,13 +84,22 @@ fun CollaborativeGroupsScreen(
 
     val (snackbarHostState, scope) = rememberAppSnackbarState()
 
+    // 🔥 ESCUCHAR actualizaciones del WebSocket de notificaciones
+    val unreadCounts by NotificationWebSocketManager.unreadCounts.collectAsState()
+
     // ✅ Recargar cuando se crea un grupo
     val grupoCreado = navController.currentBackStackEntry
         ?.savedStateHandle
         ?.getStateFlow("grupo_creado", false)
         ?.collectAsState()
 
-    LaunchedEffect(Unit, grupoCreado?.value) {
+    // 🆕 Detectar cuando se vuelve del chat
+    val volviendoDelChat = navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow("refresh_grupos", false)
+        ?.collectAsState()
+
+    LaunchedEffect(Unit, grupoCreado?.value, volviendoDelChat?.value) {
         viewModel.listarGrupos(token)
         delay(200)
         showContent = true
@@ -101,6 +110,12 @@ fun CollaborativeGroupsScreen(
             navController.currentBackStackEntry
                 ?.savedStateHandle
                 ?.set("grupo_creado", false)
+        }
+
+        if (volviendoDelChat?.value == true) {
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.set("refresh_grupos", false)
         }
     }
 
@@ -120,7 +135,6 @@ fun CollaborativeGroupsScreen(
         }
     }
 
-    // 🔥 BOX PRINCIPAL CON SNACKBAR EN LA PARTE INFERIOR
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -224,14 +238,17 @@ fun CollaborativeGroupsScreen(
                             ) {
                                 items(
                                     count = state.grupos.size,
-                                    key = { index -> state.grupos[index].id ?: index }
+                                    key = { index -> state.grupos[index].id }
                                 ) { index ->
                                     val grupo = state.grupos[index]
+
+                                    // 🔥 USAR el conteo del WebSocket si está disponible, sino el del backend
+                                    val mensajesNoLeidos = unreadCounts[grupo.id] ?: grupo.mensajesNoLeidos
+
                                     GrupoCard(
                                         grupo = grupo,
-                                        mensajesNoLeidos = (0..15).random(), // 🆕 Temporal para demo
+                                        mensajesNoLeidos = mensajesNoLeidos,
                                         onClick = {
-                                            // 🆕 Navegar al chat del grupo
                                             navController.navigate(
                                                 "chat_grupo/${grupo.id}/${grupo.nombre}"
                                             )
@@ -407,7 +424,7 @@ fun JoinGroupDialog(
 @Composable
 fun GrupoCard(
     grupo: GrupoResponse,
-    mensajesNoLeidos: Int = 0, // 🆕 Parámetro para mensajes no leídos
+    mensajesNoLeidos: Int = 0,
     onClick: () -> Unit = {}
 ) {
     Card(
@@ -427,7 +444,6 @@ fun GrupoCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Header con nombre y código
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -437,7 +453,6 @@ fun GrupoCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    // 🆕 Icono con badge de notificaciones
                     Box {
                         Surface(
                             shape = CircleShape,
@@ -513,7 +528,6 @@ fun GrupoCard(
                 )
             }
 
-            // Descripción (si existe)
             if (!grupo.descripcion.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(

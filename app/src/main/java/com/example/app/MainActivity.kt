@@ -57,7 +57,11 @@ import com.example.app.screen.recordatorios.components.AddReminderScreen
 import com.example.app.screen.recordatorios.components.ReminderMapScreen
 import com.example.app.services.LocationReminderService
 import com.example.app.services.LocationService
+import com.example.app.services.LocationTrackingService
 import com.example.app.utils.NotificationHelper
+import com.example.app.websocket.NotificationWebSocketManager
+import com.example.app.websocket.WebSocketLocationManager
+import com.example.app.websocket.WebSocketManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -114,17 +118,57 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigation(authViewModel: AuthViewModel) {
     val navController = rememberNavController()
+    val context = LocalContext.current
 
-    // Estados del AuthViewModel
     val isLoggedIn = authViewModel.isLoggedIn
     val isLoading = authViewModel.isLoading
+    val accessToken = authViewModel.accessToken
+
+    // Conectar WebSocket de Notificaciones
+    LaunchedEffect(isLoggedIn, accessToken) {
+        if (isLoggedIn && accessToken != null) {
+            val baseUrl = BuildConfig.BASE_URL.removeSuffix("/")
+            Log.d("AppNavigation", "🚀 CONECTANDO WEBSOCKET DE NOTIFICACIONES")
+            NotificationWebSocketManager.connect(baseUrl, accessToken)
+            Log.d("AppNavigation", "ℹ️ Chat y Ubicaciones se conectarán al entrar a un grupo")
+        } else {
+            Log.d("AppNavigation", "🔒 Usuario no logueado, cerrando WebSockets...")
+            NotificationWebSocketManager.close()
+            WebSocketManager.close()
+
+            // Solo cerrar ubicaciones si el servicio NO está activo
+            if (!LocationTrackingService.isTracking(context)) {
+                WebSocketLocationManager.close()
+            }
+        }
+    }
+
+    // 🔥 LIMPIAR WEBSOCKETS al salir (PERO NO el de ubicaciones si el servicio está activo)
+    DisposableEffect(Unit) {
+        onDispose {
+            Log.d("AppNavigation", "🔒 ════════════════════════════════════════")
+            Log.d("AppNavigation", "🔒 APP CERRADA, LIMPIANDO WEBSOCKETS")
+            Log.d("AppNavigation", "🔒 ════════════════════════════════════════")
+
+            // Cerrar notificaciones y chat
+            NotificationWebSocketManager.close()
+            WebSocketManager.close()
+
+            // Solo cerrar ubicaciones si el servicio NO está activo
+            if (LocationTrackingService.isTracking(context)) {
+                Log.d("AppNavigation", "ℹ️ Servicio de rastreo activo, manteniendo WebSocket de ubicaciones")
+            } else {
+                Log.d("AppNavigation", "✅ Cerrando WebSocket de ubicaciones (servicio inactivo)")
+                WebSocketLocationManager.close()
+            }
+        }
+    }
 
     // Determinar la ruta inicial basada en el estado de autenticación
     val startDestination = if (isLoggedIn) "home" else "login"
 
     // Mostrar pantalla de carga mientras se restaura la sesión
     if (isLoading && !isLoggedIn && authViewModel.accessToken == null) {
-        // Pantalla de splash/loading mientras se verifica la sesión
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -163,7 +207,6 @@ fun AppNavigation(authViewModel: AuthViewModel) {
         }
         composable("rutas") {
             val token = authViewModel.accessToken ?: ""
-
             AlternateRoutesScreen(
                 navController = navController,
                 token = token
@@ -173,7 +216,6 @@ fun AppNavigation(authViewModel: AuthViewModel) {
             MapScreen(navController = navController)
         }
 
-        // 🔹 Rutas por ID en vez de lat/lon
         composable(
             "rutas_screen/{id}",
             arguments = listOf(navArgument("id") { type = NavType.IntType })
@@ -191,7 +233,6 @@ fun AppNavigation(authViewModel: AuthViewModel) {
 
             LaunchedEffect(id) {
                 viewModel.cargarUbicacionPorId(id)
-                // Setear el token en el MapViewModel
                 mapViewModel.setToken(token)
             }
 
@@ -208,7 +249,6 @@ fun AppNavigation(authViewModel: AuthViewModel) {
             )
         }
 
-        // 🆕 Nueva ruta para estadísticas
         composable(
             "estadisticas/{id}",
             arguments = listOf(navArgument("id") { type = NavType.IntType })
@@ -232,13 +272,23 @@ fun AppNavigation(authViewModel: AuthViewModel) {
         }
 
         composable("settings") {
-            val context = LocalContext.current  // ✅ Obtener el contexto
-
             SettingsScreen(
                 userState = authViewModel.user,
                 onLogout = {
-                    authViewModel.logout(context) {  // ✅ Pasar el contexto
-                        // Navegar a login cuando termine logout
+                    Log.d("AppNavigation", "🔒 LOGOUT: CERRANDO TODOS LOS WEBSOCKETS")
+
+                    // ✅ Cerrar servicio de rastreo primero
+                    if (LocationTrackingService.isTracking(context)) {
+                        LocationTrackingService.stopTracking(context)
+                        Log.d("AppNavigation", "🛑 Servicio de rastreo detenido")
+                    }
+
+                    // Ahora sí cerrar todos los WebSockets
+                    NotificationWebSocketManager.close()
+                    WebSocketManager.close()
+                    WebSocketLocationManager.close()
+
+                    authViewModel.logout(context) {
                         navController.navigate("login") {
                             popUpTo("home") { inclusive = true }
                         }
@@ -310,11 +360,8 @@ fun AppNavigation(authViewModel: AuthViewModel) {
         ) { backStackEntry ->
             val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
             val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
-            val context = LocalContext.current
 
-            // ✅ Iniciar servicio SOLO si no está corriendo
             LaunchedEffect(grupoId) {
-                // Verificar si el servicio ya está activo para este grupo
                 if (!isServiceRunning(context, LocationService::class.java)) {
                     val intent = Intent(context, LocationService::class.java).apply {
                         action = LocationService.ACTION_START
@@ -332,9 +379,6 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                     Log.d("ChatGrupo", "ℹ️ Servicio ya está corriendo")
                 }
             }
-
-            // ❌ ELIMINADO: Ya no detener servicio al salir del chat
-            // El servicio debe seguir corriendo en background
 
             ChatGrupoScreen(
                 grupoId = grupoId,

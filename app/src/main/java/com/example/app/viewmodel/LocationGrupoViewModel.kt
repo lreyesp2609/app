@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.app.BuildConfig
 import com.example.app.models.MiembroUbicacion
-import com.example.app.network.WebSocketLocationManager
+import com.example.app.websocket.WebSocketLocationManager
 import com.example.app.services.LocationWebSocketListener
 import com.example.app.utils.SessionManager
 import com.google.gson.Gson
@@ -149,5 +149,16 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
             WebSocketLocationManager.removeBroadcastListener(it)
             Log.d(TAG, "📢 ViewModel desuscrito del WebSocket")
         }
+    }
+
+    fun desuscribirse() {
+        Log.d(TAG, "📢 Desuscribiéndose del WebSocket de ubicaciones")
+
+        viewModelListener?.let { listener ->
+            WebSocketLocationManager.removeBroadcastListener(listener)
+            Log.d(TAG, "✅ Listener removido del WebSocket")
+        }
+
+        _isConnected.value = false
     }
 }

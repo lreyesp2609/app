@@ -28,7 +28,6 @@ class SessionManager private constructor(context: Context) {
         }
     }
 
-
     fun saveTokens(access: String, refresh: String) {
         Log.d(TAG, "💾 ========================================")
         Log.d(TAG, "💾 GUARDANDO NUEVOS TOKENS")
@@ -82,6 +81,11 @@ class SessionManager private constructor(context: Context) {
         Log.d(TAG, "➖ ========================================")
     }
 
+    // 🆕 Método para verificar cuántos listeners hay
+    fun getListenerCount(): Int {
+        return tokenListeners.size
+    }
+
     fun getAccessToken(): String? {
         val token = prefs.getString("ACCESS_TOKEN", null)
         if (token != null) {
@@ -126,12 +130,15 @@ class SessionManager private constructor(context: Context) {
     }
 
     fun clear() {
-        Log.d(TAG, "🧹 Limpiando sesión y listeners")
-        tokenListeners.clear()
+        Log.d(TAG, "🧹 Limpiando sesión (manteniendo listeners)")
+        // ❌ NO borrar listeners aquí - deben persistir
+        // tokenListeners.clear()
         prefs.edit().clear().apply()
+        Log.d(TAG, "✅ Sesión limpiada. Listeners preservados: ${tokenListeners.size}")
     }
 
     fun hasValidSession(): Boolean {
         return getRefreshToken() != null && isLoggedIn()
     }
+
 }

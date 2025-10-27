@@ -17,6 +17,11 @@ class GrupoRepository(private val grupoService: GrupoService) {
         return grupoService.listarGrupos(authHeader)
     }
 
+    suspend fun listarGruposConNoLeidos(token: String): Response<List<GrupoResponse>> {
+        val authHeader = "Bearer $token"
+        return grupoService.listarGruposConNoLeidos(authHeader)
+    }
+
     suspend fun unirseAGrupo(token: String, codigo: String): Response<GrupoResponse> {
         val authHeader = "Bearer $token"
         return grupoService.unirseAGrupo(codigo, authHeader)

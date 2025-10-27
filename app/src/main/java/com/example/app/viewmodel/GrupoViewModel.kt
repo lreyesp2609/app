@@ -42,11 +42,6 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
                             "Ya existe un grupo con ese nombre. Intenta con otro nombre."
                         )
                     }
-                    response.code() == 400 -> {
-                        _grupoState.value = GrupoState.Error(
-                            "Datos inválidos. Verifica el nombre del grupo."
-                        )
-                    }
                     response.code() == 401 -> {
                         _grupoState.value = GrupoState.Error(
                             "Tu sesión ha expirado. Por favor, inicia sesión nuevamente."
@@ -76,6 +71,7 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
         }
     }
 
+    // ✅ CORREGIDO - Ahora usa el endpoint correcto
     fun listarGrupos(token: String, showLoading: Boolean = true) {
         viewModelScope.launch {
             if (showLoading) {
@@ -83,7 +79,9 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
             }
 
             try {
+                // ✅ Usar el endpoint que SÍ existe en el servidor
                 val response = repository.listarGrupos(token)
+
                 if (response.isSuccessful && response.body() != null) {
                     _grupoState.value = GrupoState.ListSuccess(response.body()!!)
                 } else {
@@ -117,7 +115,6 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
                         )
                     }
                     response.code() == 400 -> {
-                        // 🔥 Extraer el mensaje específico del backend
                         val errorBody = response.errorBody()?.string()
                         val errorMessage = when {
                             errorBody?.contains("Ya perteneces") == true ->

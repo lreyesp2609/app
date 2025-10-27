@@ -30,12 +30,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.app.BuildConfig
 import com.example.app.screen.components.AppBackButton
 import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.screen.mapa.LocationTracker
 import com.example.app.screen.mapa.OpenStreetMap
+import com.example.app.services.LocationTrackingService
+import com.example.app.utils.SessionManager
 import com.example.app.viewmodel.LocationGrupoViewModel
+import com.example.app.websocket.WebSocketLocationManager
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 
 @Composable
 fun GrupoMapScreen(
@@ -62,28 +71,49 @@ fun GrupoMapScreen(
     var locationObtained by remember { mutableStateOf(false) }
     var showGpsButton by remember { mutableStateOf(false) }
     var recenterTrigger by remember { mutableStateOf(0) }
-
     var selectedAddress by remember { mutableStateOf("Selecciona una ubicación") }
 
     // Observar ubicaciones de otros miembros
     val ubicacionesMiembros by locationViewModel.ubicacionesMiembros.collectAsState()
     val isConnected by locationViewModel.isConnected.collectAsState()
 
-    // 🆕 CAMBIO PRINCIPAL: Suscribirse al WebSocket existente
+    // 🚀 INICIAR RASTREO AUTOMÁTICAMENTE (UNA SOLA VEZ)
     LaunchedEffect(grupoId) {
-        Log.d("GrupoMapScreen", "📢 Suscribiéndose al WebSocket para grupo $grupoId")
+        Log.d("GrupoMapScreen", "🚀 ════════════════════════════════════════")
+        Log.d("GrupoMapScreen", "🚀 INICIANDO RASTREO AUTOMÁTICO")
+        Log.d("GrupoMapScreen", "🚀 Grupo: $grupoId")
+        Log.d("GrupoMapScreen", "🚀 ════════════════════════════════════════")
+
+        val grupoNombre = "Grupo $grupoId" // TODO: Obtener nombre real
+
+        // Iniciar servicio (si ya está activo, no hace nada)
+        LocationTrackingService.startTracking(
+            context = context,
+            grupoId = grupoId,
+            grupoNombre = grupoNombre
+        )
+
+        // Suscribir ViewModel para recibir ubicaciones de otros
+        delay(1000)
+        Log.d("GrupoMapScreen", "📢 Suscribiéndose al WebSocket")
         locationViewModel.suscribirseAUbicaciones()
     }
 
-    // ⚠️ ELIMINAR: Ya no necesitas enviar ubicaciones manualmente
-    // El LocationService ya lo hace en background
-    // Solo trackea para actualizar el mapa local
+    // 🧹 Solo desuscribir ViewModel al salir (servicio sigue activo)
+    DisposableEffect(Unit) {
+        onDispose {
+            Log.d("GrupoMapScreen", "🧹 Saliendo del mapa")
+            Log.d("GrupoMapScreen", "ℹ️ Rastreo continúa en segundo plano")
+            scope.launch {
+                locationViewModel.desuscribirse()
+            }
+        }
+    }
+
     if (locationObtained) {
         LocationTracker { lat, lon ->
             currentLat = lat
             currentLon = lon
-            Log.d("GrupoMapScreen", "📍 Actualizando mapa local: $lat, $lon")
-            // ❌ NO enviar aquí, el servicio ya lo hace
         }
     }
 
@@ -95,12 +125,12 @@ fun GrupoMapScreen(
                 longitude = currentLon,
                 showUserLocation = true,
                 showCenterPin = false,
-                miembrosGrupo = ubicacionesMiembros,  // Mostrar ubicaciones de otros
+                miembrosGrupo = ubicacionesMiembros,
                 recenterTrigger = recenterTrigger,
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Botón superior para volver al chat
+            // Botón para volver al chat
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -113,7 +143,7 @@ fun GrupoMapScreen(
                 )
             }
 
-            // Botones inferiores
+            // Botones inferiores (sin botón de rastreo)
             GrupoMapButtons(
                 navController = navController,
                 selectedAddress = selectedAddress,

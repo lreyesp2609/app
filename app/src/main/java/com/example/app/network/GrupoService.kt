@@ -21,6 +21,11 @@ interface GrupoService {
         @Header("Authorization") token: String
     ): Response<List<GrupoResponse>>
 
+    @GET("grupos/grupos-con-no-leidos")
+    suspend fun listarGruposConNoLeidos(
+        @Header("Authorization") token: String
+    ): Response<List<GrupoResponse>>
+
     @POST("grupos/unirse/{codigo}")
     suspend fun unirseAGrupo(
         @Path("codigo") codigo: String,
@@ -34,5 +39,6 @@ data class GrupoResponse(
     @SerializedName("descripcion") val descripcion: String?,
     @SerializedName("codigo_invitacion") val codigoInvitacion: String,
     @SerializedName("creado_por_id") val creadoPorId: Int,
-    @SerializedName("fecha_creacion") val fechaCreacion: String
+    @SerializedName("fecha_creacion") val fechaCreacion: String,
+    @SerializedName("mensajes_no_leidos") val mensajesNoLeidos: Int = 0
 )

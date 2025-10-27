@@ -8,16 +8,18 @@ import com.example.app.BuildConfig
 import com.example.app.models.MensajeResponse
 import com.example.app.models.MensajeUI
 import com.example.app.network.ChatWebSocketListener
-import com.example.app.network.WebSocketManager
+import com.example.app.websocket.WebSocketManager
 import com.example.app.repository.MensajesRepository
 import com.example.app.utils.SessionManager
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+
 
 class ChatGrupoViewModel(context: Context) : ViewModel() {
 
@@ -42,12 +44,7 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
         private const val TAG = "🔌WS_ChatGrupoViewModel"
     }
 
-    // ❌ ELIMINAR: Ya no necesitamos listener local
-    // private val tokenChangeListener: (String) -> Unit = { ... }
-
     init {
-        // ❌ ELIMINAR: Ya no registramos listener aquí
-        // sessionManager.addTokenChangeListener(tokenChangeListener)
         Log.d(TAG, "🎬 ChatGrupoViewModel inicializado")
     }
 
@@ -65,6 +62,10 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
                     val mensajesUI = mensajesResponse.mapNotNull { it.toMensajeUI(currentUserId) }
                     _mensajes.value = mensajesUI
                     Log.d(TAG, "✅ ${mensajesUI.size} mensajes cargados correctamente")
+
+                    // 🆕 Marcar todos los mensajes no leídos como leídos automáticamente
+                    marcarTodoComoLeido(grupoId, mensajesUI)
+
                     conectarWebSocket(grupoId)
                 }
                 .onFailure { exception ->
@@ -73,6 +74,45 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
                 }
 
             _isLoading.value = false
+        }
+    }
+
+    /**
+     * 🆕 Marca todos los mensajes no leídos como leídos automáticamente
+     */
+    private fun marcarTodoComoLeido(grupoId: Int, mensajes: List<MensajeUI>) {
+        viewModelScope.launch {
+            val mensajesNoLeidos = mensajes.filter { !it.esMio && !it.leido }
+
+            if (mensajesNoLeidos.isEmpty()) {
+                Log.d(TAG, "ℹ️ No hay mensajes no leídos que marcar")
+                return@launch
+            }
+
+            Log.d(TAG, "👁️ ════════════════════════════════════════")
+            Log.d(TAG, "👁️ MARCANDO ${mensajesNoLeidos.size} MENSAJES COMO LEÍDOS")
+            Log.d(TAG, "👁️ ════════════════════════════════════════")
+
+            mensajesNoLeidos.forEach { mensaje ->
+                repository.marcarMensajeLeido(grupoId, mensaje.id)
+                    .onSuccess {
+                        Log.d(TAG, "✅ Mensaje ${mensaje.id} marcado como leído")
+                    }
+                    .onFailure { exception ->
+                        Log.e(TAG, "❌ Error al marcar mensaje ${mensaje.id}: ${exception.message}")
+                    }
+            }
+
+            // Actualizar UI
+            _mensajes.value = _mensajes.value.map { mensaje ->
+                if (!mensaje.esMio && !mensaje.leido) {
+                    mensaje.copy(leido = true)
+                } else {
+                    mensaje
+                }
+            }
+
+            Log.d(TAG, "✅ Todos los mensajes marcados como leídos")
         }
     }
 
@@ -130,6 +170,11 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
                                     viewModelScope.launch {
                                         _mensajes.value = _mensajes.value + mensajeUI
                                         Log.d(TAG, "💬 Nuevo mensaje agregado: ID=${mensajeUI.id}")
+
+                                        // 🆕 Si el mensaje no es mío, marcarlo como leído automáticamente
+                                        if (!mensajeUI.esMio) {
+                                            marcarComoLeido(grupoId, mensajeUI.id)
+                                        }
                                     }
                                 } else {
                                     Log.w(TAG, "⚠️ Mensaje inválido ignorado: id=${mensaje.id}")
@@ -166,9 +211,6 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
             }
         ))
     }
-
-    // ❌ ELIMINAR: Ya no enviamos token desde aquí
-    // private fun enviarNuevoToken(newToken: String) { ... }
 
     /**
      * Envía un mensaje a través del WebSocket
@@ -252,8 +294,6 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         Log.d(TAG, "🧹 Limpiando ChatGrupoViewModel")
-        // ❌ ELIMINAR: Ya no removemos listener
-        // sessionManager.removeTokenChangeListener(tokenChangeListener)
         WebSocketManager.close()
         Log.d(TAG, "✅ WebSocket cerrado")
     }
