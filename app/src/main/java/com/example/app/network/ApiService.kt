@@ -40,4 +40,15 @@ interface ApiService {
     suspend fun logout(
         @Field("refresh_token") refreshToken: String
     ): Response<Unit>
+
+    @POST("/api/fcm/token")
+    suspend fun registrarFCMToken(
+        @Header("Authorization") token: String,
+        @Body request: Map<String, String>
+    ): Response<Unit>
+
+    @DELETE("/api/fcm/tokens")
+    suspend fun eliminarTodosLosTokens(
+        @Header("Authorization") token: String
+    ): Response<Unit>
 }

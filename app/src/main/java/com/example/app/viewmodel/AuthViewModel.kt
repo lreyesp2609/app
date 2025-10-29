@@ -24,6 +24,7 @@ import com.example.app.screen.recordatorios.components.ReminderReceiver
 import com.example.app.screen.recordatorios.components.scheduleReminder
 import com.example.app.services.LocationReminderService
 import com.example.app.utils.SessionManager
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -120,6 +121,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                         getCurrentUser {
                             // ✅ NUEVO: Restaurar recordatorios después del login
                             restoreUserReminders(context, loginResponse.accessToken)
+                            enviarTokenFCMPendiente()
                             onSuccess()
                         }                    },
                     onFailure = { exception ->
@@ -287,6 +289,16 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         val savedRefresh = sessionManager.getRefreshToken()
 
         viewModelScope.launch {
+
+            try {
+                accessToken?.let { token ->
+                    repository.eliminarTokenFCM("Bearer $token")
+                    Log.d(TAG, "✅ Token FCM eliminado del backend")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error eliminando token FCM: ${e.message}")
+            }
+
             // 1️⃣ Cancelar todas las alarmas y limpiar BD local
             try {
                 cancelAllRemindersAndCleanup(context)
@@ -487,5 +499,110 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                 }
             )
         }
+    }
+
+
+    /**
+     * 🔥 Obtener y enviar token FCM al backend
+     */
+    fun obtenerYEnviarTokenFCM() {
+        Log.d(TAG, "🔥 Solicitando token FCM a Firebase...")
+
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.e(TAG, "❌ ========================================")
+                Log.e(TAG, "❌ ERROR AL OBTENER TOKEN FCM")
+                Log.e(TAG, "❌ ${task.exception?.message}")
+                Log.e(TAG, "❌ ========================================")
+                return@addOnCompleteListener
+            }
+
+            val token = task.result
+            Log.d(TAG, "✅ ========================================")
+            Log.d(TAG, "✅ TOKEN FCM OBTENIDO DE FIREBASE")
+            Log.d(TAG, "✅ Token: ${token.take(30)}...")
+            Log.d(TAG, "✅ ========================================")
+
+            // Enviar al backend
+            enviarTokenFCM(token)
+        }
+    }
+
+    /**
+     * 📤 Enviar token FCM al backend
+     */
+    private fun enviarTokenFCM(fcmToken: String) {
+        viewModelScope.launch {
+            try {
+                val bearerToken = accessToken
+
+                if (bearerToken.isNullOrEmpty()) {
+                    Log.e(TAG, "❌ No hay access token disponible")
+                    return@launch
+                }
+
+                Log.d(TAG, "🔥 ========================================")
+                Log.d(TAG, "🔥 ENVIANDO TOKEN FCM AL BACKEND")
+                Log.d(TAG, "🔥 ========================================")
+                Log.d(TAG, "   Token FCM: ${fcmToken.take(30)}...")
+                Log.d(TAG, "   Access Token: ${bearerToken.take(20)}...")
+
+                val request = mapOf(
+                    "token" to fcmToken,
+                    "dispositivo" to "android"
+                )
+
+                val response = repository.enviarTokenFCM("Bearer $bearerToken", request)
+
+                if (response.isSuccessful) {
+                    Log.d(TAG, "✅ ========================================")
+                    Log.d(TAG, "✅ TOKEN FCM REGISTRADO EN BACKEND")
+                    Log.d(TAG, "✅ Código HTTP: ${response.code()}")
+                    Log.d(TAG, "✅ ========================================")
+                } else {
+                    Log.e(TAG, "❌ ========================================")
+                    Log.e(TAG, "❌ ERROR AL REGISTRAR TOKEN FCM")
+                    Log.e(TAG, "❌ Código HTTP: ${response.code()}")
+                    Log.e(TAG, "❌ Error: ${response.errorBody()?.string()}")
+                    Log.e(TAG, "❌ ========================================")
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ ========================================")
+                Log.e(TAG, "❌ EXCEPCIÓN AL ENVIAR TOKEN FCM")
+                Log.e(TAG, "❌ ${e.message}")
+                Log.e(TAG, "❌ ========================================")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun enviarTokenFCMPendiente() {
+        Log.d(TAG, "🔥 ========================================")
+        Log.d(TAG, "🔥 INICIANDO PROCESO FCM")
+        Log.d(TAG, "🔥 ========================================")
+
+        val prefs = context.getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
+        val pendingToken = prefs.getString("PENDING_FCM_TOKEN", null)
+
+        if (pendingToken != null) {
+            Log.d(TAG, "📤 Token FCM pendiente encontrado:")
+            Log.d(TAG, "   Token: ${pendingToken.take(30)}...")
+            Log.d(TAG, "📤 Enviando al backend...")
+
+            enviarTokenFCM(pendingToken)
+
+            // Limpiar token pendiente
+            prefs.edit().remove("PENDING_FCM_TOKEN").apply()
+            Log.d(TAG, "🧹 Token pendiente eliminado de SharedPreferences")
+        } else {
+            Log.d(TAG, "ℹ️ No hay token FCM pendiente")
+            Log.d(TAG, "🔍 Obteniendo nuevo token de Firebase...")
+
+            // Si no hay token pendiente, obtener uno nuevo
+            obtenerYEnviarTokenFCM()
+        }
+
+        Log.d(TAG, "🔥 ========================================")
     }
 }

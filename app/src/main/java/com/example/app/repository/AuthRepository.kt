@@ -3,9 +3,11 @@ package com.example.app.repository
 import android.util.Log
 import com.example.app.models.LoginResponse
 import com.example.app.network.RetrofitClient
+import com.example.app.network.RetrofitClient.apiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
+import retrofit2.Response
 import java.io.IOException
 
 class AuthRepository {
@@ -132,4 +134,16 @@ class AuthRepository {
         }
     }
 
+    // 🔥 NUEVO: Métodos FCM
+    suspend fun enviarTokenFCM(bearerToken: String, request: Map<String, String>): Response<Unit> {
+        return withContext(Dispatchers.IO) {
+            api.registrarFCMToken(bearerToken, request)
+        }
+    }
+
+    suspend fun eliminarTokenFCM(bearerToken: String): Response<Unit> {
+        return withContext(Dispatchers.IO) {
+            api.eliminarTodosLosTokens(bearerToken)
+        }
+    }
 }
