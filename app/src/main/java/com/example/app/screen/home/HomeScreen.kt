@@ -237,7 +237,7 @@ fun HomeScreen(
 
     LaunchedEffect(userState, isLoggedIn) {
         if (!isLoggedIn || (userState != null && !userState.activo)) {
-            authViewModel.logout(context) {  // ✅ Pasar el contexto
+            authViewModel.logout(context, shouldRemoveFCMToken = false) {
                 navController.navigate("login") {
                     popUpTo("home") { inclusive = true }
                 }

@@ -1,6 +1,8 @@
 package com.example.app.websocket
 
+import android.content.Context
 import android.util.Log
+import com.example.app.utils.SessionManager
 import com.google.gson.Gson
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -14,6 +16,7 @@ import kotlin.collections.get
 /**
  * Manager para WebSocket de Ubicaciones
  * Soporta conexión global (AppNavigation) y listeners por pantalla
+ * 🆕 Actualiza automáticamente el token cuando SessionManager lo refresca
  */
 object WebSocketLocationManager {
     private var webSocket: WebSocket? = null
@@ -23,6 +26,10 @@ object WebSocketLocationManager {
     private var currentToken: String? = null
     private val gson = Gson()
     private const val TAG = "WS_LocationManager"
+
+    // 🆕 Referencia al listener de token
+    private var tokenChangeListener: ((String) -> Unit)? = null
+    private var sessionManager: SessionManager? = null
 
     private val internalListener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -94,7 +101,46 @@ object WebSocketLocationManager {
     }
 
     /**
-     * 🆕 Conectar desde AppNavigation (sin listener externo)
+     * 🆕 Inicializar y registrar listener de tokens
+     * DEBE llamarse UNA SOLA VEZ al inicio
+     */
+    @Synchronized
+    fun initialize(context: Context) {
+        // Si ya hay listener registrado, no hacer nada
+        if (tokenChangeListener != null) {
+            Log.d(TAG, "⚠️ Ya está inicializado, ignorando llamada duplicada")
+            return
+        }
+
+        sessionManager = SessionManager.getInstance(context.applicationContext)
+
+        // 🆕 Crear y registrar listener de cambios de token
+        tokenChangeListener = { newToken ->
+            Log.d(TAG, "🔄 ════════════════════════════════════════")
+            Log.d(TAG, "🔄 TOKEN ACTUALIZADO POR SESSIONMANAGER")
+            Log.d(TAG, "🔄 ════════════════════════════════════════")
+            Log.d(TAG, "   Nuevo token: ${newToken.take(20)}...")
+            Log.d(TAG, "   WebSocket conectado: ${isConnected()}")
+
+            if (isConnected()) {
+                updateToken(newToken)
+            } else {
+                Log.w(TAG, "⚠️ WebSocket no conectado, guardando token para siguiente conexión")
+                currentToken = newToken
+            }
+        }
+
+        sessionManager?.addTokenChangeListener(tokenChangeListener!!)
+
+        Log.d(TAG, "✅ ════════════════════════════════════════")
+        Log.d(TAG, "✅ WEBSOCKET MANAGER INICIALIZADO")
+        Log.d(TAG, "✅ Listener de tokens registrado")
+        Log.d(TAG, "✅ Total listeners en SessionManager: ${sessionManager?.getListenerCount()}")
+        Log.d(TAG, "✅ ════════════════════════════════════════")
+    }
+
+    /**
+     * 🆕 Conectar desde AppNavigation o LocationService
      */
     fun connectGlobal(baseUrl: String, token: String) {
         if (isConnected()) {
@@ -208,6 +254,14 @@ object WebSocketLocationManager {
         Log.d(TAG, "🔒 ════════════════════════════════════════")
         Log.d(TAG, "🔒 CERRANDO WEBSOCKET DE UBICACIONES")
         Log.d(TAG, "🔒 ════════════════════════════════════════")
+
+        // 🆕 Desregistrar listener de tokens
+        tokenChangeListener?.let { listener ->
+            sessionManager?.removeTokenChangeListener(listener)
+            Log.d(TAG, "➖ Listener de tokens desregistrado")
+        }
+        tokenChangeListener = null
+        sessionManager = null
 
         webSocket?.close(1000, "Cliente cerró la conexión")
         webSocket = null

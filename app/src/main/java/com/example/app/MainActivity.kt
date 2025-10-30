@@ -124,21 +124,39 @@ fun AppNavigation(authViewModel: AuthViewModel) {
     val isLoading = authViewModel.isLoading
     val accessToken = authViewModel.accessToken
 
-    // Conectar WebSocket de Notificaciones
+    // 🆕 INICIALIZAR WebSocketLocationManager UNA SOLA VEZ
+    LaunchedEffect(Unit) {
+        Log.d("AppNavigation", "🏗️ Inicializando WebSocket Manager")
+        WebSocketLocationManager.initialize(context)
+    }
+
+    // Conectar WebSocket de Notificaciones (Ubicaciones solo si NO hay servicio activo)
     LaunchedEffect(isLoggedIn, accessToken) {
         if (isLoggedIn && accessToken != null) {
             val baseUrl = BuildConfig.BASE_URL.removeSuffix("/")
-            Log.d("AppNavigation", "🚀 CONECTANDO WEBSOCKET DE NOTIFICACIONES")
+
+            Log.d("AppNavigation", "🚀 USUARIO LOGUEADO - CONECTANDO WEBSOCKETS")
+
+            // Conectar notificaciones
             NotificationWebSocketManager.connect(baseUrl, accessToken)
-            Log.d("AppNavigation", "ℹ️ Chat y Ubicaciones se conectarán al entrar a un grupo")
+
+            // 🔴 NO conectar ubicaciones desde AppNavigation
+            // El LocationService lo hará cuando sea necesario
+            Log.d("AppNavigation", "ℹ️ WebSocket de ubicaciones se conectará desde LocationService")
+
+            Log.d("AppNavigation", "✅ WebSockets de notificaciones conectado")
         } else {
-            Log.d("AppNavigation", "🔒 Usuario no logueado, cerrando WebSockets...")
+            Log.d("AppNavigation", "🔒 USUARIO NO LOGUEADO - CERRANDO WEBSOCKETS")
+
             NotificationWebSocketManager.close()
             WebSocketManager.close()
 
             // Solo cerrar ubicaciones si el servicio NO está activo
-            if (!LocationTrackingService.isTracking(context)) {
+            if (!isServiceRunning(context, LocationService::class.java)) {
+                Log.d("AppNavigation", "✅ Cerrando WebSocket de ubicaciones")
                 WebSocketLocationManager.close()
+            } else {
+                Log.d("AppNavigation", "ℹ️ Manteniendo WebSocket (servicio activo)")
             }
         }
     }

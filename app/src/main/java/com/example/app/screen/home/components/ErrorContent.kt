@@ -38,7 +38,10 @@ fun ErrorContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { authViewModel.logout(context) },
+            onClick = {
+                // 🔥 NO eliminar token FCM (solo es un error temporal)
+                authViewModel.logout(context, shouldRemoveFCMToken = false)
+            },
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary
             )

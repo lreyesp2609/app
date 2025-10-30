@@ -285,28 +285,42 @@ class AuthViewModel(private val context: Context) : ViewModel() {
     // Dentro de AuthViewModel
     private lateinit var reminderViewModel: ReminderViewModel // O inyecta el repository
 
-    fun logout(context: Context, onComplete: (() -> Unit)? = null) {
+    fun logout(
+        context: Context,
+        shouldRemoveFCMToken: Boolean = true,
+        onComplete: (() -> Unit)? = null
+    ) {
+        Log.d(TAG, "🔓 ════════════════════════════════════════")
+        Log.d(TAG, "🔓 LOGOUT INICIADO")
+        Log.d(TAG, "🔓 Eliminar FCM: $shouldRemoveFCMToken")
+        Log.d(TAG, "🔓 Llamado desde:")
+        Thread.currentThread().stackTrace.take(6).forEach {
+            Log.d(TAG, "   $it")
+        }
+        Log.d(TAG, "🔓 ════════════════════════════════════════")
+
         val savedRefresh = sessionManager.getRefreshToken()
 
         viewModelScope.launch {
-
-            try {
-                accessToken?.let { token ->
-                    repository.eliminarTokenFCM("Bearer $token")
-                    Log.d(TAG, "✅ Token FCM eliminado del backend")
+            if (shouldRemoveFCMToken) {
+                try {
+                    accessToken?.let { token ->
+                        repository.eliminarTokenFCM("Bearer $token")
+                        Log.d(TAG, "✅ Token FCM eliminado del backend")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error eliminando token FCM: ${e.message}")
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ Error eliminando token FCM: ${e.message}")
+            } else {
+                Log.d(TAG, "ℹ️ Token FCM NO eliminado (logout automático)")
             }
 
-            // 1️⃣ Cancelar todas las alarmas y limpiar BD local
             try {
                 cancelAllRemindersAndCleanup(context)
             } catch (e: Exception) {
                 Log.e(TAG, "Error limpiando recordatorios: ${e.message}")
             }
 
-            // 2️⃣ Hacer logout en backend
             if (savedRefresh != null) {
                 repository.logout(savedRefresh).fold(
                     onSuccess = {
@@ -403,7 +417,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                         },
                         onFailure = { error ->
                             Log.e(TAG, "❌ Error en auto-refresh: ${error.message}")
-                            logout(context)
+                            logout(context, shouldRemoveFCMToken = false)
                         }
                     )
                 } else {
@@ -505,7 +519,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
     /**
      * 🔥 Obtener y enviar token FCM al backend
      */
-    fun obtenerYEnviarTokenFCM() {
+    private fun obtenerYEnviarTokenFCM() {
         Log.d(TAG, "🔥 Solicitando token FCM a Firebase...")
 
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
@@ -521,6 +535,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
             Log.d(TAG, "✅ ========================================")
             Log.d(TAG, "✅ TOKEN FCM OBTENIDO DE FIREBASE")
             Log.d(TAG, "✅ Token: ${token.take(30)}...")
+            Log.d(TAG, "✅ Token completo: $token")
             Log.d(TAG, "✅ ========================================")
 
             // Enviar al backend
@@ -537,7 +552,10 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                 val bearerToken = accessToken
 
                 if (bearerToken.isNullOrEmpty()) {
-                    Log.e(TAG, "❌ No hay access token disponible")
+                    Log.e(TAG, "❌ ========================================")
+                    Log.e(TAG, "❌ NO HAY ACCESS TOKEN DISPONIBLE")
+                    Log.e(TAG, "❌ No se puede enviar el token FCM")
+                    Log.e(TAG, "❌ ========================================")
                     return@launch
                 }
 
@@ -558,12 +576,18 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                     Log.d(TAG, "✅ ========================================")
                     Log.d(TAG, "✅ TOKEN FCM REGISTRADO EN BACKEND")
                     Log.d(TAG, "✅ Código HTTP: ${response.code()}")
+                    Log.d(TAG, "✅ Usuario ahora puede recibir notificaciones")
                     Log.d(TAG, "✅ ========================================")
+
+                    // ✅ NUEVO: Verificar en la BD que se guardó
+                    Log.d(TAG, "🔍 Verifica en la BD que el token esté guardado:")
+                    Log.d(TAG, "   SELECT * FROM fcm_tokens WHERE token = '${fcmToken.take(30)}...'")
                 } else {
+                    val errorBody = response.errorBody()?.string()
                     Log.e(TAG, "❌ ========================================")
                     Log.e(TAG, "❌ ERROR AL REGISTRAR TOKEN FCM")
                     Log.e(TAG, "❌ Código HTTP: ${response.code()}")
-                    Log.e(TAG, "❌ Error: ${response.errorBody()?.string()}")
+                    Log.e(TAG, "❌ Error: $errorBody")
                     Log.e(TAG, "❌ ========================================")
                 }
 
@@ -579,7 +603,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
 
     private fun enviarTokenFCMPendiente() {
         Log.d(TAG, "🔥 ========================================")
-        Log.d(TAG, "🔥 INICIANDO PROCESO FCM")
+        Log.d(TAG, "🔥 INICIANDO PROCESO FCM POST-LOGIN")
         Log.d(TAG, "🔥 ========================================")
 
         val prefs = context.getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
@@ -590,16 +614,17 @@ class AuthViewModel(private val context: Context) : ViewModel() {
             Log.d(TAG, "   Token: ${pendingToken.take(30)}...")
             Log.d(TAG, "📤 Enviando al backend...")
 
+            // ✅ Enviar token pendiente
             enviarTokenFCM(pendingToken)
 
-            // Limpiar token pendiente
+            // ✅ Limpiar token pendiente DESPUÉS de enviarlo
             prefs.edit().remove("PENDING_FCM_TOKEN").apply()
             Log.d(TAG, "🧹 Token pendiente eliminado de SharedPreferences")
         } else {
-            Log.d(TAG, "ℹ️ No hay token FCM pendiente")
+            Log.d(TAG, "ℹ️ No hay token FCM pendiente en SharedPreferences")
             Log.d(TAG, "🔍 Obteniendo nuevo token de Firebase...")
 
-            // Si no hay token pendiente, obtener uno nuevo
+            // ✅ Si no hay token pendiente, obtener uno nuevo
             obtenerYEnviarTokenFCM()
         }
 

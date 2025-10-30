@@ -1,5 +1,6 @@
 package com.example.app.screen.config
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,10 +15,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +40,8 @@ fun SettingsScreen(
     userState: User?,
     onLogout: () -> Unit
 ) {
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -71,16 +80,61 @@ fun SettingsScreen(
         // Botón de cerrar sesión usando AppButton
         AppButton(
             text = "Cerrar Sesión",
-            onClick = { onLogout() },
+            onClick = {
+                // ✅ Mostrar diálogo de confirmación
+                showLogoutDialog = true
+            },
             modifier = Modifier
                 .fillMaxWidth(0.8f)
                 .height(50.dp),
-            leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null, tint = Color.White) },
+            leadingIcon = {
+                Icon(Icons.Default.ExitToApp, contentDescription = null, tint = Color.White)
+            },
             outlined = false,
-            enabled = true,
-            disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.5f),
-            disabledContentColor = Color.White,
-            icon = null // Ya usamos leadingIcon
+            enabled = true
+        )
+    }
+
+    // ✅ NUEVO: Diálogo de confirmación
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.ExitToApp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Cerrar sesión",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text("¿Estás seguro de que deseas cerrar sesión?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        Log.e("SettingsScreen", "🚨 ════════════════════════════════════════")
+                        Log.e("SettingsScreen", "🚨 USUARIO CONFIRMÓ CERRAR SESIÓN")
+                        Log.e("SettingsScreen", "🚨 Usuario: ${userState?.nombre}")
+                        Log.e("SettingsScreen", "🚨 ════════════════════════════════════════")
+                        onLogout()
+                    }
+                ) {
+                    Text("Cerrar sesión", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
         )
     }
 }

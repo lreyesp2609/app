@@ -18,6 +18,7 @@ import com.example.app.R
 import com.example.app.network.RetrofitClient
 import com.example.app.receivers.NotificationReplyReceiver
 import com.example.app.utils.SessionManager
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,19 +32,35 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         private const val CHANNEL_ID = "recuerdago_mensajes"
         private const val CHANNEL_NAME = "Mensajes de Grupos"
         private const val PREFS_NAME = "notification_messages"
-        private const val MAX_MESSAGES_PER_GROUP = 10 // Máximo de mensajes a acumular
+        private const val MAX_MESSAGES_PER_GROUP = 10
     }
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         Log.d(TAG, "🔥 FirebaseMessagingService creado")
+
+        // ✅ NUEVO: Verificar y enviar token al crear el servicio
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val token = task.result
+                Log.d(TAG, "📱 Token FCM actual verificado:")
+                Log.d(TAG, "   Token: ${token?.take(30)}...")
+                Log.d(TAG, "   Token completo (para debugging): $token")
+                token?.let { sendTokenToBackend(it) }
+            } else {
+                Log.e(TAG, "❌ Error obteniendo token FCM: ${task.exception}")
+            }
+        }
     }
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d(TAG, "🆕 Nuevo token FCM generado:")
-        Log.d(TAG, "   Token: ${token.take(30)}...")
+        Log.d(TAG, "🆕 ========================================")
+        Log.d(TAG, "🆕 NUEVO TOKEN FCM GENERADO")
+        Log.d(TAG, "🆕 ========================================")
+        Log.d(TAG, "   Token preview: ${token.take(30)}...")
+        Log.d(TAG, "   Token completo: $token")
         sendTokenToBackend(token)
     }
 
@@ -54,9 +71,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "📨 MENSAJE FCM RECIBIDO")
         Log.d(TAG, "📨 ========================================")
         Log.d(TAG, "   From: ${message.from}")
+        Log.d(TAG, "   Notification: ${message.notification}")
         Log.d(TAG, "   Data: ${message.data}")
 
-        // Obtener datos del mensaje
         val type = message.data["type"] ?: "nuevo_mensaje"
         val titulo = message.data["titulo"] ?: message.notification?.title ?: "Nuevo mensaje"
         val cuerpo = message.data["cuerpo"] ?: message.notification?.body ?: ""
@@ -65,18 +82,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val remitenteNombre = message.data["remitente_nombre"]
         val timestamp = message.data["timestamp"]
 
+        Log.d(TAG, "   Type: $type")
+        Log.d(TAG, "   GrupoId: $grupoId")
+        Log.d(TAG, "   Remitente: $remitenteNombre")
+
         when (type) {
             "nuevo_mensaje" -> {
-                // Acumular mensaje
                 if (grupoId != null && remitenteNombre != null) {
+                    Log.d(TAG, "📝 Procesando mensaje del grupo $grupoId")
                     addMessageToHistory(grupoId, remitenteNombre, cuerpo, timestamp)
+                    showMessagingStyleNotification(titulo, grupoId, grupoNombre)
+                } else {
+                    Log.w(TAG, "⚠️ Datos incompletos: grupoId=$grupoId, remitente=$remitenteNombre")
                 }
-
-                showMessagingStyleNotification(
-                    titulo = titulo,
-                    grupoId = grupoId,
-                    grupoNombre = grupoNombre
-                )
             }
             else -> {
                 showSimpleNotification(titulo, cuerpo, grupoId, grupoNombre, remitenteNombre)
@@ -84,9 +102,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
-    /**
-     * 💾 Guardar mensaje en historial local (para acumulación)
-     */
     private fun addMessageToHistory(
         grupoId: Int,
         remitenteNombre: String,
@@ -96,28 +111,17 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val key = "grupo_$grupoId"
 
-        // Obtener mensajes existentes
         val existingMessages = prefs.getStringSet(key, mutableSetOf())?.toMutableSet() ?: mutableSetOf()
-
-        // Crear nuevo mensaje con formato: timestamp|remitente|mensaje
         val time = timestamp ?: System.currentTimeMillis().toString()
         val newMessage = "$time|$remitenteNombre|$mensaje"
 
-        // Agregar nuevo mensaje
         existingMessages.add(newMessage)
-
-        // Mantener solo los últimos MAX_MESSAGES_PER_GROUP mensajes
         val messagesList = existingMessages.toList().takeLast(MAX_MESSAGES_PER_GROUP)
 
-        // Guardar
         prefs.edit().putStringSet(key, messagesList.toSet()).apply()
-
         Log.d(TAG, "💾 Mensaje guardado en historial. Total: ${messagesList.size}")
     }
 
-    /**
-     * 📖 Obtener historial de mensajes del grupo
-     */
     private fun getMessageHistory(grupoId: Int): List<Triple<Long, String, String>> {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val key = "grupo_$grupoId"
@@ -131,31 +135,25 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 val mensaje = parts[2]
                 Triple(timestamp, remitente, mensaje)
             } else null
-        }.sortedBy { it.first } // Ordenar por timestamp
+        }.sortedBy { it.first }
     }
 
-    /**
-     * 🧹 Limpiar historial de mensajes del grupo
-     */
     private fun clearMessageHistory(grupoId: Int) {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().remove("grupo_$grupoId").apply()
-        Log.d(TAG, "🧹 Historial de mensajes limpiado para grupo $grupoId")
+        Log.d(TAG, "🧹 Historial limpiado para grupo $grupoId")
     }
 
-    /**
-     * 🎨 Notificación estilo mensajería con acumulación y respuesta directa
-     */
     private fun showMessagingStyleNotification(
         titulo: String,
-        grupoId: Int?,
+        grupoId: Int,
         grupoNombre: String?
     ) {
-        if (grupoId == null) return
-
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        // Intent para abrir el chat
+        // 🧹 CRÍTICO: Cancelar cualquier notificación previa del grupo
+        notificationManager.cancel("grupo_chat_$grupoId", grupoId)
+
         val openIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("GRUPO_ID", grupoId)
@@ -169,35 +167,31 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Crear Person para "yo" (el usuario actual)
         val me = Person.Builder()
             .setName("Tú")
+            .setKey("current_user")
             .build()
 
-        // Obtener historial de mensajes
         val messageHistory = getMessageHistory(grupoId)
-
         Log.d(TAG, "📖 Mostrando ${messageHistory.size} mensajes acumulados")
 
-        // Estilo de mensajería con historial
         val messagingStyle = NotificationCompat.MessagingStyle(me)
             .setConversationTitle(titulo)
+            .setGroupConversation(true)
 
-        // Agregar todos los mensajes del historial
         messageHistory.forEach { (timestamp, remitente, mensaje) ->
             val sender = Person.Builder()
                 .setName(remitente)
+                .setKey("user_${remitente.hashCode()}")
                 .build()
 
             messagingStyle.addMessage(mensaje, timestamp, sender)
         }
 
-        // ✍️ RESPUESTA DIRECTA: Crear RemoteInput
         val remoteInput = RemoteInput.Builder(NotificationReplyReceiver.KEY_TEXT_REPLY)
             .setLabel("Responder...")
             .build()
 
-        // Intent para enviar la respuesta
         val replyIntent = Intent(this, NotificationReplyReceiver::class.java).apply {
             putExtra(NotificationReplyReceiver.EXTRA_GRUPO_ID, grupoId)
             putExtra(NotificationReplyReceiver.EXTRA_NOTIFICATION_ID, grupoId)
@@ -205,22 +199,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         val replyPendingIntent = PendingIntent.getBroadcast(
             this,
-            grupoId + 1000, // ID único diferente
+            grupoId + 1000,
             replyIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE // ⚠️ MUTABLE para RemoteInput
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
 
-        // Acción de respuesta directa
         val replyAction = NotificationCompat.Action.Builder(
             R.drawable.ic_notification,
             "Responder",
             replyPendingIntent
         )
             .addRemoteInput(remoteInput)
-            .setAllowGeneratedReplies(true) // Respuestas inteligentes
+            .setAllowGeneratedReplies(true)
             .build()
 
-        // Construir notificación
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setStyle(messagingStyle)
@@ -228,23 +220,22 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .setContentIntent(openPendingIntent)
-            .addAction(replyAction) // ✍️ Agregar acción de respuesta
+            .addAction(replyAction)
+            .setOnlyAlertOnce(true)
             .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
             .setVibrate(longArrayOf(0, 250, 250, 250))
             .setLights(0xFF4CAF50.toInt(), 1000, 500)
             .setColor(0xFF4CAF50.toInt())
-            .setGroup("grupo_$grupoId")
-            .setGroupSummary(true) // Importante para acumulación
-            .setNumber(messageHistory.size) // Badge con cantidad de mensajes
+            .setNumber(messageHistory.size)
+            .setWhen(System.currentTimeMillis())
+            .setShowWhen(true)
             .build()
 
-        notificationManager.notify(grupoId, notification)
-        Log.d(TAG, "🔔 Notificación con ${messageHistory.size} mensajes y respuesta directa mostrada")
+        val notificationTag = "grupo_chat_$grupoId"
+        notificationManager.notify(notificationTag, grupoId, notification)
+        Log.d(TAG, "🔔 Notificación actualizada con ${messageHistory.size} mensajes (tag: $notificationTag, id: $grupoId)")
     }
 
-    /**
-     * 🔔 Notificación simple (fallback)
-     */
     private fun showSimpleNotification(
         titulo: String,
         cuerpo: String,
@@ -290,12 +281,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 val accessToken = sessionManager.getAccessToken()
 
                 if (accessToken.isNullOrEmpty()) {
-                    Log.w(TAG, "⚠️ No hay token de acceso, guardando token FCM localmente")
+                    Log.w(TAG, "⚠️ ========================================")
+                    Log.w(TAG, "⚠️ NO HAY TOKEN DE ACCESO")
+                    Log.w(TAG, "⚠️ Guardando FCM localmente para envío posterior")
+                    Log.w(TAG, "⚠️ ========================================")
                     saveFCMTokenLocally(token)
                     return@launch
                 }
 
-                Log.d(TAG, "📤 Enviando token FCM al backend...")
+                Log.d(TAG, "📤 ========================================")
+                Log.d(TAG, "📤 ENVIANDO TOKEN FCM AL BACKEND")
+                Log.d(TAG, "📤 ========================================")
+                Log.d(TAG, "   Token FCM: ${token.take(30)}...")
+                Log.d(TAG, "   Access Token: ${accessToken.take(20)}...")
 
                 val request = mapOf(
                     "token" to token,
@@ -308,15 +306,25 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 )
 
                 if (response.isSuccessful) {
-                    Log.d(TAG, "✅ Token FCM registrado en backend correctamente")
+                    Log.d(TAG, "✅ ========================================")
+                    Log.d(TAG, "✅ TOKEN FCM REGISTRADO EN BACKEND")
+                    Log.d(TAG, "✅ HTTP ${response.code()}")
+                    Log.d(TAG, "✅ ========================================")
                     clearLocalFCMToken()
                 } else {
-                    Log.e(TAG, "❌ Error al registrar token: ${response.code()}")
+                    Log.e(TAG, "❌ ========================================")
+                    Log.e(TAG, "❌ ERROR AL REGISTRAR TOKEN")
+                    Log.e(TAG, "❌ HTTP ${response.code()}")
+                    Log.e(TAG, "❌ ${response.errorBody()?.string()}")
+                    Log.e(TAG, "❌ ========================================")
                     saveFCMTokenLocally(token)
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Excepción al enviar token: ${e.message}")
+                Log.e(TAG, "❌ ========================================")
+                Log.e(TAG, "❌ EXCEPCIÓN AL ENVIAR TOKEN")
+                Log.e(TAG, "❌ ${e.message}")
+                Log.e(TAG, "❌ ========================================")
                 e.printStackTrace()
                 saveFCMTokenLocally(token)
             }
@@ -326,12 +334,17 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     private fun saveFCMTokenLocally(token: String) {
         val prefs = getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
         prefs.edit().putString("PENDING_FCM_TOKEN", token).apply()
-        Log.d(TAG, "💾 Token FCM guardado localmente para envío posterior")
+        Log.d(TAG, "💾 ========================================")
+        Log.d(TAG, "💾 TOKEN GUARDADO LOCALMENTE")
+        Log.d(TAG, "💾 Se enviará después del login")
+        Log.d(TAG, "💾 Token: ${token.take(30)}...")
+        Log.d(TAG, "💾 ========================================")
     }
 
     private fun clearLocalFCMToken() {
         val prefs = getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
         prefs.edit().remove("PENDING_FCM_TOKEN").apply()
+        Log.d(TAG, "🧹 Token local eliminado (ya registrado en backend)")
     }
 
     private fun createNotificationChannel() {
