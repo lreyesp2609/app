@@ -33,6 +33,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         private const val CHANNEL_NAME = "Mensajes de Grupos"
         private const val PREFS_NAME = "notification_messages"
         private const val MAX_MESSAGES_PER_GROUP = 10
+
+        // 🆕 MÉTODO PÚBLICO para limpiar historial desde ChatGrupoScreen
+        fun clearNotificationHistory(context: Context, grupoId: Int) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val key = "grupo_$grupoId"
+            prefs.edit().remove(key).apply()
+
+            // 🔔 También cancelar la notificación visible
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancel("grupo_chat_$grupoId", grupoId)
+
+            Log.d(TAG, "🧹 Historial y notificación limpiados para grupo $grupoId")
+        }
     }
 
     override fun onCreate() {
@@ -40,13 +53,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         createNotificationChannel()
         Log.d(TAG, "🔥 FirebaseMessagingService creado")
 
-        // ✅ NUEVO: Verificar y enviar token al crear el servicio
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val token = task.result
                 Log.d(TAG, "📱 Token FCM actual verificado:")
                 Log.d(TAG, "   Token: ${token?.take(30)}...")
-                Log.d(TAG, "   Token completo (para debugging): $token")
                 token?.let { sendTokenToBackend(it) }
             } else {
                 Log.e(TAG, "❌ Error obteniendo token FCM: ${task.exception}")
@@ -60,7 +71,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "🆕 NUEVO TOKEN FCM GENERADO")
         Log.d(TAG, "🆕 ========================================")
         Log.d(TAG, "   Token preview: ${token.take(30)}...")
-        Log.d(TAG, "   Token completo: $token")
         sendTokenToBackend(token)
     }
 
@@ -71,7 +81,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "📨 MENSAJE FCM RECIBIDO")
         Log.d(TAG, "📨 ========================================")
         Log.d(TAG, "   From: ${message.from}")
-        Log.d(TAG, "   Notification: ${message.notification}")
         Log.d(TAG, "   Data: ${message.data}")
 
         val type = message.data["type"] ?: "nuevo_mensaje"
@@ -89,9 +98,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         when (type) {
             "nuevo_mensaje" -> {
                 if (grupoId != null && remitenteNombre != null) {
-                    Log.d(TAG, "📝 Procesando mensaje del grupo $grupoId")
-                    addMessageToHistory(grupoId, remitenteNombre, cuerpo, timestamp)
-                    showMessagingStyleNotification(titulo, grupoId, grupoNombre)
+                    // ✅ CRÍTICO: Solo agregar si la app NO está en foreground del chat
+                    if (!isUserInChat(grupoId)) {
+                        Log.d(TAG, "📝 Usuario NO en chat, agregando mensaje al historial")
+                        addMessageToHistory(grupoId, remitenteNombre, cuerpo, timestamp)
+                        showMessagingStyleNotification(titulo, grupoId, grupoNombre)
+                    } else {
+                        Log.d(TAG, "✅ Usuario en chat $grupoId, NO mostrar notificación")
+                    }
                 } else {
                     Log.w(TAG, "⚠️ Datos incompletos: grupoId=$grupoId, remitente=$remitenteNombre")
                 }
@@ -100,6 +114,13 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 showSimpleNotification(titulo, cuerpo, grupoId, grupoNombre, remitenteNombre)
             }
         }
+    }
+
+    // 🆕 VERIFICAR si el usuario está en el chat del grupo
+    private fun isUserInChat(grupoId: Int): Boolean {
+        val prefs = getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
+        val currentChatId = prefs.getInt("current_chat_grupo_id", -1)
+        return currentChatId == grupoId
     }
 
     private fun addMessageToHistory(
@@ -281,19 +302,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 val accessToken = sessionManager.getAccessToken()
 
                 if (accessToken.isNullOrEmpty()) {
-                    Log.w(TAG, "⚠️ ========================================")
                     Log.w(TAG, "⚠️ NO HAY TOKEN DE ACCESO")
-                    Log.w(TAG, "⚠️ Guardando FCM localmente para envío posterior")
-                    Log.w(TAG, "⚠️ ========================================")
                     saveFCMTokenLocally(token)
                     return@launch
                 }
-
-                Log.d(TAG, "📤 ========================================")
-                Log.d(TAG, "📤 ENVIANDO TOKEN FCM AL BACKEND")
-                Log.d(TAG, "📤 ========================================")
-                Log.d(TAG, "   Token FCM: ${token.take(30)}...")
-                Log.d(TAG, "   Access Token: ${accessToken.take(20)}...")
 
                 val request = mapOf(
                     "token" to token,
@@ -306,26 +318,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 )
 
                 if (response.isSuccessful) {
-                    Log.d(TAG, "✅ ========================================")
                     Log.d(TAG, "✅ TOKEN FCM REGISTRADO EN BACKEND")
-                    Log.d(TAG, "✅ HTTP ${response.code()}")
-                    Log.d(TAG, "✅ ========================================")
                     clearLocalFCMToken()
                 } else {
-                    Log.e(TAG, "❌ ========================================")
-                    Log.e(TAG, "❌ ERROR AL REGISTRAR TOKEN")
-                    Log.e(TAG, "❌ HTTP ${response.code()}")
-                    Log.e(TAG, "❌ ${response.errorBody()?.string()}")
-                    Log.e(TAG, "❌ ========================================")
+                    Log.e(TAG, "❌ ERROR AL REGISTRAR TOKEN HTTP ${response.code()}")
                     saveFCMTokenLocally(token)
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "❌ ========================================")
-                Log.e(TAG, "❌ EXCEPCIÓN AL ENVIAR TOKEN")
-                Log.e(TAG, "❌ ${e.message}")
-                Log.e(TAG, "❌ ========================================")
-                e.printStackTrace()
+                Log.e(TAG, "❌ EXCEPCIÓN AL ENVIAR TOKEN: ${e.message}")
                 saveFCMTokenLocally(token)
             }
         }
@@ -334,17 +335,12 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     private fun saveFCMTokenLocally(token: String) {
         val prefs = getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
         prefs.edit().putString("PENDING_FCM_TOKEN", token).apply()
-        Log.d(TAG, "💾 ========================================")
-        Log.d(TAG, "💾 TOKEN GUARDADO LOCALMENTE")
-        Log.d(TAG, "💾 Se enviará después del login")
-        Log.d(TAG, "💾 Token: ${token.take(30)}...")
-        Log.d(TAG, "💾 ========================================")
+        Log.d(TAG, "💾 Token guardado localmente")
     }
 
     private fun clearLocalFCMToken() {
         val prefs = getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
         prefs.edit().remove("PENDING_FCM_TOKEN").apply()
-        Log.d(TAG, "🧹 Token local eliminado (ya registrado en backend)")
     }
 
     private fun createNotificationChannel() {

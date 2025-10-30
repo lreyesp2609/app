@@ -1,5 +1,6 @@
 package com.example.app.screen.grupos.components
 
+import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.app.models.MensajeUI
+import com.example.app.services.MyFirebaseMessagingService
 import com.example.app.viewmodel.ChatGrupoViewModel
 import com.example.app.viewmodel.ChatGrupoViewModelFactory
 import kotlinx.coroutines.launch
@@ -44,6 +46,23 @@ fun ChatGrupoScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
+
+    // 🆕 MARCAR que el usuario está en este chat
+    DisposableEffect(grupoId) {
+        val prefs = context.getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putInt("current_chat_grupo_id", grupoId).apply()
+
+        // 🧹 LIMPIAR notificaciones e historial al entrar
+        MyFirebaseMessagingService.clearNotificationHistory(context, grupoId)
+        Log.d("ChatGrupo", "✅ Usuario entró al chat $grupoId - historial limpiado")
+
+        onDispose {
+            // 🆕 MARCAR que ya NO está en el chat
+            prefs.edit().putInt("current_chat_grupo_id", -1).apply()
+            Log.d("ChatGrupo", "🔒 Usuario salió del chat $grupoId")
+        }
+    }
+
     val viewModel: ChatGrupoViewModel = viewModel(
         factory = ChatGrupoViewModelFactory(context)
     )
