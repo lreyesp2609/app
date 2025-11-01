@@ -34,6 +34,7 @@ import com.example.app.BuildConfig
 import com.example.app.screen.components.AppBackButton
 import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
+import com.example.app.screen.mapa.GrupoOpenStreetMap
 import com.example.app.screen.mapa.LocationTracker
 import com.example.app.screen.mapa.OpenStreetMap
 import com.example.app.services.LocationTrackingService
@@ -55,6 +56,12 @@ fun GrupoMapScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // 🆕 Obtener info del usuario actual
+    val sessionManager = SessionManager.getInstance(context)
+    val currentUser = sessionManager.getUser()
+    val currentUserId = currentUser?.id ?: 0
+    val currentUserName = currentUser?.nombre ?: "Tú"
 
     // ViewModel de ubicaciones
     val locationViewModel: LocationGrupoViewModel = viewModel(
@@ -82,6 +89,7 @@ fun GrupoMapScreen(
         Log.d("GrupoMapScreen", "🚀 ════════════════════════════════════════")
         Log.d("GrupoMapScreen", "🚀 INICIANDO RASTREO AUTOMÁTICO")
         Log.d("GrupoMapScreen", "🚀 Grupo: $grupoId")
+        Log.d("GrupoMapScreen", "🚀 Usuario: $currentUserName (ID: $currentUserId)")
         Log.d("GrupoMapScreen", "🚀 ════════════════════════════════════════")
 
         val grupoNombre = "Grupo $grupoId" // TODO: Obtener nombre real
@@ -120,12 +128,12 @@ fun GrupoMapScreen(
     Box(modifier = Modifier.fillMaxSize()) {
 
         if (locationObtained) {
-            OpenStreetMap(
+            GrupoOpenStreetMap(
                 latitude = currentLat,
                 longitude = currentLon,
-                showUserLocation = true,
-                showCenterPin = false,
                 miembrosGrupo = ubicacionesMiembros,
+                currentUserId = currentUserId,
+                currentUserName = currentUserName,
                 recenterTrigger = recenterTrigger,
                 modifier = Modifier.fillMaxSize()
             )
@@ -143,7 +151,7 @@ fun GrupoMapScreen(
                 )
             }
 
-            // Botones inferiores (sin botón de rastreo)
+            // Botones inferiores
             GrupoMapButtons(
                 navController = navController,
                 selectedAddress = selectedAddress,

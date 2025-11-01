@@ -66,9 +66,11 @@ data class MensajeUI(
 )
 
 data class MiembroUbicacion(
-    val userId: Int,
+    val usuarioId: Int,
     val nombre: String,
     val lat: Double,
     val lon: Double,
-    val timestamp: String
+    val timestamp: String,
+    val esCreador: Boolean = false,  // 🆕 Para darle color especial al creador
+    val activo: Boolean = true
 )

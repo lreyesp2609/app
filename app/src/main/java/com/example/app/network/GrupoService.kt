@@ -1,6 +1,7 @@
 package com.example.app.network
 
 import com.example.app.models.GrupoCreate
+import com.example.app.models.IntegrantesResponse
 import com.google.gson.annotations.SerializedName
 import retrofit2.Response
 import retrofit2.http.Body
@@ -31,6 +32,12 @@ interface GrupoService {
         @Path("codigo") codigo: String,
         @Header("Authorization") token: String
     ): Response<GrupoResponse>
+
+    @GET("grupos/{grupo_id}/integrantes")
+    suspend fun obtenerIntegrantes(
+        @Path("grupo_id") grupoId: Int,
+        @Header("Authorization") token: String
+    ): Response<IntegrantesResponse>
 }
 
 data class GrupoResponse(

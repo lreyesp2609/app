@@ -29,22 +29,6 @@ import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
 import kotlin.text.clear
 
-class CenteredPinOverlay(private val context: Context) : Overlay() {
-    private val pinDrawable: Drawable? = ContextCompat.getDrawable(context, R.drawable.ic_marker_red)
-
-    override fun draw(canvas: Canvas?, mapView: MapView?, shadow: Boolean) {
-        if (canvas == null || mapView == null || shadow) return
-        pinDrawable?.let { drawable ->
-            val centerX = mapView.width / 2
-            val centerY = mapView.height / 2
-            val width = drawable.intrinsicWidth
-            val height = drawable.intrinsicHeight
-            drawable.setBounds(centerX - width / 2, centerY - height, centerX + width / 2, centerY)
-            drawable.draw(canvas)
-        }
-    }
-}
-
 @Composable
 fun OpenStreetMap(
     modifier: Modifier = Modifier,
@@ -56,7 +40,6 @@ fun OpenStreetMap(
     context: Context = LocalContext.current,
     pois: List<Feature> = emptyList(),
     showCenterPin: Boolean = true,
-    miembrosGrupo: List<MiembroUbicacion> = emptyList(),  // 🆕 Nuevo parámetro
     onLocationSelected: (lat: Double, lon: Double) -> Unit = { _, _ -> }
 ) {
     val mapView = rememberMapView(context, zoom)
@@ -89,26 +72,6 @@ fun OpenStreetMap(
                     title = "Tú"
                 }
                 map.overlays.add(circleMarker)
-            }
-
-            // 🆕 Miembros del grupo (puntos verdes)
-            if (miembrosGrupo.isNotEmpty()) {
-                Log.d("OpenStreetMap", "🗺️ Dibujando ${miembrosGrupo.size} miembros en el mapa")
-                miembrosGrupo.forEach { miembro ->
-                    val marker = Marker(map).apply {
-                        position = GeoPoint(miembro.lat, miembro.lon)
-                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                        icon = ShapeDrawable(OvalShape()).apply {
-                            intrinsicHeight = 36
-                            intrinsicWidth = 36
-                            paint.color = android.graphics.Color.GREEN  // Verde para miembros
-                            paint.style = android.graphics.Paint.Style.FILL
-                        }
-                        title = miembro.nombre
-                        snippet = "Última actualización: ${miembro.timestamp}"
-                    }
-                    map.overlays.add(marker)
-                }
             }
 
             // POIs
@@ -173,6 +136,7 @@ fun OpenStreetMap(
         onDispose { mapView.removeMapListener(listener) }
     }
 }
+
 @Composable
 fun rememberMapView(context: Context, zoom: Double = 16.0): MapView {
     return remember {
@@ -181,6 +145,22 @@ fun rememberMapView(context: Context, zoom: Double = 16.0): MapView {
             setMultiTouchControls(true)
             controller.setZoom(zoom)
             setBuiltInZoomControls(false)
+        }
+    }
+}
+
+class CenteredPinOverlay(private val context: Context) : Overlay() {
+    private val pinDrawable: Drawable? = ContextCompat.getDrawable(context, R.drawable.ic_marker_red)
+
+    override fun draw(canvas: Canvas?, mapView: MapView?, shadow: Boolean) {
+        if (canvas == null || mapView == null || shadow) return
+        pinDrawable?.let { drawable ->
+            val centerX = mapView.width / 2
+            val centerY = mapView.height / 2
+            val width = drawable.intrinsicWidth
+            val height = drawable.intrinsicHeight
+            drawable.setBounds(centerX - width / 2, centerY - height, centerX + width / 2, centerY)
+            drawable.draw(canvas)
         }
     }
 }

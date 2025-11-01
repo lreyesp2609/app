@@ -53,6 +53,8 @@ import com.example.app.screen.auth.RegisterScreen
 import com.example.app.screen.grupos.CollaborativeGroupsScreen
 import com.example.app.screen.grupos.components.ChatGrupoScreen
 import com.example.app.screen.grupos.components.CreateGroupScreen
+import com.example.app.screen.grupos.components.GrupoDetalleScreen
+import com.example.app.screen.grupos.components.ParticipantesScreen
 import com.example.app.screen.recordatorios.components.AddReminderScreen
 import com.example.app.screen.recordatorios.components.ReminderMapScreen
 import com.example.app.services.LocationReminderService
@@ -402,6 +404,41 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                 grupoId = grupoId,
                 grupoNombre = grupoNombre,
                 navController = navController,
+            )
+        }
+        // En tu NavHost, agrega esta ruta:
+        composable(
+            route = "grupo_detalle/{grupoId}/{grupoNombre}",
+            arguments = listOf(
+                navArgument("grupoId") { type = NavType.IntType },
+                navArgument("grupoNombre") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
+            val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
+
+            GrupoDetalleScreen(
+                grupoId = grupoId,
+                grupoNombre = grupoNombre,
+                navController = navController
+            )
+        }
+
+        // En tu NavHost, agrega esta ruta:
+        composable(
+            route = "participantes/{grupoId}/{grupoNombre}",
+            arguments = listOf(
+                navArgument("grupoId") { type = NavType.IntType },
+                navArgument("grupoNombre") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
+            val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
+
+            ParticipantesScreen(
+                grupoId = grupoId,
+                grupoNombre = grupoNombre,
+                navController = navController
             )
         }
     }

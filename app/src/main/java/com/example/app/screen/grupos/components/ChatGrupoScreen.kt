@@ -32,7 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.app.models.MensajeUI
+import com.example.app.screen.components.AppBackButton
 import com.example.app.services.MyFirebaseMessagingService
 import com.example.app.viewmodel.ChatGrupoViewModel
 import com.example.app.viewmodel.ChatGrupoViewModelFactory
@@ -89,13 +91,18 @@ fun ChatGrupoScreen(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding(), // 🔑 Esto hace que el contenido se eleve con el teclado
         topBar = {
-            ChatTopBar(
-                grupoNombre = grupoNombre,
-                isConnected = isConnected,
-                onBackClick = { navController.popBackStack() }
-            )
+                ChatTopBar(
+                    grupoNombre = grupoNombre,
+                    isConnected = isConnected,
+                    onBackClick = { navController.popBackStack() },
+                    onGrupoClick = {
+                        navController.navigate("grupo_detalle/$grupoId/$grupoNombre")
+                    }
+                )
         },
         bottomBar = {
             if (pagerState.currentPage == 0) {
@@ -170,12 +177,17 @@ fun ChatGrupoScreen(
 fun ChatTopBar(
     grupoNombre: String,
     isConnected: Boolean,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onGrupoClick: () -> Unit = {} // 🆕 Callback para abrir detalles
 ) {
     TopAppBar(
         title = {
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onGrupoClick() } // 🆕 Hacer clickeable todo el Row
+                    .padding(vertical = 4.dp)
             ) {
                 Surface(
                     shape = CircleShape,
@@ -223,13 +235,15 @@ fun ChatTopBar(
             }
         },
         navigationIcon = {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Volver"
-                )
-            }
+            AppBackButton(
+                navController = rememberNavController(), // Se ignora si usas onClick personalizado
+                onClick = onBackClick, // Usa el callback que ya tienes
+                modifier = Modifier.padding(start = 8.dp),
+                backgroundColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                iconColor = MaterialTheme.colorScheme.primary
+            )
         },
+
         actions = {
             IconButton(onClick = { /* TODO: Más opciones */ }) {
                 Icon(

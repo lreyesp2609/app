@@ -1,6 +1,7 @@
 package com.example.app.repository
 
 import com.example.app.models.GrupoCreate
+import com.example.app.models.IntegrantesResponse
 import com.example.app.network.GrupoResponse
 import com.example.app.network.GrupoService
 import retrofit2.Response
@@ -17,13 +18,13 @@ class GrupoRepository(private val grupoService: GrupoService) {
         return grupoService.listarGrupos(authHeader)
     }
 
-    suspend fun listarGruposConNoLeidos(token: String): Response<List<GrupoResponse>> {
-        val authHeader = "Bearer $token"
-        return grupoService.listarGruposConNoLeidos(authHeader)
-    }
-
     suspend fun unirseAGrupo(token: String, codigo: String): Response<GrupoResponse> {
         val authHeader = "Bearer $token"
         return grupoService.unirseAGrupo(codigo, authHeader)
+    }
+
+    suspend fun obtenerIntegrantes(token: String, grupoId: Int): Response<IntegrantesResponse> {
+        val authHeader = "Bearer $token"
+        return grupoService.obtenerIntegrantes(grupoId, authHeader)
     }
 }

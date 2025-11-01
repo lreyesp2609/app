@@ -68,11 +68,12 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
                                 if (userId != currentUserId) {
                                     lista.add(
                                         MiembroUbicacion(
-                                            userId = userId,
+                                            usuarioId = userId,  // 👈 Cambiado de userId a usuarioId
                                             nombre = ub.get("nombre")?.asString ?: "Usuario",
                                             lat = ub.get("lat")?.asDouble ?: 0.0,
                                             lon = ub.get("lon")?.asDouble ?: 0.0,
-                                            timestamp = ub.get("timestamp")?.asString ?: ""
+                                            timestamp = ub.get("timestamp")?.asString ?: "",
+                                            esCreador = ub.get("es_creador")?.asBoolean ?: false  // 🆕 Agregar esto también
                                         )
                                     )
                                 }
@@ -99,7 +100,7 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
 
                             viewModelScope.launch {
                                 val current = _ubicacionesMiembros.value.toMutableList()
-                                val index = current.indexOfFirst { it.userId == userId }
+                                val index = current.indexOfFirst { it.usuarioId == userId }
 
                                 if (index >= 0) {
                                     current[index] = nuevaUbicacion

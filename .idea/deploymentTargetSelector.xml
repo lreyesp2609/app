@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="RecuerdaGo New">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-10-30T22:41:11.803278700Z">
+        <DropdownSelection timestamp="2025-11-01T18:07:10.585979600Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\lreye\.android\avd\Medium_Phone.avd" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\lreye\.android\avd\Pixel_9.avd" />
             </handle>
           </Target>
         </DropdownSelection>
@@ -15,10 +15,10 @@
       </SelectionState>
       <SelectionState runConfigName="RecuerdaGo">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-10-30T22:41:06.922270700Z">
+        <DropdownSelection timestamp="2025-11-01T18:07:14.123875500Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\lreye\.android\avd\Medium_Phone.avd" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\lreye\.android\avd\Pixel_9.avd" />
             </handle>
           </Target>
         </DropdownSelection>
