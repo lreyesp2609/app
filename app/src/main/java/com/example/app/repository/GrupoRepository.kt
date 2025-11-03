@@ -1,6 +1,7 @@
 package com.example.app.repository
 
 import com.example.app.models.GrupoCreate
+import com.example.app.models.GrupoResponseSalir
 import com.example.app.models.IntegrantesResponse
 import com.example.app.network.GrupoResponse
 import com.example.app.network.GrupoService
@@ -26,5 +27,12 @@ class GrupoRepository(private val grupoService: GrupoService) {
     suspend fun obtenerIntegrantes(token: String, grupoId: Int): Response<IntegrantesResponse> {
         val authHeader = "Bearer $token"
         return grupoService.obtenerIntegrantes(grupoId, authHeader)
+    }
+
+    suspend fun salirDelGrupo(token: String, grupoId: Int): Response<GrupoResponseSalir> {
+        return grupoService.salirDelGrupo(
+            grupoId = grupoId,
+            token = "Bearer $token"
+        )
     }
 }

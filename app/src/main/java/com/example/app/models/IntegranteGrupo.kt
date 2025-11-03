@@ -17,3 +17,10 @@ data class IntegrantesResponse(
     val total_integrantes: Int,
     val integrantes: List<IntegranteGrupo>
 )
+
+data class GrupoResponseSalir(
+    val id: Int? = null,
+    val nombre: String? = null,
+    val descripcion: String? = null,
+    val message: String? = null
+)

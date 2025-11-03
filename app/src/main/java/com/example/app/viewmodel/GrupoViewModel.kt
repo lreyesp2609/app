@@ -165,4 +165,26 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
     fun resetState() {
         _grupoState.value = GrupoState.Idle
     }
+
+    private val _mensajeSalida = MutableStateFlow<String?>(null)
+    val mensajeSalida: StateFlow<String?> get() = _mensajeSalida
+
+    fun salirDelGrupo(token: String, grupoId: Int) {
+        viewModelScope.launch {
+            try {
+                val response = repository.salirDelGrupo(token, grupoId)
+                if (response.isSuccessful) {
+                    _mensajeSalida.value = response.body()?.message ?: "Has salido del grupo"
+                } else {
+                    _mensajeSalida.value = "Error: ${response.errorBody()?.string()}"
+                }
+            } catch (e: Exception) {
+                _mensajeSalida.value = "Error de conexión: ${e.localizedMessage}"
+            }
+        }
+    }
+
+    fun resetMensajeSalida() {
+        _mensajeSalida.value = null
+    }
 }

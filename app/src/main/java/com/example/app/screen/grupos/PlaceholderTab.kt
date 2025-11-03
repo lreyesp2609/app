@@ -119,6 +119,7 @@ fun CollaborativeGroupsScreen(
         }
     }
 
+
     LaunchedEffect(grupoState) {
         when (val state = grupoState) {
             is GrupoState.JoinSuccess -> {

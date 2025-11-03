@@ -1,5 +1,6 @@
 package com.example.app.screen.grupos.components
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,8 +52,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.app.network.RetrofitClient
+import com.example.app.repository.GrupoRepository
 import com.example.app.screen.components.AppBackButton
 import com.example.app.utils.SessionManager
+import com.example.app.viewmodel.GrupoViewModel
+import com.example.app.viewmodel.GrupoViewModelFactory
 import com.example.app.viewmodel.IntegrantesViewModel
 import com.example.app.viewmodel.IntegrantesViewModelFactory
 
@@ -63,6 +68,13 @@ fun GrupoDetalleScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
+    val grupoRepository = GrupoRepository(RetrofitClient.grupoService)
+
+    val grupoViewModel: GrupoViewModel = viewModel(
+        factory = GrupoViewModelFactory(grupoRepository)
+    )
+
+
     val viewModel: IntegrantesViewModel = viewModel(
         factory = IntegrantesViewModelFactory(context)
     )
@@ -73,13 +85,33 @@ fun GrupoDetalleScreen(
     // Obtener el usuario actual
     val sessionManager = SessionManager.getInstance(context)
     val currentUserId = sessionManager.getUser()?.id ?: 0
+    val token = sessionManager.getAccessToken() ?: ""   // ✅ Agregar esta línea
+
 
     // Verificar si el usuario actual es el creador
     val isCreator = integrantes.firstOrNull { it.usuario_id == currentUserId }?.es_creador ?: false
 
+    val mensajeSalida by grupoViewModel.mensajeSalida.collectAsState()
+
     LaunchedEffect(grupoId) {
         viewModel.cargarIntegrantes(grupoId)
     }
+
+    LaunchedEffect(mensajeSalida) {
+        mensajeSalida?.let { mensaje ->
+            Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+
+            grupoViewModel.resetMensajeSalida()
+
+            navController.navigate("home?tab=3") {
+                popUpTo("home") {
+                    inclusive = false
+                }
+                launchSingleTop = true
+            }
+        }
+    }
+
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -205,10 +237,13 @@ fun GrupoDetalleScreen(
                         icon = Icons.Default.ExitToApp,
                         titulo = "Salir del grupo",
                         subtitulo = "Ya no recibirás mensajes de este grupo",
-                        onClick = { /* TODO: Salir del grupo */ },
+                        onClick = {
+                            grupoViewModel.salirDelGrupo(token, grupoId)
+                        },
                         isDestructive = true
                     )
                 }
+
             }
 
             Spacer(modifier = Modifier.height(16.dp))

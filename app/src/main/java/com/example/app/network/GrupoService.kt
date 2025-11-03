@@ -1,6 +1,7 @@
 package com.example.app.network
 
 import com.example.app.models.GrupoCreate
+import com.example.app.models.GrupoResponseSalir
 import com.example.app.models.IntegrantesResponse
 import com.google.gson.annotations.SerializedName
 import retrofit2.Response
@@ -38,6 +39,13 @@ interface GrupoService {
         @Path("grupo_id") grupoId: Int,
         @Header("Authorization") token: String
     ): Response<IntegrantesResponse>
+
+    @POST("grupos/{grupo_id}/salir")
+    suspend fun salirDelGrupo(
+        @Path("grupo_id") grupoId: Int,
+        @Header("Authorization") token: String
+    ): Response<GrupoResponseSalir>
+
 }
 
 data class GrupoResponse(
