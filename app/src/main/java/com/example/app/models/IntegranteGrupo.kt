@@ -24,3 +24,7 @@ data class GrupoResponseSalir(
     val descripcion: String? = null,
     val message: String? = null
 )
+
+data class GrupoDeleteResponse(
+    val message: String
+)

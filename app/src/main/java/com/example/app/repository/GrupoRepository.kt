@@ -1,9 +1,10 @@
 package com.example.app.repository
 
 import com.example.app.models.GrupoCreate
+import com.example.app.models.GrupoDeleteResponse
+import com.example.app.models.GrupoResponse
 import com.example.app.models.GrupoResponseSalir
 import com.example.app.models.IntegrantesResponse
-import com.example.app.network.GrupoResponse
 import com.example.app.network.GrupoService
 import retrofit2.Response
 
@@ -34,5 +35,9 @@ class GrupoRepository(private val grupoService: GrupoService) {
             grupoId = grupoId,
             token = "Bearer $token"
         )
+    }
+
+    suspend fun eliminarGrupo(token: String, grupoId: Int): Response<GrupoDeleteResponse> {
+        return grupoService.eliminarGrupo(grupoId, "Bearer $token")
     }
 }

@@ -1,11 +1,13 @@
 package com.example.app.network
 
 import com.example.app.models.GrupoCreate
+import com.example.app.models.GrupoDeleteResponse
+import com.example.app.models.GrupoResponse
 import com.example.app.models.GrupoResponseSalir
 import com.example.app.models.IntegrantesResponse
-import com.google.gson.annotations.SerializedName
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
@@ -46,14 +48,10 @@ interface GrupoService {
         @Header("Authorization") token: String
     ): Response<GrupoResponseSalir>
 
-}
+    @DELETE("grupos/eliminar/{grupo_id}")
+    suspend fun eliminarGrupo(
+        @Path("grupo_id") grupoId: Int,
+        @Header("Authorization") token: String
+    ): Response<GrupoDeleteResponse>
 
-data class GrupoResponse(
-    @SerializedName("id") val id: Int,
-    @SerializedName("nombre") val nombre: String,
-    @SerializedName("descripcion") val descripcion: String?,
-    @SerializedName("codigo_invitacion") val codigoInvitacion: String,
-    @SerializedName("creado_por_id") val creadoPorId: Int,
-    @SerializedName("fecha_creacion") val fechaCreacion: String,
-    @SerializedName("mensajes_no_leidos") val mensajesNoLeidos: Int = 0
-)
+}

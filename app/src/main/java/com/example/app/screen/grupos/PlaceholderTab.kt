@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.app.network.GrupoResponse
+import com.example.app.models.GrupoResponse
 import com.example.app.screen.components.AppButton
 import com.example.app.viewmodel.GrupoState
 import com.example.app.viewmodel.GrupoViewModel

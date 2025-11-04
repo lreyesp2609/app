@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -33,12 +35,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -74,7 +80,6 @@ fun GrupoDetalleScreen(
         factory = GrupoViewModelFactory(grupoRepository)
     )
 
-
     val viewModel: IntegrantesViewModel = viewModel(
         factory = IntegrantesViewModelFactory(context)
     )
@@ -82,16 +87,17 @@ fun GrupoDetalleScreen(
     val integrantes by viewModel.integrantes.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
-    // Obtener el usuario actual
     val sessionManager = SessionManager.getInstance(context)
     val currentUserId = sessionManager.getUser()?.id ?: 0
-    val token = sessionManager.getAccessToken() ?: ""   // ✅ Agregar esta línea
+    val token = sessionManager.getAccessToken() ?: ""
 
-
-    // Verificar si el usuario actual es el creador
     val isCreator = integrantes.firstOrNull { it.usuario_id == currentUserId }?.es_creador ?: false
 
     val mensajeSalida by grupoViewModel.mensajeSalida.collectAsState()
+    val mensajeEliminacion by grupoViewModel.mensajeEliminacion.collectAsState() // ✅ Agregar
+
+    // ✅ Agregar estado para el diálogo de confirmación
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(grupoId) {
         viewModel.cargarIntegrantes(grupoId)
@@ -100,9 +106,7 @@ fun GrupoDetalleScreen(
     LaunchedEffect(mensajeSalida) {
         mensajeSalida?.let { mensaje ->
             Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
-
             grupoViewModel.resetMensajeSalida()
-
             navController.navigate("home?tab=3") {
                 popUpTo("home") {
                     inclusive = false
@@ -112,6 +116,53 @@ fun GrupoDetalleScreen(
         }
     }
 
+    // ✅ Agregar LaunchedEffect para eliminar grupo
+    LaunchedEffect(mensajeEliminacion) {
+        mensajeEliminacion?.let { mensaje ->
+            Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+            grupoViewModel.resetMensajeEliminacion()
+            navController.navigate("home?tab=3") {
+                popUpTo("home") {
+                    inclusive = false
+                }
+                launchSingleTop = true
+            }
+        }
+    }
+
+    // ✅ Agregar el diálogo de confirmación
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = {
+                Text(
+                    text = "¿Eliminar grupo?",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text("Esta acción eliminará el grupo \"$grupoNombre\" permanentemente y no se puede deshacer. Todos los miembros perderán el acceso.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        grupoViewModel.eliminarGrupo(token, grupoId)
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -223,13 +274,12 @@ fun GrupoDetalleScreen(
                     )
                 }
             } else {
-                // Opción de salir o eliminar según sea creador
                 if (isCreator) {
                     GrupoOpcion(
                         icon = Icons.Default.Delete,
                         titulo = "Eliminar grupo",
                         subtitulo = "Esta acción no se puede deshacer",
-                        onClick = { /* TODO: Eliminar grupo */ },
+                        onClick = { showDeleteDialog = true }, // ✅ Mostrar diálogo
                         isDestructive = true
                     )
                 } else {
@@ -243,7 +293,6 @@ fun GrupoDetalleScreen(
                         isDestructive = true
                     )
                 }
-
             }
 
             Spacer(modifier = Modifier.height(16.dp))

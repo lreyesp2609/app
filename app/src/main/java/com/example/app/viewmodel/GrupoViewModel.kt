@@ -1,9 +1,10 @@
 package com.example.app.viewmodel
 
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.app.models.GrupoCreate
-import com.example.app.network.GrupoResponse
+import com.example.app.models.GrupoResponse
 import com.example.app.repository.GrupoRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -186,5 +187,27 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
 
     fun resetMensajeSalida() {
         _mensajeSalida.value = null
+    }
+
+    private val _mensajeEliminacion = MutableStateFlow<String?>(null)
+    val mensajeEliminacion: StateFlow<String?> get() = _mensajeEliminacion
+
+    fun eliminarGrupo(token: String, grupoId: Int) {
+        viewModelScope.launch {
+            try {
+                val response = repository.eliminarGrupo(token, grupoId)
+                if (response.isSuccessful) {
+                    _mensajeEliminacion.value = response.body()?.message ?: "Grupo eliminado exitosamente"
+                } else {
+                    _mensajeEliminacion.value = "Error al eliminar grupo: ${response.errorBody()?.string()}"
+                }
+            } catch (e: Exception) {
+                _mensajeEliminacion.value = "Error de conexión: ${e.localizedMessage}"
+            }
+        }
+    }
+
+    fun resetMensajeEliminacion() {
+        _mensajeEliminacion.value = null
     }
 }
