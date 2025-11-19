@@ -13,11 +13,6 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import kotlin.collections.get
 
-/**
- * Manager para WebSocket de Ubicaciones
- * Soporta conexión global (AppNavigation) y listeners por pantalla
- * 🆕 Actualiza automáticamente el token cuando SessionManager lo refresca
- */
 object WebSocketLocationManager {
     private var webSocket: WebSocket? = null
     private var client: OkHttpClient? = null
@@ -27,14 +22,22 @@ object WebSocketLocationManager {
     private val gson = Gson()
     private const val TAG = "WS_LocationManager"
 
-    // 🆕 Referencia al listener de token
+    // 🆕 Estado real de la conexión
+    @Volatile
+    private var isWebSocketConnected = false
+
+    // Referencia al listener de token
     private var tokenChangeListener: ((String) -> Unit)? = null
     private var sessionManager: SessionManager? = null
 
     private val internalListener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
+            // ✅ MARCAR COMO CONECTADO
+            isWebSocketConnected = true
+
             Log.d(TAG, "✅ ════════════════════════════════════════")
             Log.d(TAG, "✅ WEBSOCKET DE UBICACIONES CONECTADO")
+            Log.d(TAG, "✅ Estado: CONNECTED")
             Log.d(TAG, "✅ ════════════════════════════════════════")
 
             externalListener?.onOpen(webSocket, response)
@@ -48,7 +51,6 @@ object WebSocketLocationManager {
                 val json = JSONObject(text)
                 val type = json.optString("type")
 
-                // 🔄 Manejar mensajes de token
                 when (type) {
                     "refresh_token", "token_refreshed" -> {
                         Log.d(TAG, "🔄 Mensaje de token detectado: $type")
@@ -59,7 +61,7 @@ object WebSocketLocationManager {
                                 Log.d(TAG, "✅ Token actualizado: ${newToken.take(20)}...")
                             }
                         }
-                        return // No propagar mensajes internos
+                        return
                     }
                     "pong" -> {
                         Log.v(TAG, "🏓 Pong recibido")
@@ -70,7 +72,6 @@ object WebSocketLocationManager {
                 Log.v(TAG, "ℹ️ Mensaje no es JSON, propagando...")
             }
 
-            // 📤 Propagar a TODOS los listeners
             externalListener?.onMessage(webSocket, text)
             broadcastListeners.forEach {
                 try {
@@ -82,31 +83,45 @@ object WebSocketLocationManager {
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            // ✅ MARCAR COMO DESCONECTANDO
+            isWebSocketConnected = false
+
             Log.d(TAG, "⚠️ WebSocket cerrándose: $code - $reason")
+            Log.d(TAG, "⚠️ Estado: CLOSING")
+
             externalListener?.onClosing(webSocket, code, reason)
             broadcastListeners.forEach { it.onClosing(webSocket, code, reason) }
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            // ✅ MARCAR COMO CERRADO
+            isWebSocketConnected = false
+
             Log.d(TAG, "🔒 WebSocket cerrado: $code - $reason")
+            Log.d(TAG, "🔒 Estado: CLOSED")
+
             externalListener?.onClosed(webSocket, code, reason)
             broadcastListeners.forEach { it.onClosed(webSocket, code, reason) }
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            // ✅ MARCAR COMO DESCONECTADO
+            isWebSocketConnected = false
+
+            Log.e(TAG, "❌ ════════════════════════════════════════")
+            Log.e(TAG, "❌ WEBSOCKET FALLÓ")
             Log.e(TAG, "❌ Error: ${t.message}")
+            Log.e(TAG, "❌ Código: ${response?.code}")
+            Log.e(TAG, "❌ Estado: FAILED")
+            Log.e(TAG, "❌ ════════════════════════════════════════")
+
             externalListener?.onFailure(webSocket, t, response)
             broadcastListeners.forEach { it.onFailure(webSocket, t, response) }
         }
     }
 
-    /**
-     * 🆕 Inicializar y registrar listener de tokens
-     * DEBE llamarse UNA SOLA VEZ al inicio
-     */
     @Synchronized
     fun initialize(context: Context) {
-        // Si ya hay listener registrado, no hacer nada
         if (tokenChangeListener != null) {
             Log.d(TAG, "⚠️ Ya está inicializado, ignorando llamada duplicada")
             return
@@ -114,7 +129,6 @@ object WebSocketLocationManager {
 
         sessionManager = SessionManager.getInstance(context.applicationContext)
 
-        // 🆕 Crear y registrar listener de cambios de token
         tokenChangeListener = { newToken ->
             Log.d(TAG, "🔄 ════════════════════════════════════════")
             Log.d(TAG, "🔄 TOKEN ACTUALIZADO POR SESSIONMANAGER")
@@ -139,9 +153,6 @@ object WebSocketLocationManager {
         Log.d(TAG, "✅ ════════════════════════════════════════")
     }
 
-    /**
-     * 🆕 Conectar desde AppNavigation o LocationService
-     */
     fun connectGlobal(baseUrl: String, token: String) {
         if (isConnected()) {
             Log.d(TAG, "⚠️ Ya está conectado, actualizando token...")
@@ -157,14 +168,12 @@ object WebSocketLocationManager {
         Log.d(TAG, "🔌 CONECTANDO GLOBALMENTE")
         Log.d(TAG, "🔌 ════════════════════════════════════════")
         Log.d(TAG, "   URL: ${wsUrl.substringBefore("?token=")}")
+        Log.d(TAG, "   Token: ${token.take(20)}...")
 
         currentToken = token
         connectInternal(wsUrl)
     }
 
-    /**
-     * Conectar con listener externo (para ChatGrupoScreen)
-     */
     fun connect(url: String, listener: WebSocketListener) {
         if (isConnected()) {
             Log.d(TAG, "✅ Ya conectado, registrando listener externo")
@@ -173,26 +182,35 @@ object WebSocketLocationManager {
         }
 
         Log.d(TAG, "🔌 Conectando con listener externo...")
+        Log.d(TAG, "   URL: ${url.substringBefore("?token=")}")
+
         externalListener = listener
         connectInternal(url)
     }
 
     private fun connectInternal(url: String) {
+        // Limpiar conexión anterior si existe
+        if (webSocket != null) {
+            Log.d(TAG, "🧹 Limpiando conexión anterior...")
+            webSocket?.close(1000, "Reconectando")
+            webSocket = null
+            isWebSocketConnected = false
+        }
+
         client = OkHttpClient.Builder()
             .pingInterval(30, TimeUnit.SECONDS)
             .readTimeout(0, TimeUnit.MILLISECONDS)
+            .connectTimeout(10, TimeUnit.SECONDS) // ✅ Añadir timeout de conexión
             .build()
 
         val request = Request.Builder()
             .url(url)
             .build()
 
+        Log.d(TAG, "🔌 Iniciando conexión WebSocket...")
         webSocket = client?.newWebSocket(request, internalListener)
     }
 
-    /**
-     * 🆕 Actualizar token sin reconectar
-     */
     fun updateToken(newToken: String) {
         if (!isConnected()) {
             Log.w(TAG, "⚠️ No conectado, no se puede actualizar token")
@@ -233,21 +251,30 @@ object WebSocketLocationManager {
 
     fun send(message: String): Boolean {
         return try {
+            if (!isConnected()) {
+                Log.w(TAG, "⚠️ No conectado - no se puede enviar mensaje")
+                return false
+            }
+
             val sent = webSocket?.send(message) ?: false
             if (sent) {
-                Log.v(TAG, "📤 Mensaje enviado")
+                Log.v(TAG, "📤 Mensaje enviado: ${message.take(50)}")
             } else {
-                Log.w(TAG, "⚠️ No conectado")
+                Log.w(TAG, "⚠️ Error al enviar mensaje")
             }
             sent
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error: ${e.message}")
+            Log.e(TAG, "❌ Excepción al enviar: ${e.message}")
+            e.printStackTrace()
             false
         }
     }
 
+    // ✅ CORRECCIÓN CRÍTICA: Verificar estado real
     fun isConnected(): Boolean {
-        return webSocket != null
+        val connected = webSocket != null && isWebSocketConnected
+        Log.v(TAG, "🔍 Estado: webSocket=${webSocket != null}, connected=$isWebSocketConnected -> $connected")
+        return connected
     }
 
     fun close() {
@@ -255,7 +282,10 @@ object WebSocketLocationManager {
         Log.d(TAG, "🔒 CERRANDO WEBSOCKET DE UBICACIONES")
         Log.d(TAG, "🔒 ════════════════════════════════════════")
 
-        // 🆕 Desregistrar listener de tokens
+        // Marcar como desconectado
+        isWebSocketConnected = false
+
+        // Desregistrar listener de tokens
         tokenChangeListener?.let { listener ->
             sessionManager?.removeTokenChangeListener(listener)
             Log.d(TAG, "➖ Listener de tokens desregistrado")
@@ -275,4 +305,14 @@ object WebSocketLocationManager {
     }
 
     fun getCurrentToken(): String? = currentToken
+
+    // ✅ Método de diagnóstico
+    fun getConnectionStatus(): String {
+        return """
+            WebSocket object: ${webSocket != null}
+            Connection flag: $isWebSocketConnected
+            Token available: ${currentToken != null}
+            Listeners: ${broadcastListeners.size}
+        """.trimIndent()
+    }
 }

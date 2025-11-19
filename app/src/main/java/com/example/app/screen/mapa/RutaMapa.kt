@@ -58,6 +58,8 @@ import kotlinx.coroutines.delay
 import org.osmdroid.util.GeoPoint
 import kotlin.collections.isNotEmpty
 import androidx.compose.runtime.collectAsState
+import com.example.app.screen.rutas.components.RouteAlternativesDialog
+import kotlin.math.roundToInt
 
 @Composable
 fun RutaMapa(
@@ -106,6 +108,9 @@ fun RutaMapa(
     val rutaIdActiva by viewModel.rutaIdActiva
     val mostrarAlertaDesobediencia by viewModel.mostrarAlertaDesobediencia
     val mensajeAlertaDesobediencia by viewModel.mensajeAlertaDesobediencia
+
+    val alternativeRoutes by viewModel.alternativeRoutes
+    val showRouteSelector by viewModel.showRouteSelector
 
     // NUEVO: Observar la alerta de desobediencia y convertirla en notificación
     LaunchedEffect(mostrarAlertaDesobediencia, mensajeAlertaDesobediencia) {
@@ -359,6 +364,30 @@ fun RutaMapa(
                     }
                 }
 
+                if (showRouteSelector && alternativeRoutes.isNotEmpty()) {
+                    RouteAlternativesDialog(
+                        alternatives = alternativeRoutes,
+                        transportMode = selectedTransportMode,
+                        onSelectRoute = { alternative ->
+                            viewModel.selectRouteAlternative(
+                                alternative = alternative,
+                                token = token,
+                                ubicacionId = selectedLocationId,
+                                transporteTexto = selectedTransportMode
+                            )
+
+                            // Actualizar UI
+                            showRouteInfo = true
+                            routeDistance = "${(alternative.distance / 1000).roundToInt()} km"
+                            routeDuration = "${(alternative.duration / 60).roundToInt()} min"
+
+                            transportMessage = "Ruta ${alternative.displayName} seleccionada"
+                            showTransportMessage = true
+                        },
+                        onDismiss = { viewModel.hideRouteSelector() }
+                    )
+                }
+
                 // BOTONES INFERIORES con las notificaciones bonitas
                 RutasBottomButtons(
                     modifier = Modifier.align(Alignment.BottomCenter),
@@ -380,13 +409,16 @@ fun RutaMapa(
                                 val startPoint = Pair(userLat.value, userLon.value)
                                 val endPoint = Pair(destination.latitud, destination.longitud)
 
-                                viewModel.fetchRouteWithML(
+                                viewModel.fetchAllRouteAlternatives(
                                     start = startPoint,
                                     end = endPoint,
                                     token = token,
                                     ubicacionId = selectedLocationId,
                                     transporteTexto = selectedTransportMode
                                 )
+
+                                transportMessage = "Calculando rutas alternativas..."
+                                showTransportMessage = true
 
                                 transportMessage = "Calculando ruta en ${getModeDisplayName(selectedTransportMode)}"
                                 showTransportMessage = true

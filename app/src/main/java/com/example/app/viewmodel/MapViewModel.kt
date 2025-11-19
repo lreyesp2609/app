@@ -9,6 +9,8 @@ import com.example.app.models.*
 import com.example.app.network.RetrofitClient
 import com.example.app.network.RetrofitInstance
 import com.example.app.repository.RutasRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 import kotlin.math.roundToInt
@@ -42,6 +44,111 @@ class MapViewModel(
 
     private val _mensajeAlertaDesobediencia = mutableStateOf<String?>(null)
     val mensajeAlertaDesobediencia: State<String?> = _mensajeAlertaDesobediencia
+
+    private val _alternativeRoutes = mutableStateOf<List<RouteAlternative>>(emptyList())
+    val alternativeRoutes: State<List<RouteAlternative>> = _alternativeRoutes
+
+    private val _showRouteSelector = mutableStateOf(false)
+    val showRouteSelector: State<Boolean> = _showRouteSelector
+
+    fun fetchAllRouteAlternatives(
+        start: Pair<Double, Double>,
+        end: Pair<Double, Double>,
+        token: String,
+        ubicacionId: Int,
+        transporteTexto: String
+    ) {
+        currentToken = token
+        rutaActualUbicacionId = ubicacionId
+
+        viewModelScope.launch {
+            try {
+                Log.d("MapViewModel", "🔄 Calculando 3 rutas alternativas...")
+
+                // Calcular las 3 rutas en paralelo
+                val routes = listOf("fastest", "shortest", "recommended").map { preference ->
+                    async {
+                        try {
+                            val request = DirectionsRequest(
+                                coordinates = listOf(
+                                    listOf(start.second, start.first),
+                                    listOf(end.second, end.first)
+                                ),
+                                preference = preference
+                            )
+
+                            val response = RetrofitInstance.api.getRoute(currentMode, request)
+                            val route = response.routes.firstOrNull()
+
+                            RouteAlternative(
+                                type = preference,
+                                displayName = getPreferenceDisplayName(preference),
+                                response = response.copy(profile = currentMode),
+                                distance = route?.summary?.distance ?: 0.0,
+                                duration = route?.summary?.duration ?: 0.0,
+                                isRecommended = false // Lo marcaremos después con ML
+                            )
+                        } catch (e: Exception) {
+                            Log.e("MapViewModel", "Error calculando ruta $preference", e)
+                            null
+                        }
+                    }
+                }.awaitAll().filterNotNull()
+
+                if (routes.isNotEmpty()) {
+                    // Obtener recomendación ML
+                    try {
+                        val recomendacion = RetrofitClient.mlService.getRecomendacionTipoRuta(
+                            "Bearer $token",
+                            TipoRutaRequest(ubicacionId)
+                        )
+
+                        // Marcar la recomendada
+                        val routesWithRecommendation = routes.map { route ->
+                            route.copy(isRecommended = route.type == recomendacion.tipo_ruta)
+                        }
+
+                        _alternativeRoutes.value = routesWithRecommendation
+                        currentMLType = recomendacion.tipo_ruta
+
+                        Log.d("MapViewModel", "✅ 3 rutas calculadas. ML recomienda: ${recomendacion.tipo_ruta}")
+                    } catch (e: Exception) {
+                        Log.e("MapViewModel", "Error obteniendo recomendación ML", e)
+                        _alternativeRoutes.value = routes
+                    }
+
+                    _showRouteSelector.value = true
+                }
+
+            } catch (e: Exception) {
+                Log.e("MapViewModel", "Error general calculando alternativas", e)
+            }
+        }
+    }
+
+    // 🆕 Seleccionar una ruta alternativa
+    fun selectRouteAlternative(alternative: RouteAlternative, token: String, ubicacionId: Int, transporteTexto: String) {
+        viewModelScope.launch {
+            _route.value = alternative.response
+            currentMLType = alternative.type
+            rutaActualDistancia = alternative.distance
+            rutaActualDuracion = alternative.duration
+            _showRouteSelector.value = false
+
+            // Guardar en backend
+            guardarRutaEnBackend(
+                alternative.response,
+                token,
+                ubicacionId,
+                transporteTexto,
+                alternative.type
+            )
+        }
+    }
+
+    fun hideRouteSelector() {
+        _showRouteSelector.value = false
+    }
 
     fun agregarPuntoGPSReal(lat: Double, lng: Double) {
         val punto = PuntoGPS(

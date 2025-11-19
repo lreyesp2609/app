@@ -105,3 +105,22 @@ fun Long.toLocalISOString(): String {
     Log.d("TimezoneDebug", "Fecha generada: $result")
     return result
 }
+
+
+data class RouteAlternative(
+    val type: String,
+    val displayName: String,
+    val response: DirectionsResponse,
+    val distance: Double,
+    val duration: Double,
+    val isRecommended: Boolean
+)
+
+fun getPreferenceDisplayName(preference: String): String {
+    return when (preference) {
+        "fastest" -> "Más Rápida"
+        "shortest" -> "Más Corta"
+        "recommended" -> "Recomendada ORS"
+        else -> preference
+    }
+}
