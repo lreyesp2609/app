@@ -1,9 +1,13 @@
 package com.example.app.screen.grupos
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,14 +51,22 @@ import com.example.app.viewmodel.GrupoState
 import com.example.app.viewmodel.GrupoViewModel
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.GroupOff
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Login
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.app.network.RetrofitClient
@@ -84,16 +96,13 @@ fun CollaborativeGroupsScreen(
 
     val (snackbarHostState, scope) = rememberAppSnackbarState()
 
-    // 🔥 ESCUCHAR actualizaciones del WebSocket de notificaciones
     val unreadCounts by NotificationWebSocketManager.unreadCounts.collectAsState()
 
-    // ✅ Recargar cuando se crea un grupo
     val grupoCreado = navController.currentBackStackEntry
         ?.savedStateHandle
         ?.getStateFlow("grupo_creado", false)
         ?.collectAsState()
 
-    // 🆕 Detectar cuando se vuelve del chat
     val volviendoDelChat = navController.currentBackStackEntry
         ?.savedStateHandle
         ?.getStateFlow("refresh_grupos", false)
@@ -119,7 +128,6 @@ fun CollaborativeGroupsScreen(
         }
     }
 
-
     LaunchedEffect(grupoState) {
         when (val state = grupoState) {
             is GrupoState.JoinSuccess -> {
@@ -143,7 +151,7 @@ fun CollaborativeGroupsScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header con título y botones
+            // Header mejorado
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(600)) +
@@ -165,7 +173,7 @@ fun CollaborativeGroupsScreen(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Mis Grupos",
+                            text = "Mis grupos",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
@@ -174,24 +182,27 @@ fun CollaborativeGroupsScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Botón principal más destacado
                     AppButton(
-                        text = "Crear Nuevo Grupo",
+                        text = "Crear grupo",
                         icon = Icons.Default.GroupAdd,
                         onClick = { navController.navigate("create_group") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 32.dp)
+                            .padding(horizontal = 24.dp)
+                            .height(56.dp)
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    // Botón secundario
                     AppButton(
-                        text = "Unirse a un Grupo",
+                        text = "Unirse con código",
                         icon = Icons.Default.Login,
                         onClick = { showJoinDialog = true },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 32.dp),
+                            .padding(horizontal = 24.dp),
                         outlined = true
                     )
                 }
@@ -242,8 +253,6 @@ fun CollaborativeGroupsScreen(
                                     key = { index -> state.grupos[index].id }
                                 ) { index ->
                                     val grupo = state.grupos[index]
-
-                                    // 🔥 USAR el conteo del WebSocket si está disponible, sino el del backend
                                     val mensajesNoLeidos = unreadCounts[grupo.id] ?: grupo.mensajesNoLeidos
 
                                     GrupoCard(
@@ -281,7 +290,6 @@ fun CollaborativeGroupsScreen(
         )
     }
 
-    // Dialog para unirse a un grupo
     if (showJoinDialog) {
         JoinGroupDialog(
             onDismiss = { showJoinDialog = false },
@@ -317,7 +325,7 @@ fun JoinGroupDialog(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Unirse a un Grupo",
+                    text = "Unirse a un grupo",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -468,7 +476,7 @@ fun GrupoCard(
                             )
                         }
 
-                        // 🔔 Badge de notificaciones
+                        // Badge de notificaciones
                         if (mensajesNoLeidos > 0) {
                             Surface(
                                 shape = CircleShape,
@@ -546,32 +554,163 @@ fun GrupoCard(
 
 @Composable
 fun EmptyGroupsMessage() {
-    Box(
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Ícono animado
+        var iconScale by remember { mutableStateOf(0f) }
+        LaunchedEffect(Unit) {
+            iconScale = 1f
+        }
+
+        Box(
+            modifier = Modifier
+                .size(140.dp)
+                .scale(
+                    animateFloatAsState(
+                        targetValue = iconScale,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ), label = ""
+                    ).value
+                )
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.tertiaryContainer,
+                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
+                        )
+                    ),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
             Icon(
                 imageVector = Icons.Default.GroupOff,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(80.dp)
+                contentDescription = "Sin grupos",
+                tint = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(72.dp)
             )
-            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "No tienes grupos",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Crea un grupo para compartir con personas de confianza",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Card informativo (NO CLICKEABLE)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                // Header informativo
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "¿Qué puedes hacer?",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    )
+                }
+
+                // Características
+                GroupFeatureRow(
+                    icon = Icons.Default.GroupAdd,
+                    title = "Crea grupos de confianza",
+                    description = "Comparte con amigos, familia o compañeros"
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                GroupFeatureRow(
+                    icon = Icons.Default.Chat,
+                    title = "Chatea en tiempo real",
+                    description = "Comunícate al instante con tus contactos"
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                GroupFeatureRow(
+                    icon = Icons.Default.Share,
+                    title = "Invita con códigos",
+                    description = "Comparte códigos de forma segura"
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun GroupFeatureRow(
+    icon: ImageVector,
+    title: String,
+    description: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+            modifier = Modifier
+                .size(20.dp)
+                .padding(top = 2.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
             Text(
-                text = "No tienes grupos aún",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
             )
             Text(
-                text = "Crea tu primer grupo o únete a uno existente",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-                textAlign = TextAlign.Center
+                text = description,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                lineHeight = 16.sp
             )
         }
     }

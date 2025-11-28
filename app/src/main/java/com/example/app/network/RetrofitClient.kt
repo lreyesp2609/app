@@ -18,9 +18,12 @@ object RetrofitClient {
 
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        // ✅ Aumentar timeouts para evitar fallos prematuros
+        .connectTimeout(60, TimeUnit.SECONDS)  // Era 30s
+        .readTimeout(60, TimeUnit.SECONDS)     // Era 30s
+        .writeTimeout(60, TimeUnit.SECONDS)    // Era 30s
+        // ✅ Agregar reintentos automáticos
+        .retryOnConnectionFailure(true)
         .build()
 
     private val gson = GsonBuilder()
@@ -34,7 +37,7 @@ object RetrofitClient {
         Retrofit.Builder()
             .baseUrl(BuildConfig.BASE_URL)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create(gson))  // ✅ Usar gson personalizado
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
     }
 

@@ -30,7 +30,7 @@ fun ModulesSection(
     ) {
         item {
             Text(
-                text = "Módulos Disponibles",
+                text = "Módulos disponibles",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -40,7 +40,7 @@ fun ModulesSection(
 
         item {
             ModuleCard(
-                title = "Rutas Alternas",
+                title = "Rutas alternas",
                 description = "Gestiona tus rutas y ubicaciones",
                 icon = Icons.Default.Map,
                 onClick = { onTabSelected(1) }
@@ -58,7 +58,7 @@ fun ModulesSection(
 
         item {
             ModuleCard(
-                title = "Grupos Colaborativos",
+                title = "Grupos colaborativos",
                 description = "Colabora con otros usuarios",
                 icon = Icons.Default.Group,
                 onClick = { onTabSelected(3) }

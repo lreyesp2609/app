@@ -30,8 +30,7 @@ import com.example.app.repository.RutasRepository
 import com.example.app.screen.auth.LoginScreen
 import com.example.app.screen.config.SettingsScreen
 import com.example.app.screen.home.HomeScreen
-import com.example.app.screen.home.components.PlaceholderScreen
-import com.example.app.screen.mapa.RutaMapa
+import com.example.app.screen.rutas.components.RutaMapa
 import com.example.app.screen.rutas.AlternateRoutesScreen
 import com.example.app.screen.rutas.components.EstadisticasScreen
 import com.example.app.screen.rutas.components.MapScreen
@@ -265,7 +264,8 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                 ubicaciones = if (ubicacion != null) listOf(ubicacion) else emptyList(),
                 viewModel = mapViewModel,
                 token = token,
-                selectedLocationId = selectedLocationId
+                selectedLocationId = selectedLocationId,
+                navController = navController
             )
         }
 

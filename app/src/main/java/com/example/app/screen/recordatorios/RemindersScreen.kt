@@ -6,8 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -19,8 +21,12 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -39,10 +45,7 @@ fun RemindersScreen(
     token: String,
     modifier: Modifier = Modifier
 ) {
-    // Obtener el contexto
     val context = LocalContext.current
-
-    // Crear el repositorio y el ViewModel con el factory
     val database = AppDatabase.getDatabase(context)
     val repository = ReminderRepository(database.reminderDao())
     val viewModel: ReminderViewModel = viewModel(
@@ -54,7 +57,6 @@ fun RemindersScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
 
-    // Animación de entrada
     LaunchedEffect(Unit) {
         delay(200)
         showContent = true
@@ -149,20 +151,22 @@ fun RemindersScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Botón más destacado y con animación
                     AppButton(
-                        text = "Agregar recordatorio",
+                        text = "Crear recordatorio",
                         icon = Icons.Default.AddLocationAlt,
                         onClick = { navController.navigate("reminder_map") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 32.dp)
+                            .padding(horizontal = 24.dp)
+                            .height(56.dp)
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Estadísticas rápidas (solo si hay recordatorios)
+            // Estadísticas rápidas
             AnimatedVisibility(
                 visible = showStats && hasReminders,
                 enter = fadeIn(animationSpec = tween(600)) +
@@ -232,12 +236,10 @@ fun RemindersScreen(
                     }
 
                     !hasReminders -> {
-                        // Estado vacío con características
                         EmptyRemindersState()
                     }
 
                     else -> {
-                        // Lista de recordatorios
                         LazyColumn(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -263,7 +265,6 @@ fun RemindersScreen(
                                 )
                             }
 
-                            // Espaciador final
                             item {
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
@@ -277,11 +278,30 @@ fun RemindersScreen(
 
 @Composable
 private fun EmptyRemindersState() {
+    var contentHeight by remember { mutableStateOf(0.dp) }
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+
+    // Determinar si necesita scroll basado en el tamaño del contenido vs pantalla
+    val needsScroll = contentHeight > screenHeight * 0.7f
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (needsScroll) {
+                    Modifier.verticalScroll(rememberScrollState())
+                } else {
+                    Modifier
+                }
+            )
+            .onGloballyPositioned { coordinates ->
+                contentHeight = with(density) { coordinates.size.height.toDp() }
+            }
     ) {
-        // Ícono animado
+        // Ícono animado más grande
         var iconScale by remember { mutableStateOf(0f) }
         LaunchedEffect(Unit) {
             iconScale = 1f
@@ -289,7 +309,7 @@ private fun EmptyRemindersState() {
 
         Box(
             modifier = Modifier
-                .size(120.dp)
+                .size(140.dp)
                 .scale(
                     animateFloatAsState(
                         targetValue = iconScale,
@@ -302,8 +322,8 @@ private fun EmptyRemindersState() {
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.secondaryContainer,
-                            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
                         )
                     ),
                     shape = CircleShape
@@ -311,83 +331,130 @@ private fun EmptyRemindersState() {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Default.AccessAlarm,
-                contentDescription = "Alarma",
-                tint = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.size(64.dp)
+                imageVector = Icons.Default.NotificationsNone,
+                contentDescription = "Sin recordatorios",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(72.dp)
             )
         }
 
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Título y descripción más claros
+        Text(
+            text = "No tienes recordatorios",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Crea tu primer recordatorio tocando el botón de arriba",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        )
+
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Card de características
+        // Card informativo (NO CLICKEABLE)
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            shape = RoundedCornerShape(20.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                // Header informativo
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 20.dp)
+                    modifier = Modifier.padding(bottom = 16.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Star,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Características",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        text = "¿Qué puedes hacer?",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                     )
                 }
 
-                ReminderFeatureItem(
+                // Características (sin iconos grandes ni interactividad)
+                FeatureRow(
                     icon = Icons.Default.LocationOn,
-                    text = "Recordatorios basados en ubicación",
+                    title = "Recordatorios por ubicación",
                     description = "Recibe alertas al entrar o salir de un lugar"
                 )
+
                 Spacer(modifier = Modifier.height(16.dp))
 
-                ReminderFeatureItem(
+                FeatureRow(
                     icon = Icons.Default.Schedule,
-                    text = "Alertas personalizadas por horario",
-                    description = "Programa recordatorios en fecha y hora específica"
+                    title = "Alertas por fecha y hora",
+                    description = "Programa recordatorios en momentos específicos"
                 )
+
                 Spacer(modifier = Modifier.height(16.dp))
 
-                ReminderFeatureItem(
-                    icon = Icons.Default.Notifications,
-                    text = "Notificaciones personalizables",
-                    description = "Configura vibración, sonido y tipo de alerta"
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ReminderFeatureItem(
+                FeatureRow(
                     icon = Icons.Default.Map,
-                    text = "Selección en mapa interactivo",
-                    description = "Elige ubicaciones fácilmente con el mapa"
+                    title = "Selección en mapa",
+                    description = "Elige ubicaciones fácilmente"
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+// Componente más simple para las características
+@Composable
+private fun FeatureRow(
+    icon: ImageVector,
+    title: String,
+    description: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+            modifier = Modifier
+                .size(20.dp)
+                .padding(top = 2.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
+            )
+            Text(
+                text = description,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                lineHeight = 16.sp
+            )
         }
     }
 }
@@ -461,7 +528,6 @@ fun ReminderCard(
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header del recordatorio con Switch
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -471,7 +537,6 @@ fun ReminderCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    // Ícono según tipo
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -527,7 +592,6 @@ fun ReminderCard(
                     }
                 }
 
-                // Switch para activar/desactivar
                 Switch(
                     checked = isActive,
                     onCheckedChange = { newState ->
@@ -551,7 +615,6 @@ fun ReminderCard(
                 }
             }
 
-            // Detalles expandibles
             AnimatedVisibility(
                 visible = expanded,
                 enter = expandVertically() + fadeIn(),
@@ -563,7 +626,6 @@ fun ReminderCard(
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
 
-                    // Descripción
                     reminder.description?.let { desc ->
                         Row(
                             verticalAlignment = Alignment.Top,
@@ -584,7 +646,6 @@ fun ReminderCard(
                         }
                     }
 
-                    // Ubicación
                     if (reminder.reminder_type == "location" || reminder.reminder_type == "both") {
                         reminder.location?.let { loc ->
                             Row(
@@ -620,7 +681,6 @@ fun ReminderCard(
                         }
                     }
 
-                    // Fecha y hora
                     if (reminder.reminder_type == "datetime" || reminder.reminder_type == "both") {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -641,7 +701,6 @@ fun ReminderCard(
                         }
                     }
 
-                    // Configuración de notificación
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -663,7 +722,6 @@ fun ReminderCard(
                         }
                     }
 
-                    // Botones de acción
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -727,51 +785,6 @@ private fun Chip(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
-    }
-}
-
-@Composable
-private fun ReminderFeatureItem(
-    icon: ImageVector,
-    text: String,
-    description: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(
-            modifier = Modifier.align(Alignment.CenterVertically)
-        ) {
-            Text(
-                text = text,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = description,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                lineHeight = 16.sp
             )
         }
     }

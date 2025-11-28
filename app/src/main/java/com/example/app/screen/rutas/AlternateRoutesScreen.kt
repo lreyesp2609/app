@@ -2,6 +2,9 @@ package com.example.app.screen.rutas
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
@@ -21,6 +24,7 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Place
@@ -43,6 +47,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,7 +71,6 @@ fun AlternateRoutesScreen(
 
     var showContent by remember { mutableStateOf(false) }
 
-    // Animación de entrada
     LaunchedEffect(Unit) {
         delay(200)
         showContent = true
@@ -84,7 +89,6 @@ fun AlternateRoutesScreen(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             // Header animado
             AnimatedVisibility(
                 visible = showContent,
@@ -101,13 +105,13 @@ fun AlternateRoutesScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Route,
-                            contentDescription = "Rutas Alternas",
+                            contentDescription = "Rutas alternas",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(32.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Rutas Alternas",
+                            text = "Mis Destinos",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
@@ -116,17 +120,19 @@ fun AlternateRoutesScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Botón principal
                     AppButton(
-                        text = "Agregar ubicación",
+                        text = "Agregar destino",
                         icon = Icons.Default.AddLocationAlt,
                         onClick = { navController.navigate("mapa") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 32.dp)
+                            .padding(horizontal = 24.dp)
+                            .height(56.dp)
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Contenido principal
             AnimatedVisibility(
@@ -136,91 +142,146 @@ fun AlternateRoutesScreen(
             ) {
                 when {
                     isLoading -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 80.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Cargando ubicaciones...",
-                                fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Cargando destinos...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
                         }
                     }
 
                     ubicaciones.isEmpty() -> {
+                        // Estado vacío mejorado
                         Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 40.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Ilustración estilo Recordatorios
+                            // Ícono animado
+                            var iconScale by remember { mutableStateOf(0f) }
+                            LaunchedEffect(Unit) {
+                                iconScale = 1f
+                            }
+
                             Box(
                                 modifier = Modifier
-                                    .size(120.dp)
+                                    .size(140.dp)
+                                    .scale(
+                                        animateFloatAsState(
+                                            targetValue = iconScale,
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessLow
+                                            ), label = ""
+                                        ).value
+                                    )
                                     .background(
-                                        color = MaterialTheme.colorScheme.secondaryContainer,
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.secondaryContainer,
+                                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
+                                            )
+                                        ),
                                         shape = CircleShape
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Map,
-                                    contentDescription = "Mapa",
+                                    contentDescription = "Sin destinos",
                                     tint = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.size(64.dp)
+                                    modifier = Modifier.size(72.dp)
                                 )
                             }
 
                             Spacer(modifier = Modifier.height(24.dp))
 
                             Text(
-                                text = "Sin ubicaciones guardadas",
-                                fontSize = 26.sp,
+                                text = "No tienes destinos guardados",
+                                fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
+                                color = MaterialTheme.colorScheme.onBackground,
+                                textAlign = TextAlign.Center
                             )
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
-                                text = "Agrega tus destinos y crea rutas personalizadas",
-                                fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                text = "Agrega tus lugares favoritos para generar rutas rápidamente",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(horizontal = 32.dp)
                             )
 
                             Spacer(modifier = Modifier.height(32.dp))
 
-                            // Tarjeta con características
+                            // Card informativo (NO CLICKEABLE) - mismo diseño que Reminders
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 24.dp),
+                                    .padding(horizontal = 16.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                shape = RoundedCornerShape(16.dp)
                             ) {
-                                Column(
-                                    modifier = Modifier.padding(20.dp)
-                                ) {
-                                    FeatureItem(
+                                Column(modifier = Modifier.padding(20.dp)) {
+                                    // Header informativo
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(bottom = 16.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "¿Qué puedes hacer?",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                        )
+                                    }
+
+                                    // Características
+                                    FeatureRow(
                                         icon = Icons.Default.Place,
-                                        text = "Guarda tus puntos frecuentes"
+                                        title = "Guarda tus destinos frecuentes",
+                                        description = "Accede rápidamente a tus lugares favoritos"
                                     )
+
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    FeatureItem(
-                                        icon = Icons.Default.History,
-                                        text = "Consulta tu historial de trayectos"
+
+                                    FeatureRow(
+                                        icon = Icons.Default.Route,
+                                        title = "Recibe 3 opciones de ruta",
+                                        description = "La IA te ayuda a variar tus trayectos habituales"
+                                    )
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    FeatureRow(
+                                        icon = Icons.Default.Analytics,
+                                        title = "Consulta tus estadísticas",
+                                        description = "Revisa el historial de tus viajes"
                                     )
                                 }
                             }
@@ -228,41 +289,36 @@ fun AlternateRoutesScreen(
                     }
 
                     else -> {
-                        // Lista de ubicaciones (cuando existen)
+                        // Lista de ubicaciones
                         Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 24.dp)
+                            modifier = Modifier.fillMaxSize()
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                                    .padding(horizontal = 8.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Mis Ubicaciones (${ubicaciones.size})",
-                                    fontSize = 20.sp,
+                                    text = "Mis destinos (${ubicaciones.size})",
+                                    fontSize = 18.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onBackground
                                 )
-                                Text(
-                                    text = "Desliza para más opciones",
-                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                                    fontSize = 12.sp
-                                )
                             }
+
+                            Spacer(modifier = Modifier.height(8.dp))
 
                             LazyColumn(
                                 modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                                contentPadding = PaddingValues(vertical = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 items(ubicaciones.size) { index ->
                                     UbicacionCard(
                                         ubicacion = ubicaciones[index],
-                                        onVerRuta = {
+                                        onGenerarRuta = {
                                             navController.navigate("rutas_screen/${ubicaciones[index].id}")
                                         },
                                         onEstadisticas = {
@@ -273,6 +329,10 @@ fun AlternateRoutesScreen(
                                         }
                                     )
                                 }
+
+                                item {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                }
                             }
                         }
                     }
@@ -282,47 +342,64 @@ fun AlternateRoutesScreen(
     }
 }
 
-// Reutilizamos el estilo de los ítems informativos
+// Componente simple para las características (igual que en Reminders)
 @Composable
-private fun FeatureItem(
+private fun FeatureRow(
     icon: ImageVector,
-    text: String
+    title: String,
+    description: String
 ) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+            modifier = Modifier
+                .size(20.dp)
+                .padding(top = 2.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = text,
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Column {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
+            )
+            Text(
+                text = description,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                lineHeight = 16.sp
+            )
+        }
     }
 }
 
 @Composable
 fun UbicacionCard(
     ubicacion: UbicacionUsuarioResponse,
-    onVerRuta: () -> Unit,
+    onGenerarRuta: () -> Unit,
     onEstadisticas: () -> Unit,
     onEditar: () -> Unit
 ) {
+    var isPressed by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(),
+            .animateContentSize()
+            .scale(if (isPressed) 0.98f else 1f),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isPressed) 2.dp else 6.dp
+        )
     ) {
         Column(
             modifier = Modifier
@@ -364,7 +441,6 @@ fun UbicacionCard(
                     }
                 }
 
-                // Indicador visual
                 Box(
                     modifier = Modifier
                         .size(12.dp)
@@ -374,63 +450,96 @@ fun UbicacionCard(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Botones de acción mejorados
+            // Botón PRINCIPAL
+            Button(
+                onClick = {
+                    isPressed = true
+                    onGenerarRuta()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 4.dp,
+                    pressedElevation = 8.dp
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Directions,
+                    contentDescription = "Generar ruta",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Generar ruta",
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Botones secundarios
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Botón Ver Ruta - Principal
-                Button(
-                    onClick = onVerRuta,
-                    modifier = Modifier.weight(2f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(vertical = 12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Directions,
-                        contentDescription = "Ver Ruta",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Ver Ruta",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                // Botón Estadísticas - Usando colores secundarios
                 OutlinedButton(
                     onClick = onEstadisticas,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary),
-                    contentPadding = PaddingValues(vertical = 12.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                    contentPadding = PaddingValues(vertical = 10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 ) {
                     Icon(
                         imageVector = Icons.Default.Analytics,
                         contentDescription = "Estadísticas",
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Datos",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
 
-                // Botón Editar
                 OutlinedButton(
                     onClick = onEditar,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
-                    contentPadding = PaddingValues(vertical = 12.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                    contentPadding = PaddingValues(vertical = 10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Editar",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Editar",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }

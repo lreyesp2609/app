@@ -37,6 +37,8 @@ fun OpenStreetMap(
     zoom: Double = 16.0,
     showUserLocation: Boolean = true,
     recenterTrigger: Int = 0,
+    zoomInTrigger: Int = 0,
+    zoomOutTrigger: Int = 0,
     context: Context = LocalContext.current,
     pois: List<Feature> = emptyList(),
     showCenterPin: Boolean = true,
@@ -111,6 +113,27 @@ fun OpenStreetMap(
             map.invalidate()
         }
     )
+
+    // Recentrar mapa
+    LaunchedEffect(recenterTrigger) {
+        if (recenterTrigger > 0) {
+            mapView.controller.animateTo(GeoPoint(latitude, longitude))
+        }
+    }
+
+    // ✅ NUEVO: Zoom In
+    LaunchedEffect(zoomInTrigger) {
+        if (zoomInTrigger > 0) {
+            mapView.controller.zoomIn()
+        }
+    }
+
+    // ✅ NUEVO: Zoom Out
+    LaunchedEffect(zoomOutTrigger) {
+        if (zoomOutTrigger > 0) {
+            mapView.controller.zoomOut()
+        }
+    }
 
     LaunchedEffect(recenterTrigger) {
         mapView.controller.animateTo(GeoPoint(latitude, longitude))

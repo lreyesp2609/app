@@ -3,12 +3,13 @@ package com.example.app.repository
 import android.util.Log
 import com.example.app.models.LoginResponse
 import com.example.app.network.RetrofitClient
-import com.example.app.network.RetrofitClient.apiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 class AuthRepository {
 
@@ -35,16 +36,22 @@ class AuthRepository {
                         ?: Result.failure(Exception("Respuesta vacía"))
                 } else {
                     val errorMsg = when (response.code()) {
-                        401 -> "Usuario o contraseña incorrectos"
+                        401 -> "INVALID_CREDENTIALS"
                         422 -> "Datos enviados incompletos o inválidos"
                         else -> response.errorBody()?.string() ?: "Error desconocido"
                     }
                     Result.failure(Exception(errorMsg))
                 }
+            } catch (e: SocketTimeoutException) {
+                Result.failure(Exception("NETWORK_ERROR:TIMEOUT - ${e.message}"))
+            } catch (e: UnknownHostException) {
+                Result.failure(Exception("NETWORK_ERROR:NO_INTERNET - ${e.message}"))
             } catch (e: IOException) {
-                Result.failure(Exception("Error de red: ${e.message}"))
+                Result.failure(Exception("NETWORK_ERROR:IO_EXCEPTION - ${e.message}"))
             } catch (e: HttpException) {
-                Result.failure(Exception("Error HTTP: ${e.message}"))
+                Result.failure(Exception("HTTP_ERROR:${e.code()} - ${e.message}"))
+            } catch (e: Exception) {
+                Result.failure(Exception("UNKNOWN_ERROR - ${e.message}"))
             }
         }
     }
@@ -61,29 +68,73 @@ class AuthRepository {
                 user?.let { Result.success(it) }
                     ?: Result.failure(Exception("Usuario no encontrado"))
             } else {
-                val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                val errorMsg = when (response.code()) {
+                    401 -> "AUTH_ERROR:TOKEN_INVALIDO"
+                    404 -> "Usuario no encontrado"
+                    else -> "HTTP_ERROR:${response.code()}"
+                }
                 Log.e("AuthRepository", "Error en respuesta: $errorMsg")
                 Result.failure(Exception(errorMsg))
             }
+        } catch (e: SocketTimeoutException) {
+            Log.e("AuthRepository", "Timeout: ${e.message}")
+            Result.failure(Exception("NETWORK_ERROR:TIMEOUT"))
+        } catch (e: UnknownHostException) {
+            Log.e("AuthRepository", "Sin internet: ${e.message}")
+            Result.failure(Exception("NETWORK_ERROR:NO_INTERNET"))
+        } catch (e: IOException) {
+            Log.e("AuthRepository", "Error IO: ${e.message}")
+            Result.failure(Exception("NETWORK_ERROR:IO_EXCEPTION"))
         } catch (e: Exception) {
             Log.e("AuthRepository", "Excepción: ${e.message}")
-            Result.failure(e)
+            Result.failure(Exception("UNKNOWN_ERROR - ${e.message}"))
         }
     }
 
+    // ✅ CRÍTICO: Refresh token con clasificación de errores
     suspend fun refreshToken(refreshToken: String): Result<LoginResponse> {
         return withContext(Dispatchers.IO) {
             try {
                 val response = api.refreshToken(refreshToken)
+
                 if (response.isSuccessful) {
-                    response.body()?.let { Result.success(it) }
-                        ?: Result.failure(Exception("Respuesta vacía en refresh"))
+                    response.body()?.let {
+                        Result.success(it)
+                    } ?: Result.failure(Exception("AUTH_ERROR:RESPUESTA_VACIA"))
                 } else {
-                    val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
-                    Result.failure(Exception(errorMsg))
+                    // ✅ Clasificar errores según código HTTP
+                    val errorType = when (response.code()) {
+                        401 -> {
+                            val errorBody = response.errorBody()?.string() ?: ""
+                            when {
+                                errorBody.contains("REFRESH_INVALIDO") -> "AUTH_ERROR:REFRESH_INVALIDO"
+                                errorBody.contains("REFRESH_EXPIRADO") -> "AUTH_ERROR:REFRESH_EXPIRADO"
+                                else -> "AUTH_ERROR:UNAUTHORIZED"
+                            }
+                        }
+                        403 -> "AUTH_ERROR:FORBIDDEN"
+                        404 -> "AUTH_ERROR:SESION_NO_ENCONTRADA"
+                        500, 502, 503, 504 -> "SERVER_ERROR:${response.code()}"
+                        else -> "HTTP_ERROR:${response.code()}"
+                    }
+
+                    Result.failure(Exception(errorType))
                 }
+            } catch (e: SocketTimeoutException) {
+                // ✅ Error de timeout - NO debe causar logout inmediato
+                Result.failure(Exception("NETWORK_ERROR:TIMEOUT"))
+            } catch (e: UnknownHostException) {
+                // ✅ Sin conexión a internet - NO debe causar logout inmediato
+                Result.failure(Exception("NETWORK_ERROR:NO_INTERNET"))
+            } catch (e: IOException) {
+                // ✅ Error de red genérico - NO debe causar logout inmediato
+                Result.failure(Exception("NETWORK_ERROR:IO_EXCEPTION"))
+            } catch (e: HttpException) {
+                // ✅ Error HTTP específico
+                Result.failure(Exception("HTTP_ERROR:${e.code()}"))
             } catch (e: Exception) {
-                Result.failure(e)
+                // ✅ Error desconocido
+                Result.failure(Exception("UNKNOWN_ERROR:${e.message}"))
             }
         }
     }
@@ -98,12 +149,16 @@ class AuthRepository {
                     val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
                     Result.failure(Exception(errorMsg))
                 }
+            } catch (e: SocketTimeoutException) {
+                Result.failure(Exception("NETWORK_ERROR:TIMEOUT"))
+            } catch (e: UnknownHostException) {
+                Result.failure(Exception("NETWORK_ERROR:NO_INTERNET"))
             } catch (e: IOException) {
-                Result.failure(Exception("Error de red: ${e.message}"))
+                Result.failure(Exception("NETWORK_ERROR:IO_EXCEPTION"))
             } catch (e: HttpException) {
-                Result.failure(Exception("Error HTTP: ${e.message}"))
+                Result.failure(Exception("HTTP_ERROR:${e.code()}"))
             } catch (e: Exception) {
-                Result.failure(e)
+                Result.failure(Exception("UNKNOWN_ERROR - ${e.message}"))
             }
         }
     }
@@ -123,18 +178,29 @@ class AuthRepository {
                     contrasenia = contrasenia
                 )
                 if (response.isSuccessful) {
-                    response.body()?.let { Result.success(it) } ?: Result.failure(Exception("Respuesta vacía"))
+                    response.body()?.let { Result.success(it) }
+                        ?: Result.failure(Exception("Respuesta vacía"))
                 } else {
-                    val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                    val errorMsg = when (response.code()) {
+                        400 -> "USER_ALREADY_EXISTS"
+                        422 -> "INVALID_EMAIL"
+                        else -> response.errorBody()?.string() ?: "Error desconocido"
+                    }
                     Result.failure(Exception(errorMsg))
                 }
+            } catch (e: SocketTimeoutException) {
+                Result.failure(Exception("NETWORK_ERROR:TIMEOUT"))
+            } catch (e: UnknownHostException) {
+                Result.failure(Exception("NETWORK_ERROR:NO_INTERNET"))
+            } catch (e: IOException) {
+                Result.failure(Exception("NETWORK_ERROR:IO_EXCEPTION"))
             } catch (e: Exception) {
-                Result.failure(e)
+                Result.failure(Exception("UNKNOWN_ERROR - ${e.message}"))
             }
         }
     }
 
-    // 🔥 NUEVO: Métodos FCM
+    // 🔥 Métodos FCM
     suspend fun enviarTokenFCM(bearerToken: String, request: Map<String, String>): Response<Unit> {
         return withContext(Dispatchers.IO) {
             api.registrarFCMToken(bearerToken, request)

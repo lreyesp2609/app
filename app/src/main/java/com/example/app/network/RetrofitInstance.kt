@@ -8,7 +8,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitInstance {
-    private const val ORS_BASE_URL = "https://api.openrouteservice.org/"
+    private const val ORS_BASE_URL = "https://api.openrouteservice.org/v2/"
+    private const val ORS_POIS_BASE_URL = "https://api.openrouteservice.org/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -27,9 +28,20 @@ object RetrofitInstance {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    // Para rutas (/v2/directions)
     val api: ORSService by lazy {
         Retrofit.Builder()
             .baseUrl(ORS_BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(client)
+            .build()
+            .create(ORSService::class.java)
+    }
+
+    // 👇 Nueva instancia para POIs
+    val poisApi: ORSService by lazy {
+        Retrofit.Builder()
+            .baseUrl(ORS_POIS_BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .client(client)
             .build()

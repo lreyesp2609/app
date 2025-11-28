@@ -1,4 +1,4 @@
-package com.example.app.screen.mapa
+package com.example.app.screen.rutas.components
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,25 +39,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
-import calcularDistanciaSobreRuta
+import androidx.navigation.NavController
 import com.example.app.models.UbicacionUsuarioResponse
-import com.example.app.screen.rutas.components.CalculadorETADinamico
-import com.example.app.screen.rutas.components.RutaEstado
-import com.example.app.screen.rutas.components.RutasBottomButtons
-import com.example.app.screen.rutas.components.actualizarHistorialPosiciones
-import com.example.app.screen.rutas.components.inicializarRutaEstado
 import com.example.app.viewmodel.decodePolyline
 import com.example.app.viewmodel.MapViewModel
-import kotlinx.coroutines.delay
-import org.osmdroid.util.GeoPoint
 import kotlin.collections.isNotEmpty
-import androidx.compose.runtime.collectAsState
-import com.example.app.screen.rutas.components.RouteAlternativesDialog
+import com.example.app.screen.mapa.GetCurrentLocation
+import com.example.app.screen.mapa.GpsEnableButton
+import com.example.app.screen.mapa.LocationTracker
+import com.example.app.screen.mapa.MapControlButton
+import com.example.app.screen.mapa.RouteInfoCard
+import com.example.app.screen.mapa.SimpleMapOSM
+import com.example.app.screen.mapa.calcularDistancia
 import kotlin.math.roundToInt
 
 @Composable
@@ -69,8 +65,10 @@ fun RutaMapa(
     ubicaciones: List<UbicacionUsuarioResponse> = emptyList(),
     viewModel: MapViewModel = viewModel(),
     token: String,
-    selectedLocationId: Int
-) {
+    selectedLocationId: Int,
+    navController: NavController,
+
+    ) {
     // Estados de ubicación y mapa
     val userLat = remember { mutableStateOf(defaultLat) }
     val userLon = remember { mutableStateOf(defaultLon) }
@@ -261,46 +259,29 @@ fun RutaMapa(
                         .padding(end = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    FloatingActionButton(
-                        onClick = { zoomInTrigger++ },
-                        modifier = Modifier.size(48.dp),
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Aumentar zoom",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
+                    // ➕ Zoom In
+                    MapControlButton(
+                        icon = Icons.Default.Add,
+                        onClick = { zoomInTrigger++ }
+                    )
 
-                    FloatingActionButton(
-                        onClick = { zoomOutTrigger++ },
-                        modifier = Modifier.size(48.dp),
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Remove,
-                            contentDescription = "Disminuir zoom",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
+                    // ➖ Zoom Out
+                    MapControlButton(
+                        icon = Icons.Default.Remove,
+                        onClick = { zoomOutTrigger++ }
+                    )
 
-                    FloatingActionButton(
+                    // 🎯 Centrar usuario
+                    MapControlButton(
+                        icon = Icons.Default.MyLocation,
                         onClick = {
                             mapCenterLat = userLat.value
                             mapCenterLon = userLon.value
                             recenterTrigger++
-                        },
-                        modifier = Modifier.size(48.dp),
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MyLocation,
-                            contentDescription = "Centrar usuario",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
+                        }
+                    )
                 }
+
 
                 // Información de la ruta
                 if (showRouteInfo && (currentRoute != null || rutaEstado.activa)) {
@@ -388,7 +369,6 @@ fun RutaMapa(
                     )
                 }
 
-                // BOTONES INFERIORES con las notificaciones bonitas
                 RutasBottomButtons(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     selectedTransportMode = selectedTransportMode,
@@ -398,7 +378,7 @@ fun RutaMapa(
                     showTransportMessage = showTransportMessage,
                     transportMessage = transportMessage,
                     onDismissTransport = { showTransportMessage = false },
-                    // NUEVO: Parámetros para la alerta de seguridad
+                    navController = navController,
                     showSecurityAlert = showSecurityAlert,
                     securityMessage = securityMessage,
                     onDismissSecurityAlert = { showSecurityAlert = false },

@@ -40,8 +40,10 @@ fun ReminderMapScreen(
     var selectedAddress by remember { mutableStateOf("") }
 
     var recenterTrigger by remember { mutableStateOf(0) }
+    var zoomInTrigger by remember { mutableStateOf(0) }    // ✅ AGREGADO
+    var zoomOutTrigger by remember { mutableStateOf(0) }   // ✅ AGREGADO
     var addressJob by remember { mutableStateOf<Job?>(null) }
-    var poisJob by remember { mutableStateOf<Job?>(null) } // 🆕 Job separado para POIs
+    var poisJob by remember { mutableStateOf<Job?>(null) }
 
     var mapCenterLat by remember { mutableStateOf(currentLat) }
     var mapCenterLon by remember { mutableStateOf(currentLon) }
@@ -52,7 +54,7 @@ fun ReminderMapScreen(
     fun loadPOIsForLocation(lat: Double, lon: Double) {
         poisJob?.cancel()
         poisJob = scope.launch {
-            delay(800) // Esperar a que el usuario deje de desplazarse
+            delay(800)
 
             Log.d("POI_DEBUG", "🔄 Cargando POIs para: lat=$lat, lon=$lon")
             try {
@@ -66,12 +68,10 @@ fun ReminderMapScreen(
                     )
                 )
 
-                val poisResponse = RetrofitInstance.api.getPOIs(poisRequest)
+                val poisResponse = RetrofitInstance.poisApi.getPOIs(poisRequest)
                 val newPois = poisResponse.features ?: emptyList()
 
                 Log.d("POI_DEBUG", "✅ Nuevos POIs: ${newPois.size}")
-
-                // Reemplazar la lista completa
                 poisList = newPois
 
             } catch (e: Exception) {
@@ -90,6 +90,8 @@ fun ReminderMapScreen(
                     longitude = currentLon,
                     showUserLocation = true,
                     recenterTrigger = recenterTrigger,
+                    zoomInTrigger = zoomInTrigger,      // ✅ AGREGADO
+                    zoomOutTrigger = zoomOutTrigger,    // ✅ AGREGADO
                     pois = poisList,
                     modifier = Modifier.fillMaxSize(),
                     onLocationSelected = { lat, lon ->
@@ -125,6 +127,8 @@ fun ReminderMapScreen(
                         }
                     },
                     onRecenterClick = { recenterTrigger++ },
+                    onZoomInClick = { zoomInTrigger++ },    // ✅ AGREGADO
+                    onZoomOutClick = { zoomOutTrigger++ },  // ✅ AGREGADO
                     onBackClick = { navController.popBackStack() }
                 )
             }

@@ -79,7 +79,7 @@ fun SettingsScreen(
 
         // Botón de cerrar sesión usando AppButton
         AppButton(
-            text = "Cerrar Sesión",
+            text = "Cerrar sesión",
             onClick = {
                 // ✅ Mostrar diálogo de confirmación
                 showLogoutDialog = true

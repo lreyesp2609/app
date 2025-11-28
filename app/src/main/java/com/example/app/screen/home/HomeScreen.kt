@@ -71,6 +71,8 @@ import com.example.app.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import com.example.app.screen.grupos.CollaborativeGroupsScreen
@@ -93,7 +95,13 @@ fun HomeScreen(
     // Estados de animación
     var isVisible by remember { mutableStateOf(false) }
     var showContent by remember { mutableStateOf(false) }
-    var selectedTab by rememberSaveable { mutableStateOf(initialTab) }
+
+    // 🔥 NUEVO: PagerState para manejar el swipe
+    val pagerState = rememberPagerState(
+        initialPage = initialTab,
+        pageCount = { 5 } // 5 pestañas
+    )
+    val scope = rememberCoroutineScope()
 
     // 🔔 Estados para permisos
     var showPermissionDialog by remember { mutableStateOf(false) }
@@ -109,9 +117,6 @@ fun HomeScreen(
     var locationPermissionChecked by remember { mutableStateOf(false) }
     var shouldRequestLocation by remember { mutableStateOf(false) }
 
-    // Scope para las coroutines
-    val scope = rememberCoroutineScope()
-
     // 🔔 Launcher para permiso de notificaciones (Android 13+)
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -122,18 +127,15 @@ fun HomeScreen(
             Log.d("HomeScreen", "✅ Permiso de notificaciones concedido")
             Toast.makeText(context, "Notificaciones activadas", Toast.LENGTH_SHORT).show()
 
-            // ✅ NOTIFICACIONES OK → AHORA pedir ubicación
             scope.launch {
                 delay(500)
                 shouldRequestLocation = true
             }
         } else {
-            // ❌ USUARIO RECHAZÓ NOTIFICACIONES → Mostrar diálogo
             Log.w("HomeScreen", "⚠️ Permiso de notificaciones denegado")
             permissionType = "notification"
             showPermissionDialog = true
 
-            // Aún así, después pedir ubicación
             scope.launch {
                 delay(1000)
                 shouldRequestLocation = true
@@ -145,7 +147,6 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         delay(1000)
 
-        // 1️⃣ PRIMERO: Solicitar notificaciones (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permission = android.Manifest.permission.POST_NOTIFICATIONS
 
@@ -162,20 +163,17 @@ fun HomeScreen(
                 }
             }
         } else {
-            // Android < 13 no necesita permiso de notificaciones
             notificationPermissionChecked = true
             delay(500)
             shouldRequestLocation = true
         }
 
-        // Crear el canal de notificaciones
         NotificationHelper.createNotificationChannel(context)
     }
 
     // 📍 Componente invisible que maneja la ubicación
     if (shouldRequestLocation) {
         if (showGpsButton) {
-            // Mostrar botón para habilitar GPS (pantalla completa)
             GpsEnableButton(
                 onEnableGps = {
                     showGpsButton = false
@@ -189,7 +187,6 @@ fun HomeScreen(
                 onLocationResult = { lat, lon ->
                     Log.d("HomeScreen", "📍 Ubicación obtenida: $lat, $lon")
 
-                    // Iniciar el servicio de ubicación solo una vez
                     if (!locationServiceStarted) {
                         LocationReminderService.start(context)
                         locationServiceStarted = true
@@ -199,7 +196,6 @@ fun HomeScreen(
                 onError = { error ->
                     Log.e("HomeScreen", "❌ Error de ubicación: $error")
 
-                    // ❌ Si rechazó el permiso de ubicación → mostrar diálogo
                     if (error.contains("Permiso de ubicación denegado")) {
                         locationPermissionChecked = true
                         permissionType = "location"
@@ -207,7 +203,6 @@ fun HomeScreen(
                     }
                 },
                 onGpsDisabled = {
-                    // GPS está apagado → NO mostrar diálogo, mostrar pantalla completa
                     Log.w("HomeScreen", "⚠️ GPS deshabilitado")
                     showGpsButton = true
                 },
@@ -245,7 +240,6 @@ fun HomeScreen(
         }
     }
 
-    // Animación de entrada
     LaunchedEffect(Unit) {
         delay(300)
         isVisible = true
@@ -256,7 +250,7 @@ fun HomeScreen(
     val isLoading = authViewModel.isLoading
     val errorMessage = authViewModel.errorMessage
 
-    // 🔔 Diálogo SOLO cuando el usuario RECHAZA permisos
+    // 🔔 Diálogo de permisos
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDialog = false },
@@ -317,14 +311,19 @@ fun HomeScreen(
                     containerColor = MaterialTheme.colorScheme.surface,
                     contentColor = MaterialTheme.colorScheme.primary
                 ) {
+                    // 🔥 NUEVO: Navegar con los botones actualiza el pager
                     NavigationBarItem(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
+                        selected = pagerState.currentPage == 0,
+                        onClick = {
+                            scope.launch {
+                                pagerState.animateScrollToPage(0)
+                            }
+                        },
                         icon = {
                             Icon(
                                 Icons.Default.Home,
                                 contentDescription = "Inicio",
-                                tint = if (selectedTab == 0)
+                                tint = if (pagerState.currentPage == 0)
                                     MaterialTheme.colorScheme.primary
                                 else
                                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -332,13 +331,17 @@ fun HomeScreen(
                         }
                     )
                     NavigationBarItem(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
+                        selected = pagerState.currentPage == 1,
+                        onClick = {
+                            scope.launch {
+                                pagerState.animateScrollToPage(1)
+                            }
+                        },
                         icon = {
                             Icon(
                                 Icons.Default.Map,
                                 contentDescription = "Rutas alternas",
-                                tint = if (selectedTab == 1)
+                                tint = if (pagerState.currentPage == 1)
                                     MaterialTheme.colorScheme.primary
                                 else
                                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -346,13 +349,17 @@ fun HomeScreen(
                         }
                     )
                     NavigationBarItem(
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
+                        selected = pagerState.currentPage == 2,
+                        onClick = {
+                            scope.launch {
+                                pagerState.animateScrollToPage(2)
+                            }
+                        },
                         icon = {
                             Icon(
                                 Icons.Default.Notifications,
                                 contentDescription = "Recordatorios",
-                                tint = if (selectedTab == 2)
+                                tint = if (pagerState.currentPage == 2)
                                     MaterialTheme.colorScheme.primary
                                 else
                                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -360,13 +367,17 @@ fun HomeScreen(
                         }
                     )
                     NavigationBarItem(
-                        selected = selectedTab == 3,
-                        onClick = { selectedTab = 3 },
+                        selected = pagerState.currentPage == 3,
+                        onClick = {
+                            scope.launch {
+                                pagerState.animateScrollToPage(3)
+                            }
+                        },
                         icon = {
                             Icon(
                                 Icons.Default.Group,
                                 contentDescription = "Grupos colaborativos",
-                                tint = if (selectedTab == 3)
+                                tint = if (pagerState.currentPage == 3)
                                     MaterialTheme.colorScheme.primary
                                 else
                                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -374,13 +385,17 @@ fun HomeScreen(
                         }
                     )
                     NavigationBarItem(
-                        selected = selectedTab == 4,
-                        onClick = { selectedTab = 4 },
+                        selected = pagerState.currentPage == 4,
+                        onClick = {
+                            scope.launch {
+                                pagerState.animateScrollToPage(4)
+                            }
+                        },
                         icon = {
                             Icon(
                                 Icons.Default.Settings,
                                 contentDescription = "Configuración",
-                                tint = if (selectedTab == 4)
+                                tint = if (pagerState.currentPage == 4)
                                     MaterialTheme.colorScheme.primary
                                 else
                                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -447,9 +462,11 @@ fun HomeScreen(
                         }
                     }
 
-                    // Contenido de las pestañas
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        when (selectedTab) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                        when (page) {
                             0 -> HomeTabContent(
                                 userState = userState,
                                 isLoading = isLoading,
@@ -457,7 +474,11 @@ fun HomeScreen(
                                 authViewModel = authViewModel,
                                 showContent = showContent,
                                 accentColor = accentColor,
-                                onTabSelected = { selectedTab = it }
+                                onTabSelected = { tabIndex ->
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(tabIndex)
+                                    }
+                                }
                             )
                             1 -> AlternateRoutesScreen(
                                 navController = navController,
@@ -471,20 +492,16 @@ fun HomeScreen(
                                 navController = navController,
                                 token = accessToken
                             )
-                            4 -> {
-                                val context = LocalContext.current  // ✅ Obtener el contexto
-
-                                SettingsScreen(
-                                    userState = userState,
-                                    onLogout = {
-                                        authViewModel.logout(context) {  // ✅ Pasar el contexto
-                                            navController.navigate("login") {
-                                                popUpTo("home") { inclusive = true }
-                                            }
+                            4 -> SettingsScreen(
+                                userState = userState,
+                                onLogout = {
+                                    authViewModel.logout(context) {
+                                        navController.navigate("login") {
+                                            popUpTo("home") { inclusive = true }
                                         }
                                     }
-                                )
-                            }
+                                }
+                            )
                         }
                     }
                 }

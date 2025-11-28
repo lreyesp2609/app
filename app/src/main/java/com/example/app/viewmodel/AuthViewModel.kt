@@ -394,8 +394,12 @@ class AuthViewModel(private val context: Context) : ViewModel() {
     }
 
     // 🔹 Auto refresh actualizado
+    // 🔹 Auto refresh mejorado con reintentos
     private fun startAutoRefresh() {
         viewModelScope.launch {
+            var consecutiveFailures = 0
+            val MAX_FAILURES = 3  // Permitir 3 fallos seguidos antes de logout
+
             while (isActive) {
                 delay(5 * 60 * 1000) // 5 minutos
                 val savedRefresh = sessionManager.getRefreshToken()
@@ -406,18 +410,33 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                     repository.refreshToken(savedRefresh).fold(
                         onSuccess = { response ->
                             Log.d(TAG, "✅ Token renovado exitosamente")
-                            Log.d(TAG, "   Nuevo token: ${response.accessToken.take(20)}...")
+                            consecutiveFailures = 0  // ✅ Resetear contador
 
                             accessToken = response.accessToken
-
-                            // 🆕 CRÍTICO: Guardar tokens (esto notifica a ChatGrupoViewModel)
                             sessionManager.saveTokens(response.accessToken, response.refreshToken)
 
-                            Log.d(TAG, "📢 Token guardado, listeners deberían ser notificados")
+                            Log.d(TAG, "📢 Token guardado, listeners notificados")
                         },
                         onFailure = { error ->
+                            consecutiveFailures++
+
                             Log.e(TAG, "❌ Error en auto-refresh: ${error.message}")
-                            logout(context, shouldRemoveFCMToken = false)
+                            Log.w(TAG, "⚠️ Fallo ${consecutiveFailures}/$MAX_FAILURES")
+
+                            // Solo hacer logout si es un error de autenticación O muchos fallos seguidos
+                            val isAuthError = error.message?.contains("401") == true ||
+                                    error.message?.contains("REFRESH_INVALIDO") == true ||
+                                    error.message?.contains("REFRESH_EXPIRADO") == true
+
+                            if (isAuthError) {
+                                Log.e(TAG, "🚨 Error de autenticación - Logout inmediato")
+                                logout(context, shouldRemoveFCMToken = false)
+                            } else if (consecutiveFailures >= MAX_FAILURES) {
+                                Log.e(TAG, "🚨 Demasiados fallos consecutivos - Logout")
+                                logout(context, shouldRemoveFCMToken = false)
+                            } else {
+                                Log.w(TAG, "⏳ Error de red - Reintentando en el próximo ciclo")
+                            }
                         }
                     )
                 } else {

@@ -12,12 +12,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.app.screen.components.AppBackButton
 import com.example.app.screen.components.AppButton
+import com.example.app.screen.rutas.components.CompactLocationCard
 import com.example.app.ui.theme.getBackgroundGradient
 
 @Composable
@@ -27,11 +29,13 @@ fun ReminderMapButtons(
     selectedAddress: String = "",
     onConfirmClick: () -> Unit = {},
     onRecenterClick: () -> Unit = {},
+    onZoomInClick: () -> Unit = {},
+    onZoomOutClick: () -> Unit = {},
     onBackClick: () -> Unit = {}
 ) {
     Box(modifier = modifier.fillMaxSize()) {
 
-        // Columna superior: botón de regresar + card
+        // Columna superior: botón de regresar + card compacta
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -46,82 +50,40 @@ fun ReminderMapButtons(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Card de ubicación seleccionada
+            // Card compacta de ubicación seleccionada
             if (selectedAddress.isNotEmpty()) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize(),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .background(brush = getBackgroundGradient())
-                            .padding(16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(
-                                        color = Color(0xFFEF4444).copy(alpha = 0.2f),
-                                        shape = CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.LocationOn,
-                                    contentDescription = null,
-                                    tint = Color(0xFFEF4444),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Ubicación seleccionada",
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = selectedAddress,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-                }
+                CompactLocationCard(
+                    title = "Ubicación seleccionada",
+                    location = selectedAddress,
+                    icon = Icons.Default.LocationOn,
+                    iconColor = Color(0xFFEF4444)
+                )
             }
         }
 
-        // Botón flotante de recentrar (lado derecho)
-        FloatingActionButton(
-            onClick = onRecenterClick,
+        // Columna de botones de control del mapa (lado derecho)
+        Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 16.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.MyLocation,
-                contentDescription = "Centrar mapa"
+            // ➕ Zoom In
+            MapControlButton(
+                icon = Icons.Default.Add,
+                onClick = onZoomInClick
+            )
+
+            // ➖ Zoom Out
+            MapControlButton(
+                icon = Icons.Default.Remove,
+                onClick = onZoomOutClick
+            )
+
+            // 🎯 Centrar mapa
+            MapControlButton(
+                icon = Icons.Default.MyLocation,
+                onClick = onRecenterClick
             )
         }
 
@@ -139,6 +101,26 @@ fun ReminderMapButtons(
             enabled = canConfirm,
             disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
             disabledContentColor = MaterialTheme.colorScheme.onPrimary
+        )
+    }
+}
+
+@Composable
+fun MapControlButton(
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    FloatingActionButton(
+        onClick = onClick,
+        modifier = Modifier.size(48.dp),
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        contentColor = MaterialTheme.colorScheme.primary,
+        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp)
         )
     }
 }
