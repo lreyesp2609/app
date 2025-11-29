@@ -130,13 +130,11 @@ class WebSocketService : Service() {
             Log.d(TAG, "💬 Conectando WebSocket de Chat...")
             WebSocketManager.connectGlobal(baseUrl, token)
 
-            // 3️⃣ Conectar WebSocket de Ubicaciones
-            Log.d(TAG, "📍 Conectando WebSocket de Ubicaciones...")
-            WebSocketLocationManager.connectGlobal(baseUrl, token)
 
             Log.d(TAG, "✅ ════════════════════════════════════════")
-            Log.d(TAG, "✅ TODOS LOS WEBSOCKETS CONECTADOS")
+            Log.d(TAG, "✅ WEBSOCKETS GLOBALES CONECTADOS")
             Log.d(TAG, "✅ ════════════════════════════════════════")
+            Log.d(TAG, "ℹ️ WebSocket de ubicaciones se conecta al entrar a un grupo")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error al conectar WebSockets: ${e.message}")
             e.printStackTrace()

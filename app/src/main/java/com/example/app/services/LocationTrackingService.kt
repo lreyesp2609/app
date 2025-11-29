@@ -145,7 +145,7 @@ class LocationTrackingService : Service() {
         val wsUrl = baseUrl
             .replace("https://", "wss://")
             .replace("http://", "ws://") +
-                "/grupos/ws/ubicaciones?grupo_id=$grupoId&token=$token"
+                "/ws/grupos/$grupoId/ubicaciones?token=$token"
 
         Log.d(TAG, "🔌 Conectando WebSocket desde servicio...")
         Log.d(TAG, "   Grupo: $grupoId")

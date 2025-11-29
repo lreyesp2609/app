@@ -95,8 +95,17 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
                             val lat = jsonObject.get("lat")?.asDouble ?: 0.0
                             val lon = jsonObject.get("lon")?.asDouble ?: 0.0
                             val timestamp = jsonObject.get("timestamp")?.asString ?: ""
+                            val esCreador = jsonObject.get("es_creador")?.asBoolean ?: false  // 🆕 AGREGAR
 
-                            val nuevaUbicacion = MiembroUbicacion(userId, nombre, lat, lon, timestamp)
+                            val nuevaUbicacion = MiembroUbicacion(
+                                usuarioId = userId,
+                                nombre = nombre,
+                                lat = lat,
+                                lon = lon,
+                                timestamp = timestamp,
+                                esCreador = esCreador,  // 🆕 AGREGAR
+                                activo = true
+                            )
 
                             viewModelScope.launch {
                                 val current = _ubicacionesMiembros.value.toMutableList()
@@ -111,6 +120,7 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
                                 }
 
                                 _ubicacionesMiembros.value = current
+                                Log.d(TAG, "📊 Total miembros en lista: ${current.size}")  // 🆕 AGREGAR
                             }
                         }
                     }

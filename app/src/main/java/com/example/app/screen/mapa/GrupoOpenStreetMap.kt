@@ -46,6 +46,21 @@ fun GrupoOpenStreetMap(
         )
     }
 
+    // 🔍 DIAGNÓSTICO: Log para verificar datos
+    LaunchedEffect(miembrosGrupo) {
+        Log.d("GrupoMap", "═══════════════════════════════════════")
+        Log.d("GrupoMap", "🗺️ ACTUALIZANDO MARCADORES EN EL MAPA")
+        Log.d("GrupoMap", "═══════════════════════════════════════")
+        Log.d("GrupoMap", "📍 Mi ubicación: ($latitude, $longitude)")
+        Log.d("GrupoMap", "👤 Mi ID: $currentUserId")
+        Log.d("GrupoMap", "👥 Miembros recibidos: ${miembrosGrupo.size}")
+
+        miembrosGrupo.forEachIndexed { index, miembro ->
+            Log.d("GrupoMap", "   [$index] ID:${miembro.usuarioId} - ${miembro.nombre} en (${miembro.lat}, ${miembro.lon})")
+        }
+        Log.d("GrupoMap", "═══════════════════════════════════════")
+    }
+
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { mapView },
@@ -55,11 +70,11 @@ fun GrupoOpenStreetMap(
             // 🆕 Crear lista de marcadores con iniciales
             val userMarkers = mutableListOf<UserMarker>()
 
-            // Agregar usuario actual
+            // ✅ PASO 1: Agregar TU marcador (usuario actual)
             userMarkers.add(
                 UserMarker(
                     position = GeoPoint(latitude, longitude),
-                    name = "Tú",  // 👈 Siempre mostrar "Tú" para el usuario actual
+                    name = "Tú",
                     initial = currentUserName.getInitial(),
                     backgroundColor = MarkerColors.CURRENT_USER_BG,
                     textColor = MarkerColors.CURRENT_USER_TEXT,
@@ -69,11 +84,19 @@ fun GrupoOpenStreetMap(
                 )
             )
 
-            // 🆕 Agregar miembros del grupo con colores diferentes
+            Log.d("GrupoMap", "✅ Marcador propio agregado: Tú en ($latitude, $longitude)")
+
+            // ✅ PASO 2: Agregar marcadores de OTROS miembros
             if (miembrosGrupo.isNotEmpty()) {
-                Log.d("GrupoMap", "🗺️ Dibujando ${miembrosGrupo.size} miembros con iniciales")
+                Log.d("GrupoMap", "📍 Agregando ${miembrosGrupo.size} marcadores de otros miembros")
 
                 miembrosGrupo.forEachIndexed { index, miembro ->
+                    // 🔍 VERIFICACIÓN: Asegurar que no agregamos nuestro propio ID
+                    if (miembro.usuarioId == currentUserId) {
+                        Log.w("GrupoMap", "⚠️ ADVERTENCIA: Se intentó agregar el propio usuario (ID: ${miembro.usuarioId})")
+                        return@forEachIndexed
+                    }
+
                     val backgroundColor = if (miembro.esCreador) {
                         MarkerColors.CREATOR_BG
                     } else {
@@ -98,12 +121,19 @@ fun GrupoOpenStreetMap(
                             showName = true
                         )
                     )
+
+                    Log.d("GrupoMap", "   ✅ Agregado: ${miembro.nombre} (ID:${miembro.usuarioId}) en (${miembro.lat}, ${miembro.lon})")
                 }
+            } else {
+                Log.w("GrupoMap", "⚠️ Lista de miembros está vacía - solo se muestra el usuario actual")
             }
+
+            Log.d("GrupoMap", "📊 Total de marcadores en el mapa: ${userMarkers.size}")
 
             // Agregar el overlay de marcadores personalizados
             if (userMarkers.isNotEmpty()) {
                 map.overlays.add(UserMarkerOverlay(context, userMarkers))
+                Log.d("GrupoMap", "✅ Overlay agregado al mapa con ${userMarkers.size} marcadores")
             }
 
             // Forzar redibujado
@@ -112,6 +142,9 @@ fun GrupoOpenStreetMap(
     )
 
     LaunchedEffect(recenterTrigger) {
+        if (recenterTrigger > 0) {
+            Log.d("GrupoMap", "🎯 Recentrando mapa en ($latitude, $longitude)")
+        }
         mapView.controller.animateTo(GeoPoint(latitude, longitude))
     }
 

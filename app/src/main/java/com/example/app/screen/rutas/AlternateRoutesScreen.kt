@@ -14,8 +14,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddLocationAlt
@@ -165,10 +167,12 @@ fun AlternateRoutesScreen(
                     }
 
                     ubicaciones.isEmpty() -> {
-                        // Estado vacío mejorado
+                        // Estado vacío mejorado CON SCROLL
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
                         ) {
                             // Ícono animado
                             var iconScale by remember { mutableStateOf(0f) }
@@ -229,7 +233,7 @@ fun AlternateRoutesScreen(
 
                             Spacer(modifier = Modifier.height(32.dp))
 
-                            // Card informativo (NO CLICKEABLE) - mismo diseño que Reminders
+                            // Card informativo (NO CLICKEABLE)
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -285,6 +289,8 @@ fun AlternateRoutesScreen(
                                     )
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(32.dp)) // Espacio adicional al final
                         }
                     }
 

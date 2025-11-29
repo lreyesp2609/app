@@ -278,28 +278,12 @@ fun RemindersScreen(
 
 @Composable
 private fun EmptyRemindersState() {
-    var contentHeight by remember { mutableStateOf(0.dp) }
-    val density = LocalDensity.current
-    val configuration = LocalConfiguration.current
-    val screenHeight = configuration.screenHeightDp.dp
-
-    // Determinar si necesita scroll basado en el tamaño del contenido vs pantalla
-    val needsScroll = contentHeight > screenHeight * 0.7f
-
+    // Simplificado: siempre permite scroll para consistencia
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
-            .then(
-                if (needsScroll) {
-                    Modifier.verticalScroll(rememberScrollState())
-                } else {
-                    Modifier
-                }
-            )
-            .onGloballyPositioned { coordinates ->
-                contentHeight = with(density) { coordinates.size.height.toDp() }
-            }
+            .verticalScroll(rememberScrollState())
     ) {
         // Ícono animado más grande
         var iconScale by remember { mutableStateOf(0f) }
