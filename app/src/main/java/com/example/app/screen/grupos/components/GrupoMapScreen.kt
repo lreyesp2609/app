@@ -94,17 +94,19 @@ fun GrupoMapScreen(
 
         val grupoNombre = "Grupo $grupoId" // TODO: Obtener nombre real
 
-        // Iniciar servicio (si ya está activo, no hace nada)
+        // ✅ Iniciar servicio (maneja su propio WebSocket)
         LocationTrackingService.startTracking(
             context = context,
             grupoId = grupoId,
             grupoNombre = grupoNombre
         )
 
-        // Suscribir ViewModel para recibir ubicaciones de otros
-        delay(1000)
-        Log.d("GrupoMapScreen", "📢 Suscribiéndose al WebSocket")
-        locationViewModel.suscribirseAUbicaciones()
+        // ✅ Esperar a que el servicio establezca la conexión
+        delay(2000)
+
+        // ✅ Solo ESCUCHAR mensajes del WebSocket, NO conectar
+        Log.d("GrupoMapScreen", "📢 Suscribiéndose como listener (sin conectar)")
+        locationViewModel.suscribirseAUbicaciones() // ✅ CORRECTO
     }
 
     // 🧹 Solo desuscribir ViewModel al salir (servicio sigue activo)

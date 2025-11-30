@@ -57,7 +57,6 @@ import com.example.app.screen.grupos.components.ParticipantesScreen
 import com.example.app.screen.recordatorios.components.AddReminderScreen
 import com.example.app.screen.recordatorios.components.ReminderMapScreen
 import com.example.app.services.LocationReminderService
-import com.example.app.services.LocationService
 import com.example.app.services.LocationTrackingService
 import com.example.app.utils.NotificationHelper
 import com.example.app.websocket.NotificationWebSocketManager
@@ -153,7 +152,7 @@ fun AppNavigation(authViewModel: AuthViewModel) {
             WebSocketManager.close()
 
             // Solo cerrar ubicaciones si el servicio NO está activo
-            if (!isServiceRunning(context, LocationService::class.java)) {
+            if (!LocationTrackingService.isTracking(context)) {
                 Log.d("AppNavigation", "✅ Cerrando WebSocket de ubicaciones")
                 WebSocketLocationManager.close()
             } else {
@@ -297,10 +296,10 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                 onLogout = {
                     Log.d("AppNavigation", "🔒 LOGOUT: CERRANDO TODOS LOS WEBSOCKETS")
 
-                    // ✅ Cerrar servicio de rastreo primero
+                    // ✅ Cerrar NUEVO servicio de rastreo
                     if (LocationTrackingService.isTracking(context)) {
-                        LocationTrackingService.stopTracking(context)
-                        Log.d("AppNavigation", "🛑 Servicio de rastreo detenido")
+                        LocationTrackingService.stopAllTracking(context)
+                        Log.d("AppNavigation", "🛑 Todos los servicios de rastreo detenidos")
                     }
 
                     // Ahora sí cerrar todos los WebSockets
@@ -381,25 +380,8 @@ fun AppNavigation(authViewModel: AuthViewModel) {
             val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
             val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
 
-            LaunchedEffect(grupoId) {
-                if (!isServiceRunning(context, LocationService::class.java)) {
-                    val intent = Intent(context, LocationService::class.java).apply {
-                        action = LocationService.ACTION_START
-                        putExtra(LocationService.EXTRA_GRUPO_ID, grupoId)
-                    }
-
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        context.startForegroundService(intent)
-                    } else {
-                        context.startService(intent)
-                    }
-
-                    Log.d("ChatGrupo", "🚀 Servicio de ubicación iniciado para grupo $grupoId")
-                } else {
-                    Log.d("ChatGrupo", "ℹ️ Servicio ya está corriendo")
-                }
-            }
-
+            // ✅ El LocationTrackingService se inicia desde GrupoMapScreen
+            // Aquí solo mostramos el chat
             ChatGrupoScreen(
                 grupoId = grupoId,
                 grupoNombre = grupoNombre,
@@ -442,11 +424,4 @@ fun AppNavigation(authViewModel: AuthViewModel) {
             )
         }
     }
-}
-
-private fun isServiceRunning(context: Context, serviceClass: Class<*>): Boolean {
-    val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-    @Suppress("DEPRECATION")
-    return manager.getRunningServices(Integer.MAX_VALUE)
-        .any { it.service.className == serviceClass.name }
 }

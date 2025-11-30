@@ -153,29 +153,6 @@ object WebSocketLocationManager {
         Log.d(TAG, "✅ ════════════════════════════════════════")
     }
 
-    // Cambiar la firma de la función
-    fun connectGlobal(baseUrl: String, token: String, grupoId: Int) {  // ← Agregar grupoId
-        if (isConnected()) {
-            Log.d(TAG, "⚠️ Ya está conectado, actualizando token...")
-            updateToken(token)
-            return
-        }
-
-        val wsUrl = baseUrl
-            .replace("https://", "wss://")
-            .replace("http://", "ws://") + "/ws/grupos/$grupoId/ubicaciones?token=$token"  // ← Cambiar URL
-
-        Log.d(TAG, "🔌 ════════════════════════════════════════")
-        Log.d(TAG, "🔌 CONECTANDO GLOBALMENTE")
-        Log.d(TAG, "🔌 ════════════════════════════════════════")
-        Log.d(TAG, "   URL: ${wsUrl.substringBefore("?token=")}")
-        Log.d(TAG, "   Token: ${token.take(20)}...")
-        Log.d(TAG, "   Grupo ID: $grupoId")
-
-        currentToken = token
-        connectInternal(wsUrl)
-    }
-
     fun connect(url: String, listener: WebSocketListener) {
         if (isConnected()) {
             Log.d(TAG, "✅ Ya conectado, registrando listener externo")

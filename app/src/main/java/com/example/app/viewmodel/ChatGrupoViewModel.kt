@@ -278,7 +278,7 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
             else -> baseUrl
         }
 
-        return "$wsUrl/grupos/ws/grupos/$grupoId?token=$token"
+        return "$wsUrl/grupos/ws/$grupoId?token=$token"
     }
 
     /**

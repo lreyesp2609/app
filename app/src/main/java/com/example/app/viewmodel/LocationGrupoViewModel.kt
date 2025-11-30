@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.app.BuildConfig
 import com.example.app.models.MiembroUbicacion
+import com.example.app.services.LocationTrackingService
 import com.example.app.websocket.WebSocketLocationManager
 import com.example.app.services.LocationWebSocketListener
 import com.example.app.utils.SessionManager
@@ -31,8 +32,10 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    // 🆕 Listener del ViewModel
-    private var viewModelListener: LocationWebSocketListener? = null
+    // 🆕 Listener directo del servicio
+    private val messageListener: (String) -> Unit = { message ->
+        handleWebSocketMessage(message)
+    }
 
     companion object {
         private const val TAG = "📍WS_SessionManager"
@@ -43,108 +46,106 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
     }
 
     /**
-     * 🆕 Se SUSCRIBE al WebSocket existente en lugar de crear uno nuevo
+     * 🆕 Suscribirse al LocationTrackingService en lugar de WebSocketLocationManager
      */
     fun suscribirseAUbicaciones() {
-        Log.d(TAG, "📢 Suscribiéndose al WebSocket de ubicaciones")
+        Log.d(TAG, "📢 Suscribiéndose al LocationTrackingService")
 
-        viewModelListener = LocationWebSocketListener(
-            onUbicacionRecibida = lambda@{ ubicacionJson ->
-                try {
-                    Log.v(TAG, "📍 JSON recibido en ViewModel: ${ubicacionJson.take(100)}")
+        // 🆕 Agregar listener al servicio
+        LocationTrackingService.addMessageListener(messageListener)
+        _isConnected.value = true
+    }
 
-                    val jsonObject = Gson().fromJson(ubicacionJson, JsonObject::class.java)
-                    val type = jsonObject.get("type")?.asString
+    /**
+     * 🆕 Manejar mensajes del WebSocket
+     */
+    private fun handleWebSocketMessage(ubicacionJson: String) {
+        try {
+            Log.v(TAG, "📍 JSON recibido: ${ubicacionJson.take(100)}")
 
-                    when (type) {
-                        "ubicaciones_iniciales" -> {
-                            val ubicacionesArray = jsonObject.getAsJsonArray("ubicaciones")
-                            val lista = mutableListOf<MiembroUbicacion>()
+            val jsonObject = Gson().fromJson(ubicacionJson, JsonObject::class.java)
+            val type = jsonObject.get("type")?.asString
 
-                            ubicacionesArray?.forEach { element ->
-                                val ub = element.asJsonObject
-                                val userId = ub.get("user_id")?.asInt ?: return@forEach
+            when (type) {
+                "ubicaciones_iniciales" -> {
+                    val ubicacionesArray = jsonObject.getAsJsonArray("ubicaciones")
+                    val lista = mutableListOf<MiembroUbicacion>()
 
-                                if (userId != currentUserId) {
-                                    lista.add(
-                                        MiembroUbicacion(
-                                            usuarioId = userId,  // 👈 Cambiado de userId a usuarioId
-                                            nombre = ub.get("nombre")?.asString ?: "Usuario",
-                                            lat = ub.get("lat")?.asDouble ?: 0.0,
-                                            lon = ub.get("lon")?.asDouble ?: 0.0,
-                                            timestamp = ub.get("timestamp")?.asString ?: "",
-                                            esCreador = ub.get("es_creador")?.asBoolean ?: false  // 🆕 Agregar esto también
-                                        )
-                                    )
-                                }
-                            }
+                    ubicacionesArray?.forEach { element ->
+                        val ub = element.asJsonObject
+                        val userId = ub.get("user_id")?.asInt ?: return@forEach
 
-                            viewModelScope.launch {
-                                _ubicacionesMiembros.value = lista
-                                Log.d(TAG, "📍 ${lista.size} ubicaciones iniciales recibidas")
-                            }
-                        }
-
-                        "ubicacion_update" -> {
-                            val userId = jsonObject.get("user_id")?.asInt
-                            if (userId == null || userId == currentUserId) {
-                                return@lambda
-                            }
-
-                            val nombre = jsonObject.get("nombre")?.asString ?: "Usuario"
-                            val lat = jsonObject.get("lat")?.asDouble ?: 0.0
-                            val lon = jsonObject.get("lon")?.asDouble ?: 0.0
-                            val timestamp = jsonObject.get("timestamp")?.asString ?: ""
-                            val esCreador = jsonObject.get("es_creador")?.asBoolean ?: false  // 🆕 AGREGAR
-
-                            val nuevaUbicacion = MiembroUbicacion(
-                                usuarioId = userId,
-                                nombre = nombre,
-                                lat = lat,
-                                lon = lon,
-                                timestamp = timestamp,
-                                esCreador = esCreador,  // 🆕 AGREGAR
-                                activo = true
+                        if (userId != currentUserId) {
+                            lista.add(
+                                MiembroUbicacion(
+                                    usuarioId = userId,
+                                    nombre = ub.get("nombre")?.asString ?: "Usuario",
+                                    lat = ub.get("lat")?.asDouble ?: 0.0,
+                                    lon = ub.get("lon")?.asDouble ?: 0.0,
+                                    timestamp = ub.get("timestamp")?.asString ?: "",
+                                    esCreador = ub.get("es_creador")?.asBoolean ?: false
+                                )
                             )
-
-                            viewModelScope.launch {
-                                val current = _ubicacionesMiembros.value.toMutableList()
-                                val index = current.indexOfFirst { it.usuarioId == userId }
-
-                                if (index >= 0) {
-                                    current[index] = nuevaUbicacion
-                                    Log.d(TAG, "🔄 Ubicación actualizada: $nombre en ($lat, $lon)")
-                                } else {
-                                    current.add(nuevaUbicacion)
-                                    Log.d(TAG, "➕ Nueva ubicación agregada: $nombre en ($lat, $lon)")
-                                }
-
-                                _ubicacionesMiembros.value = current
-                                Log.d(TAG, "📊 Total miembros en lista: ${current.size}")  // 🆕 AGREGAR
-                            }
                         }
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "❌ Error al parsear mensaje: ${e.message}")
-                    e.printStackTrace()
-                }
-            },
-            onConnected = {
-                _isConnected.value = true
-                Log.i(TAG, "✅ ViewModel conectado al WebSocket")
-            },
-            onDisconnected = {
-                _isConnected.value = false
-                Log.w(TAG, "❌ ViewModel desconectado del WebSocket")
-            },
-            onError = { error ->
-                _error.value = "Error de conexión: $error"
-                Log.e(TAG, "❌ Error en WebSocket: $error")
-            }
-        )
 
-        // 📢 Agregar al broadcast en lugar de conectar
-        viewModelListener?.let { WebSocketLocationManager.addBroadcastListener(it) }
+                    viewModelScope.launch {
+                        _ubicacionesMiembros.value = lista
+                        Log.d(TAG, "📍 ${lista.size} ubicaciones iniciales recibidas")
+                    }
+                }
+
+                "ubicacion_update" -> {
+                    val userId = jsonObject.get("user_id")?.asInt
+                    if (userId == null || userId == currentUserId) {
+                        return
+                    }
+
+                    val nombre = jsonObject.get("nombre")?.asString ?: "Usuario"
+                    val lat = jsonObject.get("lat")?.asDouble ?: 0.0
+                    val lon = jsonObject.get("lon")?.asDouble ?: 0.0
+                    val timestamp = jsonObject.get("timestamp")?.asString ?: ""
+                    val esCreador = jsonObject.get("es_creador")?.asBoolean ?: false
+
+                    val nuevaUbicacion = MiembroUbicacion(
+                        usuarioId = userId,
+                        nombre = nombre,
+                        lat = lat,
+                        lon = lon,
+                        timestamp = timestamp,
+                        esCreador = esCreador,
+                        activo = true
+                    )
+
+                    viewModelScope.launch {
+                        val current = _ubicacionesMiembros.value.toMutableList()
+                        val index = current.indexOfFirst { it.usuarioId == userId }
+
+                        if (index >= 0) {
+                            current[index] = nuevaUbicacion
+                            Log.d(TAG, "🔄 Ubicación actualizada: $nombre")
+                        } else {
+                            current.add(nuevaUbicacion)
+                            Log.d(TAG, "➕ Nueva ubicación: $nombre")
+                        }
+
+                        _ubicacionesMiembros.value = current
+                        Log.d(TAG, "📊 Total miembros: ${current.size}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error al parsear: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+    fun desuscribirse() {
+        Log.d(TAG, "📢 Desuscribiéndose del LocationTrackingService")
+
+        // 🆕 Remover listener del servicio
+        LocationTrackingService.removeMessageListener(messageListener)
+        _isConnected.value = false
     }
 
     fun limpiarError() {
@@ -154,22 +155,6 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         Log.d(TAG, "🧹 Limpiando LocationGrupoViewModel")
-
-        // 🆕 SOLO desuscribirse, NO cerrar el WebSocket
-        viewModelListener?.let {
-            WebSocketLocationManager.removeBroadcastListener(it)
-            Log.d(TAG, "📢 ViewModel desuscrito del WebSocket")
-        }
-    }
-
-    fun desuscribirse() {
-        Log.d(TAG, "📢 Desuscribiéndose del WebSocket de ubicaciones")
-
-        viewModelListener?.let { listener ->
-            WebSocketLocationManager.removeBroadcastListener(listener)
-            Log.d(TAG, "✅ Listener removido del WebSocket")
-        }
-
-        _isConnected.value = false
+        desuscribirse()
     }
 }
