@@ -5,7 +5,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,6 +38,7 @@ import com.example.app.screen.components.AppBackButton
 import com.example.app.services.MyFirebaseMessagingService
 import com.example.app.viewmodel.ChatGrupoViewModel
 import com.example.app.viewmodel.ChatGrupoViewModelFactory
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.OffsetDateTime
 
@@ -49,18 +49,14 @@ fun ChatGrupoScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
+    val prefs = context.getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
 
-    // 🆕 MARCAR que el usuario está en este chat
     DisposableEffect(grupoId) {
-        val prefs = context.getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
         prefs.edit().putInt("current_chat_grupo_id", grupoId).apply()
-
-        // 🧹 LIMPIAR notificaciones e historial al entrar
         MyFirebaseMessagingService.clearNotificationHistory(context, grupoId)
         Log.d("ChatGrupo", "✅ Usuario entró al chat $grupoId - historial limpiado")
 
         onDispose {
-            // 🆕 MARCAR que ya NO está en el chat
             prefs.edit().putInt("current_chat_grupo_id", -1).apply()
             Log.d("ChatGrupo", "🔒 Usuario salió del chat $grupoId")
         }
@@ -94,16 +90,16 @@ fun ChatGrupoScreen(
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .imePadding(), // 🔑 Esto hace que el contenido se eleve con el teclado
+            .imePadding(),
         topBar = {
-                ChatTopBar(
-                    grupoNombre = grupoNombre,
-                    isConnected = isConnected,
-                    onBackClick = { navController.popBackStack() },
-                    onGrupoClick = {
-                        navController.navigate("grupo_detalle/$grupoId/$grupoNombre")
-                    }
-                )
+            ChatTopBar(
+                grupoNombre = grupoNombre,
+                isConnected = isConnected,
+                onBackClick = { navController.popBackStack() },
+                onGrupoClick = {
+                    navController.navigate("grupo_detalle/$grupoId/$grupoNombre")
+                }
+            )
         },
         bottomBar = {
             if (pagerState.currentPage == 0) {
@@ -116,57 +112,93 @@ fun ChatGrupoScreen(
                             mensajeTexto = ""
                         }
                     },
-                    enabled = isConnected
+                    enabled = isConnected  // 🔥 Agregué la coma que faltaba
                 )
             }
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            userScrollEnabled = pagerState.currentPage == 0
-        ) { page ->
-            when (page) {
-                0 -> {
-                    // Pantalla del chat
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        if (isLoading && mensajes.isEmpty()) {
-                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                        } else {
-                            ChatMessageList(
-                                mensajes = mensajes,
-                                onMensajeVisible = { mensajeId ->
-                                    viewModel.marcarComoLeido(grupoId, mensajeId)
-                                }
-                            )
+        Box(modifier = Modifier.fillMaxSize()) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                userScrollEnabled = pagerState.currentPage == 0
+            ) { page ->
+                when (page) {
+                    0 -> {
+                        // Pantalla del chat
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            if (isLoading && mensajes.isEmpty()) {
+                                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                            } else {
+                                ChatMessageList(
+                                    mensajes = mensajes,
+                                    onMensajeVisible = { mensajeId ->
+                                        viewModel.marcarComoLeido(grupoId, mensajeId)
+                                    }
+                                )
+                            }
                         }
                     }
-                }
 
-                1 -> {
-                    // ✅ Pantalla del mapa CON grupoId
-                    GrupoMapScreen(
-                        navController = navController,
-                        grupoId = grupoId,  // 🆕 Pasar el grupoId
-                        onLocationSelected = { lat, lon, address ->
-                            viewModel.enviarMensaje(
-                                grupoId,
-                                "📍 Ubicación compartida: $address"
-                            )
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(0)
+                    1 -> {
+                        // Pantalla del mapa
+                        GrupoMapScreen(
+                            navController = navController,
+                            grupoId = grupoId,
+                            onLocationSelected = { lat, lon, address ->
+                                viewModel.enviarMensaje(
+                                    grupoId,
+                                    "📍 Ubicación compartida: $address"
+                                )
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(0)
+                                }
+                            },
+                            onBackToChat = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(0)
+                                }
                             }
-                        },
-                        onBackToChat = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(0)
-                            }
+                        )
+                    }
+                }
+            }
+
+            // 🔥 BOTÓN FLOTANTE QUE CAMBIA DE LADO
+            MiniSwipeIndicator(
+                currentPage = pagerState.currentPage,
+                onClick = {
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(
+                            if (pagerState.currentPage == 0) 1 else 0
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .align(
+                        if (pagerState.currentPage == 0) {
+                            Alignment.CenterEnd // Chat: lado derecho (para ir al mapa →)
+                        } else {
+                            Alignment.CenterStart // Mapa: lado izquierdo (para volver al chat ←)
                         }
                     )
-                }
+                    .padding(
+                        start = if (pagerState.currentPage == 1) 16.dp else 0.dp,
+                        end = if (pagerState.currentPage == 0) 16.dp else 0.dp
+                    )
+            )
+
+            // 🔹 PageIndicator SOLO en el chat (página 0)
+            if (pagerState.currentPage == 0) {
+                PageIndicator(
+                    currentPage = pagerState.currentPage,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 80.dp)
+                )
             }
         }
     }

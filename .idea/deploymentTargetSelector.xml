@@ -4,7 +4,7 @@
     <selectionStates>
       <SelectionState runConfigName="RecuerdaGo 9">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-12-02T07:40:21.531635100Z">
+        <DropdownSelection timestamp="2025-12-02T16:36:59.063036700Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\lreye\.android\avd\Pixel_9.avd" />
@@ -15,7 +15,7 @@
       </SelectionState>
       <SelectionState runConfigName="RecuerdaGo 8">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-12-02T07:40:38.489564700Z">
+        <DropdownSelection timestamp="2025-12-02T16:37:12.018926500Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\lreye\.android\avd\Pixel_8.avd" />

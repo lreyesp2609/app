@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,6 +40,7 @@ import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.screen.mapa.GrupoOpenStreetMap
 import com.example.app.screen.mapa.LocationTracker
+import com.example.app.screen.mapa.MapControlButton
 import com.example.app.screen.mapa.OpenStreetMap
 import com.example.app.services.LocationTrackingService
 import com.example.app.utils.SessionManager
@@ -57,13 +62,11 @@ fun GrupoMapScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // 🆕 Obtener info del usuario actual
     val sessionManager = SessionManager.getInstance(context)
     val currentUser = sessionManager.getUser()
     val currentUserId = currentUser?.id ?: 0
     val currentUserName = currentUser?.nombre ?: "Tú"
 
-    // ViewModel de ubicaciones
     val locationViewModel: LocationGrupoViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -78,42 +81,34 @@ fun GrupoMapScreen(
     var locationObtained by remember { mutableStateOf(false) }
     var showGpsButton by remember { mutableStateOf(false) }
     var recenterTrigger by remember { mutableStateOf(0) }
+    var zoomInTrigger by remember { mutableStateOf(0) }
+    var zoomOutTrigger by remember { mutableStateOf(0) }
     var selectedAddress by remember { mutableStateOf("Selecciona una ubicación") }
 
-    // Observar ubicaciones de otros miembros
     val ubicacionesMiembros by locationViewModel.ubicacionesMiembros.collectAsState()
     val isConnected by locationViewModel.isConnected.collectAsState()
 
-    // 🚀 INICIAR RASTREO AUTOMÁTICAMENTE (UNA SOLA VEZ)
     LaunchedEffect(grupoId) {
-        Log.d("GrupoMapScreen", "🚀 ════════════════════════════════════════")
         Log.d("GrupoMapScreen", "🚀 INICIANDO RASTREO AUTOMÁTICO")
-        Log.d("GrupoMapScreen", "🚀 Grupo: $grupoId")
-        Log.d("GrupoMapScreen", "🚀 Usuario: $currentUserName (ID: $currentUserId)")
-        Log.d("GrupoMapScreen", "🚀 ════════════════════════════════════════")
-
-        val grupoNombre = "Grupo $grupoId" // TODO: Obtener nombre real
-
-        // ✅ Iniciar servicio (maneja su propio WebSocket)
+        val grupoNombre = "Grupo $grupoId"
         LocationTrackingService.startTracking(
             context = context,
             grupoId = grupoId,
             grupoNombre = grupoNombre
         )
-
-        // ✅ Esperar a que el servicio establezca la conexión
         delay(2000)
-
-        // ✅ Solo ESCUCHAR mensajes del WebSocket, NO conectar
-        Log.d("GrupoMapScreen", "📢 Suscribiéndose como listener (sin conectar)")
-        locationViewModel.suscribirseAUbicaciones(grupoId) // ✅ PASAR grupoId
+        locationViewModel.suscribirseAUbicaciones(grupoId)
     }
 
-    // 🧹 Solo desuscribir ViewModel al salir (servicio sigue activo)
+    // 🔥 NUEVO: Forzar recentrado cuando se obtiene la ubicación por primera vez
+    LaunchedEffect(locationObtained) {
+        if (locationObtained) {
+            recenterTrigger++
+        }
+    }
+
     DisposableEffect(Unit) {
         onDispose {
-            Log.d("GrupoMapScreen", "🧹 Saliendo del mapa")
-            Log.d("GrupoMapScreen", "ℹ️ Rastreo continúa en segundo plano")
             scope.launch {
                 locationViewModel.desuscribirse()
             }
@@ -128,7 +123,6 @@ fun GrupoMapScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-
         if (locationObtained) {
             GrupoOpenStreetMap(
                 latitude = currentLat,
@@ -137,10 +131,11 @@ fun GrupoMapScreen(
                 currentUserId = currentUserId,
                 currentUserName = currentUserName,
                 recenterTrigger = recenterTrigger,
+                zoomInTrigger = zoomInTrigger,
+                zoomOutTrigger = zoomOutTrigger,
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Botón para volver al chat
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -153,14 +148,16 @@ fun GrupoMapScreen(
                 )
             }
 
-            // Botones inferiores
-            GrupoMapButtons(
-                navController = navController,
-                selectedAddress = selectedAddress,
-                onConfirmClick = { /* Vacío por ahora */ },
-                onRecenterClick = { recenterTrigger++ },
-                onBackClick = onBackToChat
-            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                MapControlButton(icon = Icons.Default.Add, onClick = { zoomInTrigger++ })
+                MapControlButton(icon = Icons.Default.Remove, onClick = { zoomOutTrigger++ })
+                MapControlButton(icon = Icons.Default.MyLocation, onClick = { recenterTrigger++ })
+            }
 
         } else if (showGpsButton) {
             GpsEnableButton(onEnableGps = { showGpsButton = false })

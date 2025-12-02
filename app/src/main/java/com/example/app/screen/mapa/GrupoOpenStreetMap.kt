@@ -31,6 +31,8 @@ fun GrupoOpenStreetMap(
     longitude: Double = 0.0,
     zoom: Double = 16.0,
     recenterTrigger: Int = 0,
+    zoomInTrigger: Int = 0,     // 🆕
+    zoomOutTrigger: Int = 0,    // 🆕
     context: Context = LocalContext.current,
     miembrosGrupo: List<MiembroUbicacion> = emptyList(),
     currentUserId: Int = 0,
@@ -46,7 +48,7 @@ fun GrupoOpenStreetMap(
         )
     }
 
-    // 🔍 DIAGNÓSTICO: Log para verificar datos
+    // Log para verificar datos
     LaunchedEffect(miembrosGrupo) {
         Log.d("GrupoMap", "═══════════════════════════════════════")
         Log.d("GrupoMap", "🗺️ ACTUALIZANDO MARCADORES EN EL MAPA")
@@ -67,10 +69,9 @@ fun GrupoOpenStreetMap(
         update = { map ->
             map.overlays.clear()
 
-            // 🆕 Crear lista de marcadores con iniciales
             val userMarkers = mutableListOf<UserMarker>()
 
-            // ✅ PASO 1: Agregar TU marcador (usuario actual)
+            // Agregar TU marcador (usuario actual)
             userMarkers.add(
                 UserMarker(
                     position = GeoPoint(latitude, longitude),
@@ -86,12 +87,11 @@ fun GrupoOpenStreetMap(
 
             Log.d("GrupoMap", "✅ Marcador propio agregado: Tú en ($latitude, $longitude)")
 
-            // ✅ PASO 2: Agregar marcadores de OTROS miembros
+            // Agregar marcadores de OTROS miembros
             if (miembrosGrupo.isNotEmpty()) {
                 Log.d("GrupoMap", "📍 Agregando ${miembrosGrupo.size} marcadores de otros miembros")
 
                 miembrosGrupo.forEachIndexed { index, miembro ->
-                    // 🔍 VERIFICACIÓN: Asegurar que no agregamos nuestro propio ID
                     if (miembro.usuarioId == currentUserId) {
                         Log.w("GrupoMap", "⚠️ ADVERTENCIA: Se intentó agregar el propio usuario (ID: ${miembro.usuarioId})")
                         return@forEachIndexed
@@ -130,22 +130,41 @@ fun GrupoOpenStreetMap(
 
             Log.d("GrupoMap", "📊 Total de marcadores en el mapa: ${userMarkers.size}")
 
-            // Agregar el overlay de marcadores personalizados
             if (userMarkers.isNotEmpty()) {
                 map.overlays.add(UserMarkerOverlay(context, userMarkers))
                 Log.d("GrupoMap", "✅ Overlay agregado al mapa con ${userMarkers.size} marcadores")
             }
 
-            // Forzar redibujado
             map.invalidate()
         }
     )
 
+    // Recentrar mapa
     LaunchedEffect(recenterTrigger) {
         if (recenterTrigger > 0) {
             Log.d("GrupoMap", "🎯 Recentrando mapa en ($latitude, $longitude)")
+            mapView.controller.animateTo(GeoPoint(latitude, longitude))
         }
-        mapView.controller.animateTo(GeoPoint(latitude, longitude))
+    }
+
+    // 🆕 ZOOM IN
+    LaunchedEffect(zoomInTrigger) {
+        if (zoomInTrigger > 0) {
+            val currentZoom = mapView.zoomLevelDouble
+            val newZoom = (currentZoom + 1.0).coerceAtMost(21.0)
+            Log.d("GrupoMap", "🔍 Zoom in: $currentZoom → $newZoom")
+            mapView.controller.setZoom(newZoom)
+        }
+    }
+
+    // 🆕 ZOOM OUT
+    LaunchedEffect(zoomOutTrigger) {
+        if (zoomOutTrigger > 0) {
+            val currentZoom = mapView.zoomLevelDouble
+            val newZoom = (currentZoom - 1.0).coerceAtLeast(2.0)
+            Log.d("GrupoMap", "🔍 Zoom out: $currentZoom → $newZoom")
+            mapView.controller.setZoom(newZoom)
+        }
     }
 
     DisposableEffect(mapView) {
