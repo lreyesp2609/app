@@ -77,16 +77,18 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
-        Log.d(TAG, "📨 ========================================")
         Log.d(TAG, "📨 MENSAJE FCM RECIBIDO")
-        Log.d(TAG, "📨 ========================================")
-        Log.d(TAG, "   From: ${message.from}")
-        Log.d(TAG, "   Data: ${message.data}")
 
         val type = message.data["type"] ?: "nuevo_mensaje"
+        val grupoId = message.data["grupo_id"]?.toIntOrNull()
+
+        // 🔥 MARCAR COMO ENTREGADO INMEDIATAMENTE (incluso en segundo plano)
+        if (grupoId != null) {
+            marcarMensajesComoEntregados(grupoId)
+        }
+
         val titulo = message.data["titulo"] ?: message.notification?.title ?: "Nuevo mensaje"
         val cuerpo = message.data["cuerpo"] ?: message.notification?.body ?: ""
-        val grupoId = message.data["grupo_id"]?.toIntOrNull()
         val grupoNombre = message.data["grupo_nombre"]
         val remitenteNombre = message.data["remitente_nombre"]
         val timestamp = message.data["timestamp"]
@@ -98,20 +100,46 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         when (type) {
             "nuevo_mensaje" -> {
                 if (grupoId != null && remitenteNombre != null) {
-                    // ✅ CRÍTICO: Solo agregar si la app NO está en foreground del chat
                     if (!isUserInChat(grupoId)) {
-                        Log.d(TAG, "📝 Usuario NO en chat, agregando mensaje al historial")
                         addMessageToHistory(grupoId, remitenteNombre, cuerpo, timestamp)
                         showMessagingStyleNotification(titulo, grupoId, grupoNombre)
-                    } else {
-                        Log.d(TAG, "✅ Usuario en chat $grupoId, NO mostrar notificación")
                     }
-                } else {
-                    Log.w(TAG, "⚠️ Datos incompletos: grupoId=$grupoId, remitente=$remitenteNombre")
                 }
             }
             else -> {
                 showSimpleNotification(titulo, cuerpo, grupoId, grupoNombre, remitenteNombre)
+            }
+        }
+    }
+
+    // 🆕 NUEVA FUNCIÓN: Marcar mensajes como entregados
+    private fun marcarMensajesComoEntregados(grupoId: Int) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val sessionManager = SessionManager.getInstance(applicationContext)
+                val accessToken = sessionManager.getAccessToken()
+
+                if (accessToken.isNullOrEmpty()) {
+                    Log.w(TAG, "⚠️ No hay token de acceso, no se puede marcar como entregado")
+                    return@launch
+                }
+
+                Log.d(TAG, "📬 Marcando mensajes como entregados para grupo $grupoId...")
+
+                val response = RetrofitClient.grupoService.marcarMensajesEntregados(
+                    token = "Bearer $accessToken",
+                    grupoId = grupoId
+                )
+
+                if (response.isSuccessful) {
+                    val mensajesMarcados = response.body()?.get("mensajes_marcados")?.asInt ?: 0
+                    Log.d(TAG, "✅ $mensajesMarcados mensajes marcados como entregados")
+                } else {
+                    Log.e(TAG, "❌ Error al marcar como entregado: HTTP ${response.code()}")
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Excepción al marcar como entregado: ${e.message}")
             }
         }
     }

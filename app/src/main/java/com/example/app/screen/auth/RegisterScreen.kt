@@ -306,7 +306,7 @@ fun RegisterScreen(
                                     showSuccessNotification = true
 
                                     authViewModel.login(correo, contrasenia) {
-                                        navController.navigate("home") {
+                                        navController.navigate("home?skipPermissions=true") {
                                             popUpTo("login") { inclusive = true }
                                             popUpTo("register") { inclusive = true }
                                         }

@@ -85,7 +85,8 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     authViewModel: AuthViewModel,
     navController: NavController,
-    initialTab: Int = 0
+    initialTab: Int = 0,
+    skipPermissions: Boolean = false
 ) {
     val context = LocalContext.current
     val userState = authViewModel.user
@@ -96,10 +97,9 @@ fun HomeScreen(
     var isVisible by remember { mutableStateOf(false) }
     var showContent by remember { mutableStateOf(false) }
 
-    // 🔥 NUEVO: PagerState para manejar el swipe
     val pagerState = rememberPagerState(
         initialPage = initialTab,
-        pageCount = { 5 } // 5 pestañas
+        pageCount = { 5 }
     )
     val scope = rememberCoroutineScope()
 
@@ -143,8 +143,13 @@ fun HomeScreen(
         }
     }
 
-    // 🔔 Solicitar permisos en SECUENCIA
-    LaunchedEffect(Unit) {
+    // ✅✅✅ CAMBIAR A skipPermissions COMO KEY ✅✅✅
+    LaunchedEffect(skipPermissions) {
+        if (skipPermissions) {
+            Log.d("HomeScreen", "⏭️ Saltando permisos - usuario recién registrado")
+            return@LaunchedEffect
+        }
+
         delay(1000)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -240,7 +245,8 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
+    // ✅✅✅ CAMBIAR KEY A "animations" ✅✅✅
+    LaunchedEffect("animations") {
         delay(300)
         isVisible = true
         delay(800)

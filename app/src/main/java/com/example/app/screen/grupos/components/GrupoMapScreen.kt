@@ -106,7 +106,7 @@ fun GrupoMapScreen(
 
         // ✅ Solo ESCUCHAR mensajes del WebSocket, NO conectar
         Log.d("GrupoMapScreen", "📢 Suscribiéndose como listener (sin conectar)")
-        locationViewModel.suscribirseAUbicaciones() // ✅ CORRECTO
+        locationViewModel.suscribirseAUbicaciones(grupoId) // ✅ PASAR grupoId
     }
 
     // 🧹 Solo desuscribir ViewModel al salir (servicio sigue activo)

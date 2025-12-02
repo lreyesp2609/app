@@ -4,11 +4,8 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.app.BuildConfig
 import com.example.app.models.MiembroUbicacion
 import com.example.app.services.LocationTrackingService
-import com.example.app.websocket.WebSocketLocationManager
-import com.example.app.services.LocationWebSocketListener
 import com.example.app.utils.SessionManager
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -22,6 +19,9 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
     private val sessionManager = SessionManager.getInstance(context)
     private val currentUserId = sessionManager.getUser()?.id ?: 0
 
+    // ✅ Guardar el grupoId actual
+    private var currentGrupoId: Int? = null
+
     // Estados
     private val _ubicacionesMiembros = MutableStateFlow<List<MiembroUbicacion>>(emptyList())
     val ubicacionesMiembros: StateFlow<List<MiembroUbicacion>> = _ubicacionesMiembros.asStateFlow()
@@ -32,7 +32,6 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    // 🆕 Listener directo del servicio
     private val messageListener: (String) -> Unit = { message ->
         handleWebSocketMessage(message)
     }
@@ -45,20 +44,13 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
         Log.d(TAG, "🎬 LocationGrupoViewModel inicializado")
     }
 
-    /**
-     * 🆕 Suscribirse al LocationTrackingService en lugar de WebSocketLocationManager
-     */
-    fun suscribirseAUbicaciones() {
-        Log.d(TAG, "📢 Suscribiéndose al LocationTrackingService")
-
-        // 🆕 Agregar listener al servicio
-        LocationTrackingService.addMessageListener(messageListener)
+    fun suscribirseAUbicaciones(grupoId: Int) {
+        Log.d(TAG, "📢 Suscribiéndose al grupo $grupoId")
+        currentGrupoId = grupoId // ✅ Guardar el ID
+        LocationTrackingService.addMessageListener(grupoId, messageListener)
         _isConnected.value = true
     }
 
-    /**
-     * 🆕 Manejar mensajes del WebSocket
-     */
     private fun handleWebSocketMessage(ubicacionJson: String) {
         try {
             Log.v(TAG, "📍 JSON recibido: ${ubicacionJson.take(100)}")
@@ -140,12 +132,14 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
         }
     }
 
+    // ✅ Usar el grupoId guardado
     fun desuscribirse() {
-        Log.d(TAG, "📢 Desuscribiéndose del LocationTrackingService")
-
-        // 🆕 Remover listener del servicio
-        LocationTrackingService.removeMessageListener(messageListener)
-        _isConnected.value = false
+        currentGrupoId?.let { grupoId ->
+            Log.d(TAG, "📢 Desuscribiéndose del grupo $grupoId")
+            LocationTrackingService.removeMessageListener(grupoId, messageListener)
+            _isConnected.value = false
+            currentGrupoId = null
+        }
     }
 
     fun limpiarError() {
@@ -155,6 +149,6 @@ class LocationGrupoViewModel(context: Context) : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         Log.d(TAG, "🧹 Limpiando LocationGrupoViewModel")
-        desuscribirse()
+        desuscribirse() // ✅ Ahora no necesita parámetro
     }
 }

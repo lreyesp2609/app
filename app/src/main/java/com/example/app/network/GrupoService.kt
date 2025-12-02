@@ -5,6 +5,7 @@ import com.example.app.models.GrupoDeleteResponse
 import com.example.app.models.GrupoResponse
 import com.example.app.models.GrupoResponseSalir
 import com.example.app.models.IntegrantesResponse
+import com.google.gson.JsonObject
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -53,5 +54,12 @@ interface GrupoService {
         @Path("grupo_id") grupoId: Int,
         @Header("Authorization") token: String
     ): Response<GrupoDeleteResponse>
+
+
+    @POST("grupos/{grupoId}/mensajes/marcar-entregados")
+    suspend fun marcarMensajesEntregados(
+        @Header("Authorization") token: String,
+        @Path("grupoId") grupoId: Int
+    ): Response<JsonObject>
 
 }

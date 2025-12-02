@@ -110,7 +110,7 @@ object WebSocketManager {
 
         val wsUrl = baseUrl
             .replace("https://", "wss://")
-            .replace("http://", "ws://") + "/grupos/ws/chat?token=$token"
+            .replace("http://", "ws://") + "/ws/chat?token=$token"
 
         Log.d(TAG, "🔌 ════════════════════════════════════════")
         Log.d(TAG, "🔌 CONECTANDO GLOBALMENTE")

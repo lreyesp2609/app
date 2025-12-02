@@ -85,19 +85,24 @@ class LocationTrackingService : Service() {
             return false
         }
 
-        fun getActiveGroups(): Set<Int> = activeGroups.toSet()
-
-        // 🆕 Métodos para suscripción de ViewModels
         private var instance: LocationTrackingService? = null
 
-        fun addMessageListener(listener: (String) -> Unit) {
-            instance?.messageListeners?.add(listener)
-            Log.d(TAG, "📢 Listener agregado. Total: ${instance?.messageListeners?.size ?: 0}")
+        private val listenersByGroup = mutableMapOf<Int, MutableList<(String) -> Unit>>()
+
+        fun addMessageListener(grupoId: Int, listener: (String) -> Unit) {
+            if (!listenersByGroup.containsKey(grupoId)) {
+                listenersByGroup[grupoId] = mutableListOf()
+            }
+            listenersByGroup[grupoId]?.add(listener)
+            Log.d(TAG, "📢 Listener agregado para grupo $grupoId. Total: ${listenersByGroup[grupoId]?.size ?: 0}")
         }
 
-        fun removeMessageListener(listener: (String) -> Unit) {
-            instance?.messageListeners?.remove(listener)
-            Log.d(TAG, "📢 Listener removido. Total: ${instance?.messageListeners?.size ?: 0}")
+        fun removeMessageListener(grupoId: Int, listener: (String) -> Unit) {
+            listenersByGroup[grupoId]?.remove(listener)
+            if (listenersByGroup[grupoId]?.isEmpty() == true) {
+                listenersByGroup.remove(grupoId)
+            }
+            Log.d(TAG, "📢 Listener removido del grupo $grupoId. Grupos restantes: ${listenersByGroup.size}")
         }
     }
 
@@ -251,7 +256,7 @@ class LocationTrackingService : Service() {
         val wsUrl = baseUrl
             .replace("https://", "wss://")
             .replace("http://", "ws://") +
-                "/grupos/ws/$grupoId/ubicaciones?token=$token"
+                "/ws/$grupoId/ubicaciones?token=$token"
 
         Log.d(TAG, "🔌 Conectando WebSocket para grupo $grupoId")
 
@@ -272,12 +277,12 @@ class LocationTrackingService : Service() {
             override fun onMessage(webSocket: WebSocket, text: String) {
                 Log.v(TAG, "📨 Mensaje recibido del grupo $grupoId: ${text.take(100)}")
 
-                // 🆕 Hacer broadcast a todos los listeners (ViewModels)
-                messageListeners.forEach { listener ->
+                // ✅ Solo notificar a listeners de ESTE grupo específico
+                listenersByGroup[grupoId]?.forEach { listener ->
                     try {
                         listener(text)
                     } catch (e: Exception) {
-                        Log.e(TAG, "❌ Error en listener: ${e.message}")
+                        Log.e(TAG, "❌ Error en listener del grupo $grupoId: ${e.message}")
                     }
                 }
             }

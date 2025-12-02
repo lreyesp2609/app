@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.app.BuildConfig
+import com.example.app.models.EstadoMensaje
 import com.example.app.models.MensajeResponse
 import com.example.app.models.MensajeUI
 import com.example.app.network.ChatWebSocketListener
@@ -16,6 +17,7 @@ import com.google.gson.JsonObject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -63,9 +65,7 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
                     _mensajes.value = mensajesUI
                     Log.d(TAG, "✅ ${mensajesUI.size} mensajes cargados correctamente")
 
-                    // 🆕 Marcar todos los mensajes no leídos como leídos automáticamente
                     marcarTodoComoLeido(grupoId, mensajesUI)
-
                     conectarWebSocket(grupoId)
                 }
                 .onFailure { exception ->
@@ -77,9 +77,6 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
         }
     }
 
-    /**
-     * 🆕 Marca todos los mensajes no leídos como leídos automáticamente
-     */
     private fun marcarTodoComoLeido(grupoId: Int, mensajes: List<MensajeUI>) {
         viewModelScope.launch {
             val mensajesNoLeidos = mensajes.filter { !it.esMio && !it.leido }
@@ -89,9 +86,7 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
                 return@launch
             }
 
-            Log.d(TAG, "👁️ ════════════════════════════════════════")
-            Log.d(TAG, "👁️ MARCANDO ${mensajesNoLeidos.size} MENSAJES COMO LEÍDOS")
-            Log.d(TAG, "👁️ ════════════════════════════════════════")
+            Log.d(TAG, "👁️ Marcando ${mensajesNoLeidos.size} mensajes como leídos")
 
             mensajesNoLeidos.forEach { mensaje ->
                 repository.marcarMensajeLeido(grupoId, mensaje.id)
@@ -103,7 +98,6 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
                     }
             }
 
-            // Actualizar UI
             _mensajes.value = _mensajes.value.map { mensaje ->
                 if (!mensaje.esMio && !mensaje.leido) {
                     mensaje.copy(leido = true)
@@ -116,9 +110,6 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
         }
     }
 
-    /**
-     * Conecta al WebSocket del grupo
-     */
     private fun conectarWebSocket(grupoId: Int) {
         val token = sessionManager.getAccessToken() ?: run {
             Log.e(TAG, "❌ No hay token disponible para conectar WebSocket")
@@ -127,7 +118,6 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
 
         val url = obtenerWebSocketUrl(grupoId, token)
         Log.d(TAG, "🔌 Conectando WebSocket al grupo $grupoId")
-        Log.d(TAG, "   URL: $url")
 
         WebSocketManager.connect(url, ChatWebSocketListener(
             onMessageReceived = { mensajeJson ->
@@ -168,11 +158,38 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
 
                                 if (mensajeUI != null) {
                                     viewModelScope.launch {
-                                        _mensajes.value = _mensajes.value + mensajeUI
-                                        Log.d(TAG, "💬 Nuevo mensaje agregado: ID=${mensajeUI.id}")
+                                        val tempId = dataObject.get("temp_id")?.asString
 
-                                        // 🆕 Si el mensaje no es mío, marcarlo como leído automáticamente
-                                        if (!mensajeUI.esMio) {
+                                        if (mensajeUI.esMio && tempId != null) {
+                                            // 🔥 Reemplazar mensaje temporal por el real
+                                            _mensajes.update { lista ->
+                                                val indexTemporal = lista.indexOfFirst {
+                                                    it.tempId == tempId
+                                                }
+
+                                                if (indexTemporal != -1) {
+                                                    Log.d(TAG, "🔄 Reemplazando mensaje temporal $tempId por ID real ${mensajeUI.id}")
+                                                    Log.d(TAG, "   Estado recibido: entregado=${mensajeUI.entregado}, leido_por=${mensajeUI.leidoPor}")
+
+                                                    // 🆕 CALCULAR ESTADO CORRECTO BASADO EN LOS DATOS
+                                                    val estadoCorrecto = when {
+                                                        mensajeUI.leidoPor > 0 -> EstadoMensaje.LEIDO
+                                                        mensajeUI.entregado -> EstadoMensaje.ENTREGADO
+                                                        else -> EstadoMensaje.ENVIADO // ✅ ENVIADO (no entregado aún)
+                                                    }
+
+                                                    lista.toMutableList().apply {
+                                                        set(indexTemporal, mensajeUI.copy(estado = estadoCorrecto))
+                                                    }
+                                                } else {
+                                                    Log.w(TAG, "⚠️ No se encontró mensaje temporal con tempId=$tempId")
+                                                    lista + mensajeUI
+                                                }
+                                            }
+                                        } else if (!mensajeUI.esMio) {
+                                            // Mensaje de otro usuario, agregar normalmente
+                                            _mensajes.update { it + mensajeUI }
+                                            Log.d(TAG, "💬 Nuevo mensaje de otro usuario: ID=${mensajeUI.id}")
                                             marcarComoLeido(grupoId, mensajeUI.id)
                                         }
                                     }
@@ -188,6 +205,49 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
                             val message = jsonObject.get("message")?.asString
                             Log.i(TAG, "🔄 Token actualizado en backend: $message")
                         }
+                        "mensaje_entregado" -> {
+                            val dataObject = jsonObject.getAsJsonObject("data")
+                            val mensajeId = dataObject.get("mensaje_id")?.asInt
+                            val entregado = dataObject.get("entregado")?.asBoolean ?: false
+
+                            if (mensajeId != null) {
+                                viewModelScope.launch {
+                                    _mensajes.update { lista ->
+                                        lista.map { mensaje ->
+                                            if (mensaje.id == mensajeId) {
+                                                Log.d(TAG, "📬 Mensaje $mensajeId actualizado: entregado=$entregado")
+                                                mensaje.copy(
+                                                    entregado = entregado,
+                                                    estado = EstadoMensaje.ENTREGADO // 🆕 ACTUALIZAR ESTADO
+                                                )
+                                            } else mensaje
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        "mensaje_leido" -> {
+                            val dataObject = jsonObject.getAsJsonObject("data")
+                            val mensajeId = dataObject.get("mensaje_id")?.asInt
+                            val leidoPor = dataObject.get("leido_por")?.asInt ?: 0
+
+                            if (mensajeId != null) {
+                                _mensajes.update { lista ->
+                                    lista.map { msg ->
+                                        if (msg.id == mensajeId) {
+                                            Log.d(TAG, "👁️ Mensaje $mensajeId leído por $leidoPor personas")
+                                            msg.copy(
+                                                leido = true,
+                                                leidoPor = leidoPor,
+                                                estado = EstadoMensaje.LEIDO // 🆕 ACTUALIZAR ESTADO
+                                            )
+                                        } else msg
+                                    }
+                                }
+                            }
+                        }
+
                         else -> {
                             Log.w(TAG, "⚠️ Tipo de mensaje desconocido: $type")
                         }
@@ -213,7 +273,7 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
     }
 
     /**
-     * Envía un mensaje a través del WebSocket
+     * 🆕 Envía un mensaje con ID temporal único
      */
     fun enviarMensaje(grupoId: Int, contenido: String) {
         if (contenido.isBlank()) {
@@ -223,17 +283,58 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // 🆕 Generar ID temporal único
+                val tempId = java.util.UUID.randomUUID().toString()
+
+                // 🆕 Crear mensaje temporal para UI inmediata
+                val mensajeTemporal = MensajeUI(
+                    id = -1, // ID temporal negativo
+                    tempId = tempId, // 🆕 Identificador único temporal
+                    contenido = contenido,
+                    esMio = true,
+                    hora = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
+                    entregado = false,
+                    leido = false,
+                    leidoPor = 0,
+                    nombreRemitente = null,
+                    remitenteId = currentUserId,
+                    tipo = "texto",
+                    fechaCreacion = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply {
+                        timeZone = TimeZone.getTimeZone("UTC")
+                    }.format(Date()),
+                    estado = EstadoMensaje.ENVIANDO // 🆕 Estado inicial
+                )
+
+                // 🆕 Agregar inmediatamente a la UI
+                _mensajes.update { it + mensajeTemporal }
+                Log.d(TAG, "✅ Mensaje agregado optimísticamente con tempId: $tempId")
+
+                // 📤 Enviar por WebSocket con temp_id
                 val mensajeEnvio = mapOf(
                     "action" to "mensaje",
                     "data" to mapOf(
+                        "temp_id" to tempId, // 🆕 Incluir temp_id
                         "contenido" to contenido,
                         "tipo" to "texto"
                     )
                 )
 
                 val mensajeJson = Gson().toJson(mensajeEnvio)
-                Log.d(TAG, "📤 Enviando mensaje: $contenido")
-                WebSocketManager.send(mensajeJson)
+                Log.d(TAG, "📤 Enviando mensaje con tempId=$tempId")
+
+                val enviado = WebSocketManager.send(mensajeJson)
+
+                if (!enviado) {
+                    // 🆕 Marcar como error si no se pudo enviar
+                    _mensajes.update { lista ->
+                        lista.map { msg ->
+                            if (msg.tempId == tempId) {
+                                msg.copy(estado = EstadoMensaje.ERROR)
+                            } else msg
+                        }
+                    }
+                    _error.value = "Error al enviar mensaje"
+                }
 
             } catch (e: Exception) {
                 _error.value = "Error al enviar mensaje: ${e.message}"
@@ -243,19 +344,23 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
         }
     }
 
-    /**
-     * Marca un mensaje como leído
-     */
     fun marcarComoLeido(grupoId: Int, mensajeId: Int) {
         viewModelScope.launch {
+            val mensaje = _mensajes.value.find { it.id == mensajeId }
+
+            if (mensaje?.esMio == true) {
+                Log.d(TAG, "⚠️ Mensaje $mensajeId es mío, no se marca como leído")
+                return@launch
+            }
+
             Log.d(TAG, "👁️ Marcando mensaje $mensajeId como leído")
             repository.marcarMensajeLeido(grupoId, mensajeId)
                 .onSuccess {
-                    _mensajes.value = _mensajes.value.map { mensaje ->
-                        if (mensaje.id == mensajeId) {
-                            mensaje.copy(leido = true)
+                    _mensajes.value = _mensajes.value.map { msg ->
+                        if (msg.id == mensajeId) {
+                            msg.copy(leido = true)
                         } else {
-                            mensaje
+                            msg
                         }
                     }
                     Log.d(TAG, "✅ Mensaje $mensajeId marcado como leído")
@@ -266,9 +371,6 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
         }
     }
 
-    /**
-     * Obtiene la URL del WebSocket
-     */
     private fun obtenerWebSocketUrl(grupoId: Int, token: String): String {
         val baseUrl = BuildConfig.BASE_URL.removeSuffix("/")
 
@@ -278,19 +380,13 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
             else -> baseUrl
         }
 
-        return "$wsUrl/grupos/ws/$grupoId?token=$token"
+        return "$wsUrl/ws/$grupoId?token=$token"
     }
 
-    /**
-     * Limpia el error
-     */
     fun limpiarError() {
         _error.value = null
     }
 
-    /**
-     * Desconecta el WebSocket al limpiar el ViewModel
-     */
     override fun onCleared() {
         super.onCleared()
         Log.d(TAG, "🧹 Limpiando ChatGrupoViewModel")
@@ -308,31 +404,43 @@ private fun MensajeResponse.toMensajeUI(currentUserId: Int): MensajeUI? {
         return null
     }
 
+    // 🔥 CALCULAR ESTADO CORRECTO BASADO EN LOS DATOS
+    val estadoMensaje = when {
+        this.leidoPor != null && this.leidoPor > 0 -> EstadoMensaje.LEIDO
+        this.entregado == true -> EstadoMensaje.ENTREGADO
+        else -> EstadoMensaje.ENVIADO
+    }
+
     return MensajeUI(
         id = this.id,
+        tempId = null,
         contenido = this.contenido ?: "",
         esMio = this.remitenteId == currentUserId,
         hora = formatearHora(this.fechaCreacion ?: ""),
+        entregado = this.entregado ?: false,
         leido = this.leido ?: false,
         leidoPor = this.leidoPor ?: 0,
         nombreRemitente = if (this.remitenteId != currentUserId) this.remitenteNombre else null,
         remitenteId = this.remitenteId,
         tipo = this.tipo ?: "texto",
-        fechaCreacion = this.fechaCreacion ?: ""
+        fechaCreacion = this.fechaCreacion ?: "",
+        estado = estadoMensaje // 🆕 ESTADO CALCULADO CORRECTAMENTE
     )
 }
 
-/**
- * Formatea la fecha ISO 8601 a hora legible
- */
 private fun formatearHora(fechaISO: String): String {
     if (fechaISO.isBlank()) return "00:00"
     return try {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+
         val outputFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+
         val date = inputFormat.parse(fechaISO)
         outputFormat.format(date ?: Date())
     } catch (e: Exception) {
+        Log.e("formatearHora", "Error al formatear hora: ${e.message}")
         "00:00"
     }
 }
