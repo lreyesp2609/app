@@ -23,6 +23,7 @@ import com.example.app.repository.ReminderRepository
 import com.example.app.screen.recordatorios.components.ReminderReceiver
 import com.example.app.screen.recordatorios.components.scheduleReminder
 import com.example.app.services.LocationReminderService
+import com.example.app.utils.PermissionUtils
 import com.example.app.utils.SessionManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -196,6 +197,7 @@ class ReminderViewModel(
                 Log.d("ReminderViewModel", "💾 Recordatorio guardado localmente")
 
                 // 3️⃣ PROGRAMAR SEGÚN TIPO DE RECORDATORIO
+                // 3️⃣ PROGRAMAR SEGÚN TIPO DE RECORDATORIO
                 when (reminder.reminder_type) {
                     "datetime" -> {
                         Log.d("ReminderViewModel", "⏰ Tipo: DATETIME - Programando alarmas...")
@@ -203,9 +205,20 @@ class ReminderViewModel(
                     }
 
                     "location" -> {
-                        Log.d("ReminderViewModel", "📍 Tipo: LOCATION - Iniciando servicio de ubicación...")
-                        LocationReminderService.start(context)
-                        Log.d("ReminderViewModel", "✅ Servicio de ubicación iniciado")
+                        Log.d("ReminderViewModel", "📍 Tipo: LOCATION - Verificando permisos...")
+
+                        // ✅ VERIFICAR PERMISOS
+                        if (PermissionUtils.hasLocationPermissions(context)) {
+                            LocationReminderService.start(context)
+                            Log.d("ReminderViewModel", "✅ Servicio de ubicación iniciado")
+                        } else {
+                            Log.w("ReminderViewModel", "⚠️ Sin permisos de ubicación - servicio NO iniciado")
+                            Toast.makeText(
+                                context,
+                                "Activa los permisos de ubicación para este recordatorio",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
 
                     "both" -> {
@@ -214,9 +227,18 @@ class ReminderViewModel(
                         // Programar alarmas de fecha/hora
                         programarAlarmasFechaHora(context, reminder, reminderEntity, localId)
 
-                        // Iniciar servicio de ubicación
-                        LocationReminderService.start(context)
-                        Log.d("ReminderViewModel", "✅ Servicio de ubicación iniciado para tipo BOTH")
+                        // ✅ VERIFICAR PERMISOS para ubicación
+                        if (PermissionUtils.hasLocationPermissions(context)) {
+                            LocationReminderService.start(context)
+                            Log.d("ReminderViewModel", "✅ Servicio de ubicación iniciado para tipo BOTH")
+                        } else {
+                            Log.w("ReminderViewModel", "⚠️ Sin permisos de ubicación - solo alarmas programadas")
+                            Toast.makeText(
+                                context,
+                                "Activa los permisos de ubicación para el recordatorio completo",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
                 }
 

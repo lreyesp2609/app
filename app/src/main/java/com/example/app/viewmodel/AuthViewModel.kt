@@ -23,6 +23,7 @@ import com.example.app.repository.ReminderRepository
 import com.example.app.screen.recordatorios.components.ReminderReceiver
 import com.example.app.screen.recordatorios.components.scheduleReminder
 import com.example.app.services.LocationReminderService
+import com.example.app.utils.PermissionUtils
 import com.example.app.utils.SessionManager
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.delay
@@ -163,18 +164,15 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                 val database = AppDatabase.getDatabase(context)
                 val repository = ReminderRepository(database.reminderDao())
 
-                // 1️⃣ Obtener recordatorios desde la API
                 val response = RetrofitClient.reminderService.getReminders("Bearer $token")
 
                 if (response.isSuccessful) {
                     val apiReminders = response.body() ?: emptyList()
                     Log.d(TAG, "📥 ${apiReminders.size} recordatorios obtenidos de la API")
 
-                    // 2️⃣ Guardar en BD local y reprogramar alarmas
                     apiReminders.forEach { reminderResponse ->
                         val reminder = reminderResponse.toReminder()
 
-                        // Convertir a ReminderEntity
                         val reminderEntity = ReminderEntity(
                             id = reminderResponse.id,
                             title = reminderResponse.title,
@@ -195,22 +193,28 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                             is_deleted = reminderResponse.is_deleted
                         )
 
-                        // Guardar localmente
                         repository.saveReminder(reminderEntity)
 
-                        // Reprogramar alarmas solo si está activo
+                        // 🔥 SOLO REPROGRAMAR SI ESTÁ ACTIVO
                         if (reminderEntity.is_active && !reminderEntity.is_deleted) {
                             when (reminderEntity.reminder_type) {
                                 "datetime" -> {
                                     reprogramarAlarmasFechaHora(context, reminder, reminderEntity)
                                 }
-                                "location" -> {
-                                    LocationReminderService.start(context)
+                                "location", "both" -> {
+                                    // ✅ VERIFICAR PERMISOS ANTES DE INICIAR
+                                    if (PermissionUtils.hasLocationPermissions(context)) {
+                                        LocationReminderService.start(context)
+                                        Log.d(TAG, "✅ Servicio de ubicación iniciado")
+                                    } else {
+                                        Log.w(TAG, "⚠️ No se puede iniciar servicio: sin permisos de ubicación")
+                                    }
                                 }
-                                "both" -> {
-                                    reprogramarAlarmasFechaHora(context, reminder, reminderEntity)
-                                    LocationReminderService.start(context)
-                                }
+                            }
+
+                            // 🔥 PROGRAMAR ALARMAS SI ES "both"
+                            if (reminderEntity.reminder_type == "both") {
+                                reprogramarAlarmasFechaHora(context, reminder, reminderEntity)
                             }
                         }
                     }

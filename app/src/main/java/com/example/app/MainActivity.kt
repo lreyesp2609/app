@@ -1,9 +1,14 @@
 package com.example.app
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +25,8 @@ import androidx.core.content.ContextCompat
 import com.example.app.services.LocationReminderService
 import com.example.app.utils.NotificationHelper
 import com.example.app.websocket.testWebSocketPing
+import android.provider.Settings
+import android.net.Uri
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,12 +40,17 @@ class MainActivity : ComponentActivity() {
             AuthViewModel.AuthViewModelFactory(this)
         )[AuthViewModel::class.java]
 
+        // 🔥 SOLICITAR EXCLUSIÓN DE OPTIMIZACIÓN DE BATERÍA
+        // Esto debe hacerse ANTES de iniciar el servicio
+        // requestBatteryOptimizationExemption()
+
         // 🔹 SOLO iniciar el servicio SI los permisos están concedidos
-        if (hasLocationPermissions()) {
-            LocationReminderService.start(this)
-        } else {
-            Log.w("MainActivity", "⚠️ Permisos de ubicación no concedidos, servicio no iniciado")
-        }
+        // if (hasLocationPermissions()) {
+           // LocationReminderService.start(this)
+            // Log.d("MainActivity", "✅ Servicio de ubicación iniciado")
+        // } else {
+           // Log.w("MainActivity", "⚠️ Permisos de ubicación no concedidos, servicio no iniciado")
+        // }
 
         // Configurar barras del sistema para toda la app
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -60,16 +72,5 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    private fun hasLocationPermissions(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
     }
 }

@@ -1,5 +1,6 @@
 package com.example.app.screen.home
 
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -70,6 +71,7 @@ import com.example.app.utils.NotificationHelper
 import com.example.app.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 import android.net.Uri
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -115,6 +117,45 @@ fun HomeScreen(
     var locationPermissionChecked by remember { mutableStateOf(false) }
     var shouldRequestLocation by remember { mutableStateOf(false) }
 
+    var permissionsReady by remember { mutableStateOf(false) }
+    var batteryOptimizationRequested by remember { mutableStateOf(false) }
+
+    // 🔥 NUEVO: Guardar el estado ANTES de abrir el diálogo
+    var wasIgnoringBatteryOptimization by remember { mutableStateOf(false) }
+
+    // 🔥 MODIFICADO: Launcher con verificación de estado
+    val batteryOptimizationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        // Verificar el estado DESPUÉS de regresar del diálogo
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            val packageName = context.packageName
+
+            val isNowIgnoring = powerManager.isIgnoringBatteryOptimizations(packageName)
+
+            // 🔥 COMPARAR: ¿Cambió el estado?
+            if (!wasIgnoringBatteryOptimization && isNowIgnoring) {
+                // ✅ El usuario ACEPTÓ (cambió de false a true)
+                Log.d("HomeScreen", "✅ Usuario ACEPTÓ la exclusión de batería")
+                Toast.makeText(
+                    context,
+                    "¡Perfecto! RecuerdaGo funcionará mejor en segundo plano",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else if (!isNowIgnoring) {
+                // ❌ El usuario RECHAZÓ o canceló (sigue en false)
+                Log.d("HomeScreen", "⚠️ Usuario RECHAZÓ la exclusión de batería")
+                Toast.makeText(
+                    context,
+                    "Recomendamos activar esta opción para que los recordatorios funcionen mejor",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            // Si ya estaba ignorando optimización, no mostrar nada
+        }
+    }
+
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -140,13 +181,20 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(skipPermissions) {
+    LaunchedEffect("permissions_delay") {
         if (skipPermissions) {
             Log.d("HomeScreen", "⏭️ Saltando permisos - usuario recién registrado")
             return@LaunchedEffect
         }
 
-        delay(1000)
+        delay(2000)
+        permissionsReady = true
+    }
+
+    LaunchedEffect(permissionsReady) {
+        if (!permissionsReady || skipPermissions) {
+            return@LaunchedEffect
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permission = android.Manifest.permission.POST_NOTIFICATIONS
@@ -172,6 +220,44 @@ fun HomeScreen(
         NotificationHelper.createNotificationChannel(context)
     }
 
+    // 🔥 MODIFICADO: Guardar estado ANTES y abrir diálogo
+    LaunchedEffect(locationServiceStarted) {
+        if (locationServiceStarted && !batteryOptimizationRequested) {
+            batteryOptimizationRequested = true
+            delay(2000)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                val packageName = context.packageName
+
+                // 🔥 GUARDAR ESTADO ANTES
+                wasIgnoringBatteryOptimization = powerManager.isIgnoringBatteryOptimizations(packageName)
+
+                if (!wasIgnoringBatteryOptimization) {
+                    Log.d("HomeScreen", "⚠️ Solicitando exclusión de batería")
+
+                    try {
+                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                            data = Uri.parse("package:$packageName")
+                        }
+
+                        batteryOptimizationLauncher.launch(intent)
+
+                    } catch (e: Exception) {
+                        Log.e("HomeScreen", "❌ Error solicitando exclusión: ${e.message}")
+                        Toast.makeText(
+                            context,
+                            "No se pudo solicitar exclusión de batería",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } else {
+                    Log.d("HomeScreen", "✅ Ya excluida de optimización de batería")
+                }
+            }
+        }
+    }
+
     // 📍 Componente invisible que maneja la ubicación
     if (shouldRequestLocation && !showGpsButton) {
         GetCurrentLocation(
@@ -180,7 +266,6 @@ fun HomeScreen(
             onLocationResult = { lat, lon ->
                 Log.d("HomeScreen", "📍 Ubicación obtenida: $lat, $lon")
 
-                // 🔥 GUARDAR EN LOCATIONMANAGER
                 locationManager.updateLocation(lat, lon)
 
                 if (!locationServiceStarted) {
@@ -509,6 +594,34 @@ fun HomeScreen(
                     retryLocationCounter++
                 }
             )
+        }
+    }
+}
+
+private fun requestBatteryOptimizationExemption(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        val packageName = context.packageName
+
+        if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+            Log.d("HomeScreen", "⚠️ Solicitando exclusión de batería")
+
+            try {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                context.startActivity(intent)
+
+                Toast.makeText(
+                    context,
+                    "Permite que RecuerdaGo funcione en segundo plano",
+                    Toast.LENGTH_LONG
+                ).show()
+            } catch (e: Exception) {
+                Log.e("HomeScreen", "❌ Error solicitando exclusión: ${e.message}")
+            }
+        } else {
+            Log.d("HomeScreen", "✅ Ya excluida de optimización de batería")
         }
     }
 }

@@ -9,9 +9,11 @@ import android.media.RingtoneManager
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.example.app.MainActivity
 import com.example.app.models.ReminderEntity
 import com.example.app.network.AppDatabase
 import com.example.app.utils.NotificationHelper
@@ -27,6 +29,9 @@ class LocationReminderService : Service() {
     private lateinit var repository: ReminderRepository
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val activeGeofences = mutableSetOf<Int>()
+
+    // 🔥 NUEVO: WakeLock para mantener el servicio activo
+    private var wakeLock: PowerManager.WakeLock? = null
 
     companion object {
         private const val NOTIFICATION_ID = 12345
@@ -52,32 +57,38 @@ class LocationReminderService : Service() {
         super.onCreate()
         Log.d("LocationService", "🚀 Servicio de ubicación creado")
 
-        // Inicializar repositorio
+        // 🔥 NUEVO: Adquirir WakeLock
+        acquireWakeLock()
+
         val database = AppDatabase.getDatabase(applicationContext)
         repository = ReminderRepository(database.reminderDao())
 
-        // Inicializar cliente de ubicación
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        // Crear canal de notificación
         createNotificationChannel()
-
-        // Iniciar en primer plano
         startForeground(NOTIFICATION_ID, createForegroundNotification())
-
-        // Configurar callback de ubicación
         setupLocationCallback()
-
-        // Iniciar actualizaciones de ubicación
         startLocationUpdates()
+    }
+
+    // 🔥 NUEVO: Adquirir WakeLock para mantener el servicio activo
+    private fun acquireWakeLock() {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "RecuerdaGo::LocationServiceWakeLock"
+        )
+        wakeLock?.acquire()
+        Log.d("LocationService", "🔋 WakeLock adquirido")
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // 🔥 CAMBIO: DEFAULT en lugar de LOW para el servicio
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT // 🔥 Cambiado de LOW a DEFAULT
             ).apply {
                 description = "Rastrea tu ubicación para recordatorios basados en geolocalización"
                 setShowBadge(false)
@@ -92,7 +103,7 @@ class LocationReminderService : Service() {
             .setContentTitle("Recordatorios activos")
             .setContentText("Rastreando ubicación para recordatorios cercanos")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_LOW) // Esto está bien para el servicio
             .setOngoing(true)
             .build()
     }
@@ -126,10 +137,10 @@ class LocationReminderService : Service() {
         }
 
         val locationRequest = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY, // Cambiado a HIGH para mayor precisión
-            10000L // Cada 10 segundos para testing
+            Priority.PRIORITY_HIGH_ACCURACY,
+            10000L // Cada 10 segundos
         ).apply {
-            setMinUpdateIntervalMillis(5000L) // Mínimo 5 segundos
+            setMinUpdateIntervalMillis(5000L)
             setMaxUpdateDelayMillis(15000L)
         }.build()
 
@@ -155,60 +166,20 @@ class LocationReminderService : Service() {
                 Log.d("LocationService", "━━━━━━━━━━━━━━━━━━━━━━━━━━")
                 Log.d("LocationService", "📍 TU UBICACIÓN ACTUAL: $lat, $lon")
 
-                // ✅ CORRECCIÓN: Obtener TODOS (incluidos inactivos)
                 val allReminders = repository.getAllRemindersForLocationService()
-                Log.d("LocationService", "📋 Total recordatorios en BD: ${allReminders.size}")
-
-                // ✅ DEBUG: Mostrar estado de TODOS
-                allReminders.forEach {
-                    Log.d("LocationService", "   🔍 ID: ${it.id} | ${it.title}")
-                    Log.d("LocationService", "      ✓ is_active: ${it.is_active}")
-                    Log.d("LocationService", "      ✓ is_deleted: ${it.is_deleted}")
-                    Log.d("LocationService", "      ✓ type: ${it.reminder_type}")
-                }
-                Log.d("LocationService", "")
-
-                // ✅ Filtrar solo los ACTIVOS
                 val activeReminders = allReminders.filter {
-                    val isLocationType = (it.reminder_type == "location" || it.reminder_type == "both")
-                    val hasCoords = it.latitude != null && it.longitude != null
-                    val isActive = it.is_active == true
-                    val notDeleted = it.is_deleted == false
-
-                    val passes = isLocationType && hasCoords && isActive && notDeleted
-
-                    if (!passes && isLocationType) {
-                        Log.d("LocationService", "   ❌ ID ${it.id} rechazado:")
-                        Log.d("LocationService", "      hasCoords: $hasCoords")
-                        Log.d("LocationService", "      isActive: $isActive")
-                        Log.d("LocationService", "      notDeleted: $notDeleted")
-                    }
-
-                    passes
+                    (it.reminder_type == "location" || it.reminder_type == "both") &&
+                            it.latitude != null && it.longitude != null &&
+                            it.is_active == true && it.is_deleted == false
                 }
 
                 Log.d("LocationService", "✅ Recordatorios ACTIVOS: ${activeReminders.size}")
 
-                // ✅ IMPORTANTE: Limpiar geofences de recordatorios inactivos
-                val inactiveIds = allReminders
-                    .filter { !it.is_active || it.is_deleted }
-                    .map { it.id }
-
-                if (inactiveIds.isNotEmpty()) {
-                    val removed = activeGeofences.intersect(inactiveIds.toSet())
-                    if (removed.isNotEmpty()) {
-                        Log.d("LocationService", "🧹 Limpiando geofences inactivos: $removed")
-                        activeGeofences.removeAll(inactiveIds.toSet())
-                    }
-                }
-
                 if (activeReminders.isEmpty()) {
                     Log.w("LocationService", "⚠️ NO HAY RECORDATORIOS ACTIVOS")
-                    Log.d("LocationService", "━━━━━━━━━━━━━━━━━━━━━━━━━━")
                     return@launch
                 }
 
-                // ✅ Procesar solo los ACTIVOS
                 for (reminder in activeReminders) {
                     try {
                         val reminderLat = reminder.latitude ?: continue
@@ -220,20 +191,12 @@ class LocationReminderService : Service() {
                         val inside = distance <= radius
                         val wasInside = activeGeofences.contains(reminder.id)
 
-                        Log.d("LocationService", "")
-                        Log.d("LocationService", "📌 ${reminder.title} (ID: ${reminder.id})")
-                        Log.d("LocationService", "   Distancia: ${distance.toInt()}m / Radio: ${radius.toInt()}m")
-                        Log.d("LocationService", "   Estado: inside=$inside | wasInside=$wasInside")
-                        Log.d("LocationService", "   Trigger: ${reminder.trigger_type}")
-
                         when {
                             inside && !wasInside -> {
                                 activeGeofences.add(reminder.id)
                                 if (reminder.trigger_type == "enter" || reminder.trigger_type == "both") {
                                     Log.d("LocationService", "   🔔 DISPARANDO: ENTRADA")
                                     triggerLocationNotification(reminder, "Entraste en la zona")
-                                } else {
-                                    Log.d("LocationService", "   ⏭️ No dispara (trigger: ${reminder.trigger_type})")
                                 }
                             }
                             !inside && wasInside -> {
@@ -241,15 +204,7 @@ class LocationReminderService : Service() {
                                 if (reminder.trigger_type == "exit" || reminder.trigger_type == "both") {
                                     Log.d("LocationService", "   🔔 DISPARANDO: SALIDA")
                                     triggerLocationNotification(reminder, "Saliste de la zona")
-                                } else {
-                                    Log.d("LocationService", "   ⏭️ No dispara (trigger: ${reminder.trigger_type})")
                                 }
-                            }
-                            inside && wasInside -> {
-                                Log.d("LocationService", "   ℹ️ Sigue dentro")
-                            }
-                            else -> {
-                                Log.d("LocationService", "   ℹ️ Fuera de zona")
                             }
                         }
 
@@ -258,7 +213,6 @@ class LocationReminderService : Service() {
                     }
                 }
 
-                Log.d("LocationService", "🗺️ Geofences activos: $activeGeofences")
                 Log.d("LocationService", "━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
             } catch (e: Exception) {
@@ -270,19 +224,34 @@ class LocationReminderService : Service() {
 
     private fun triggerLocationNotification(reminder: ReminderEntity, transition: String) {
         Log.d("LocationService", "🔔 CREANDO NOTIFICACIÓN:")
-        Log.d("LocationService", "   Título: ${reminder.title}")
-        Log.d("LocationService", "   Transición: $transition")
-        Log.d("LocationService", "   Estado activo: ${reminder.is_active}") // ✅ Log adicional
+
+        // 🔥 DESPERTAR DISPOSITIVO
+        NotificationHelper.wakeUpDevice(applicationContext)
 
         NotificationHelper.createNotificationChannel(applicationContext)
+
+        // 🔥 Intent para pantalla completa
+        val fullScreenIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("reminder_id", reminder.id)
+        }
+        val fullScreenPendingIntent = PendingIntent.getActivity(
+            this,
+            reminder.id,
+            fullScreenIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val builder = NotificationCompat.Builder(this, NotificationHelper.CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(reminder.title)
             .setContentText("${reminder.description ?: "Sin descripción"} ($transition)")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX) // 🔥 PRIORITY_MAX
+            .setCategory(NotificationCompat.CATEGORY_ALARM) // 🔥 CATEGORY_ALARM
             .setAutoCancel(true)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setFullScreenIntent(fullScreenPendingIntent, true) // 🔥 Pantalla completa
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setDefaults(NotificationCompat.DEFAULT_ALL) // 🔥 DEFAULT_ALL
 
         if (reminder.sound) {
             builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
@@ -290,13 +259,11 @@ class LocationReminderService : Service() {
         }
 
         if (reminder.vibration) {
-            builder.setVibrate(longArrayOf(0, 500, 200, 500))
+            builder.setVibrate(longArrayOf(0, 500, 250, 500, 250, 500))
             Log.d("LocationService", "   📳 Vibración activada")
         }
 
         val notificationId = Random.nextInt(1000, 9999)
-        Log.d("LocationService", "   🆔 ID de notificación: $notificationId")
-
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(notificationId, builder.build())
 
@@ -318,6 +285,15 @@ class LocationReminderService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d("LocationService", "🛑 Servicio destruido")
+
+        // 🔥 LIBERAR WAKELOCK
+        wakeLock?.let {
+            if (it.isHeld) {
+                it.release()
+                Log.d("LocationService", "🔋 WakeLock liberado")
+            }
+        }
+
         fusedLocationClient.removeLocationUpdates(locationCallback)
         serviceScope.cancel()
     }
