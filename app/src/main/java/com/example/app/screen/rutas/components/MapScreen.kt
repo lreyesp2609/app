@@ -81,7 +81,6 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
     val userLat = remember { mutableStateOf(defaultLat) }
     val userLon = remember { mutableStateOf(defaultLon) }
 
-    // 🆕 Estado para mostrar/ocultar cards
     var showLocationCards by remember { mutableStateOf(true) }
 
     val ubicacionesViewModel: UbicacionesViewModel = viewModel(
@@ -91,6 +90,7 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // 🔥 Box principal que contiene todo
     Box(modifier = Modifier.fillMaxSize()) {
         when {
             locationObtained -> {
@@ -122,7 +122,6 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
                         }
                     )
 
-                    // 🆕 BOTÓN ATRÁS - Top Left
                     AppBackButton(
                         navController = navController,
                         modifier = Modifier
@@ -132,7 +131,6 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
                         backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
 
-                    // 🆕 BOTÓN TOGGLE CARDS - Top Right
                     IconButton(
                         onClick = { showLocationCards = !showLocationCards },
                         modifier = Modifier
@@ -152,26 +150,22 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
                         )
                     }
 
-                    // 📌 BOTONES DE ZOOM Y CENTRAR — MISMO DISEÑO QUE RutaMapa
                     Column(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .padding(end = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // ➕ Zoom In
                         MapControlButton(
                             icon = Icons.Default.Add,
                             onClick = { zoomInTrigger++ }
                         )
 
-                        // ➖ Zoom Out
                         MapControlButton(
                             icon = Icons.Default.Remove,
                             onClick = { zoomOutTrigger++ }
                         )
 
-                        // 🎯 Centrar usuario
                         MapControlButton(
                             icon = Icons.Default.MyLocation,
                             onClick = {
@@ -182,9 +176,6 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
                         )
                     }
 
-
-
-                    // 🆕 CARDS COLAPSABLES (solo si showLocationCards = true)
                     AnimatedVisibility(
                         visible = showLocationCards,
                         enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
@@ -199,7 +190,6 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
                                 .padding(top = 80.dp, start = 16.dp, end = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // Card compacta de ubicación actual
                             CompactLocationCard(
                                 title = "Tu ubicación",
                                 location = currentAddress,
@@ -207,7 +197,6 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
                                 iconColor = Color(0xFF10B981)
                             )
 
-                            // Card compacta de ubicación seleccionada
                             if (selectedAddress.isNotEmpty()) {
                                 CompactLocationCard(
                                     title = "Ubicación seleccionada",
@@ -219,7 +208,6 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
                         }
                     }
 
-                    // 🆕 PANEL INFERIOR MEJORADO
                     BottomConfirmPanel(
                         selectedLocation = selectedAddress,
                         modifier = Modifier.align(Alignment.BottomCenter),
@@ -245,10 +233,6 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
                         }
                     )
                 }
-            }
-
-            showGpsButton -> {
-                GpsEnableButton(onEnableGps = { showGpsButton = false })
             }
 
             else -> {
@@ -298,10 +282,14 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
                 )
             }
         }
+
+        // 🔥 GPS BUTTON SE SUPERPONE - SIEMPRE AL FINAL
+        if (showGpsButton) {
+            GpsEnableButton(onEnableGps = { showGpsButton = false })
+        }
     }
 }
 
-// 🆕 CARD COMPACTA (ocupa menos espacio)
 @Composable
 fun CompactLocationCard(
     title: String,
@@ -368,7 +356,6 @@ fun CompactLocationCard(
     }
 }
 
-// 🆕 PANEL INFERIOR OPTIMIZADO
 @Composable
 fun BottomConfirmPanel(
     selectedLocation: String,
@@ -403,7 +390,6 @@ fun BottomConfirmPanel(
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Título
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -425,7 +411,6 @@ fun BottomConfirmPanel(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Campo de texto
                 AppTextField(
                     value = locationName,
                     onValueChange = { newValue ->
@@ -450,7 +435,6 @@ fun BottomConfirmPanel(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Botón confirmar
                 AppButton(
                     text = "Guardar destino",
                     icon = Icons.Default.Check,

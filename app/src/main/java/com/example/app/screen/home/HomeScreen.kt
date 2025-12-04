@@ -93,7 +93,6 @@ fun HomeScreen(
     val isLoggedIn = authViewModel.isLoggedIn
     val accessToken = authViewModel.accessToken ?: ""
 
-    // Estados de animación
     var isVisible by remember { mutableStateOf(false) }
     var showContent by remember { mutableStateOf(false) }
 
@@ -103,21 +102,17 @@ fun HomeScreen(
     )
     val scope = rememberCoroutineScope()
 
-    // 🔔 Estados para permisos
     var showPermissionDialog by remember { mutableStateOf(false) }
     var permissionType by remember { mutableStateOf("") }
 
-    // 📍 Estados para ubicación
     var retryLocationCounter by remember { mutableIntStateOf(0) }
     var showGpsButton by remember { mutableStateOf(false) }
     var locationServiceStarted by remember { mutableStateOf(false) }
 
-    // Estados de flujo de permisos
     var notificationPermissionChecked by remember { mutableStateOf(false) }
     var locationPermissionChecked by remember { mutableStateOf(false) }
     var shouldRequestLocation by remember { mutableStateOf(false) }
 
-    // 🔔 Launcher para permiso de notificaciones (Android 13+)
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -143,7 +138,6 @@ fun HomeScreen(
         }
     }
 
-    // ✅✅✅ CAMBIAR A skipPermissions COMO KEY ✅✅✅
     LaunchedEffect(skipPermissions) {
         if (skipPermissions) {
             Log.d("HomeScreen", "⏭️ Saltando permisos - usuario recién registrado")
@@ -177,49 +171,39 @@ fun HomeScreen(
     }
 
     // 📍 Componente invisible que maneja la ubicación
-    if (shouldRequestLocation) {
-        if (showGpsButton) {
-            GpsEnableButton(
-                onEnableGps = {
-                    showGpsButton = false
-                    retryLocationCounter++
+    if (shouldRequestLocation && !showGpsButton) {
+        GetCurrentLocation(
+            hasPermission = false,
+            retryCounter = retryLocationCounter,
+            onLocationResult = { lat, lon ->
+                Log.d("HomeScreen", "📍 Ubicación obtenida: $lat, $lon")
+
+                if (!locationServiceStarted) {
+                    LocationReminderService.start(context)
+                    locationServiceStarted = true
+                    Log.d("HomeScreen", "✅ Servicio de ubicación iniciado")
                 }
-            )
-        } else {
-            GetCurrentLocation(
-                hasPermission = false,
-                retryCounter = retryLocationCounter,
-                onLocationResult = { lat, lon ->
-                    Log.d("HomeScreen", "📍 Ubicación obtenida: $lat, $lon")
+            },
+            onError = { error ->
+                Log.e("HomeScreen", "❌ Error de ubicación: $error")
 
-                    if (!locationServiceStarted) {
-                        LocationReminderService.start(context)
-                        locationServiceStarted = true
-                        Log.d("HomeScreen", "✅ Servicio de ubicación iniciado")
-                    }
-                },
-                onError = { error ->
-                    Log.e("HomeScreen", "❌ Error de ubicación: $error")
-
-                    if (error.contains("Permiso de ubicación denegado")) {
-                        locationPermissionChecked = true
-                        permissionType = "location"
-                        showPermissionDialog = true
-                    }
-                },
-                onGpsDisabled = {
-                    Log.w("HomeScreen", "⚠️ GPS deshabilitado")
-                    showGpsButton = true
-                },
-                onPermissionGranted = {
-                    Log.d("HomeScreen", "✅ Permisos de ubicación concedidos")
+                if (error.contains("Permiso de ubicación denegado")) {
                     locationPermissionChecked = true
+                    permissionType = "location"
+                    showPermissionDialog = true
                 }
-            )
-        }
+            },
+            onGpsDisabled = {
+                Log.w("HomeScreen", "⚠️ GPS deshabilitado")
+                showGpsButton = true
+            },
+            onPermissionGranted = {
+                Log.d("HomeScreen", "✅ Permisos de ubicación concedidos")
+                locationPermissionChecked = true
+            }
+        )
     }
 
-    // Animaciones
     val logoScale by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
         animationSpec = spring(
@@ -245,7 +229,6 @@ fun HomeScreen(
         }
     }
 
-    // ✅✅✅ CAMBIAR KEY A "animations" ✅✅✅
     LaunchedEffect("animations") {
         delay(300)
         isVisible = true
@@ -309,15 +292,14 @@ fun HomeScreen(
         )
     }
 
-    // Mostrar contenido principal solo si no hay pantallas superpuestas
-    if (!showGpsButton) {
+    // 🔥 CAMBIO PRINCIPAL: Box que contiene TODO (contenido + overlay GPS)
+    Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             bottomBar = {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                     contentColor = MaterialTheme.colorScheme.primary
                 ) {
-                    // 🔥 NUEVO: Navegar con los botones actualiza el pager
                     NavigationBarItem(
                         selected = pagerState.currentPage == 0,
                         onClick = {
@@ -512,6 +494,15 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+
+        if (showGpsButton) {
+            GpsEnableButton(
+                onEnableGps = {
+                    showGpsButton = false
+                    retryLocationCounter++
+                }
+            )
         }
     }
 }

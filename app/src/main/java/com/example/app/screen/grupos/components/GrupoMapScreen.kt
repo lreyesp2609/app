@@ -83,10 +83,8 @@ fun GrupoMapScreen(
     var recenterTrigger by remember { mutableStateOf(0) }
     var zoomInTrigger by remember { mutableStateOf(0) }
     var zoomOutTrigger by remember { mutableStateOf(0) }
-    var selectedAddress by remember { mutableStateOf("Selecciona una ubicación") }
 
     val ubicacionesMiembros by locationViewModel.ubicacionesMiembros.collectAsState()
-    val isConnected by locationViewModel.isConnected.collectAsState()
 
     LaunchedEffect(grupoId) {
         Log.d("GrupoMapScreen", "🚀 INICIANDO RASTREO AUTOMÁTICO")
@@ -100,7 +98,6 @@ fun GrupoMapScreen(
         locationViewModel.suscribirseAUbicaciones(grupoId)
     }
 
-    // 🔥 NUEVO: Forzar recentrado cuando se obtiene la ubicación por primera vez
     LaunchedEffect(locationObtained) {
         if (locationObtained) {
             recenterTrigger++
@@ -122,70 +119,71 @@ fun GrupoMapScreen(
         }
     }
 
+    // 🔥 Box principal que contiene todo
     Box(modifier = Modifier.fillMaxSize()) {
-        if (locationObtained) {
-            GrupoOpenStreetMap(
-                latitude = currentLat,
-                longitude = currentLon,
-                miembrosGrupo = ubicacionesMiembros,
-                currentUserId = currentUserId,
-                currentUserName = currentUserName,
-                recenterTrigger = recenterTrigger,
-                zoomInTrigger = zoomInTrigger,
-                zoomOutTrigger = zoomOutTrigger,
-                modifier = Modifier.fillMaxSize()
-            )
+        when {
+            locationObtained -> {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    GrupoOpenStreetMap(
+                        latitude = currentLat,
+                        longitude = currentLon,
+                        miembrosGrupo = ubicacionesMiembros,
+                        currentUserId = currentUserId,
+                        currentUserName = currentUserName,
+                        recenterTrigger = recenterTrigger,
+                        zoomInTrigger = zoomInTrigger,
+                        zoomOutTrigger = zoomOutTrigger,
+                        modifier = Modifier.fillMaxSize()
+                    )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                contentAlignment = Alignment.TopStart
-            ) {
-                AppBackButton(
-                    navController = navController,
-                    onClick = onBackToChat
+                    // 🔥 ELIMINADO: AppBackButton
+                    // El usuario puede hacer swipe para volver al chat
+
+                    // 🎮 Controles del mapa (derecha)
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        MapControlButton(icon = Icons.Default.Add, onClick = { zoomInTrigger++ })
+                        MapControlButton(icon = Icons.Default.Remove, onClick = { zoomOutTrigger++ })
+                        MapControlButton(icon = Icons.Default.MyLocation, onClick = { recenterTrigger++ })
+                    }
+                }
+            }
+
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Obteniendo ubicación...",
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
+                GetCurrentLocation(
+                    onLocationResult = { lat, lon ->
+                        currentLat = lat
+                        currentLon = lon
+                        locationObtained = true
+                    },
+                    onError = { /* Manejar error */ },
+                    onGpsDisabled = { showGpsButton = true }
                 )
             }
+        }
 
-            Column(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                MapControlButton(icon = Icons.Default.Add, onClick = { zoomInTrigger++ })
-                MapControlButton(icon = Icons.Default.Remove, onClick = { zoomOutTrigger++ })
-                MapControlButton(icon = Icons.Default.MyLocation, onClick = { recenterTrigger++ })
-            }
-
-        } else if (showGpsButton) {
+        // 🔥 GPS BUTTON SE SUPERPONE - SIEMPRE AL FINAL
+        if (showGpsButton) {
             GpsEnableButton(onEnableGps = { showGpsButton = false })
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Obteniendo ubicación...",
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-
-            GetCurrentLocation(
-                onLocationResult = { lat, lon ->
-                    currentLat = lat
-                    currentLon = lon
-                    locationObtained = true
-                },
-                onError = { /* Manejar error */ },
-                onGpsDisabled = { showGpsButton = true }
-            )
         }
     }
 }

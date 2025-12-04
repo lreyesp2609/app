@@ -14,6 +14,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
@@ -25,6 +27,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,9 +42,7 @@ import com.example.app.screen.components.AppBackButton
 import com.example.app.services.MyFirebaseMessagingService
 import com.example.app.viewmodel.ChatGrupoViewModel
 import com.example.app.viewmodel.ChatGrupoViewModelFactory
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.OffsetDateTime
 
 @Composable
 fun ChatGrupoScreen(
@@ -112,7 +114,12 @@ fun ChatGrupoScreen(
                             mensajeTexto = ""
                         }
                     },
-                    enabled = isConnected  // 🔥 Agregué la coma que faltaba
+                    onMapClick = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(1)
+                        }
+                    },
+                    enabled = isConnected
                 )
             }
         },
@@ -128,7 +135,6 @@ fun ChatGrupoScreen(
             ) { page ->
                 when (page) {
                     0 -> {
-                        // Pantalla del chat
                         Box(modifier = Modifier.fillMaxSize()) {
                             if (isLoading && mensajes.isEmpty()) {
                                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -144,7 +150,6 @@ fun ChatGrupoScreen(
                     }
 
                     1 -> {
-                        // Pantalla del mapa
                         GrupoMapScreen(
                             navController = navController,
                             grupoId = grupoId,
@@ -167,49 +172,33 @@ fun ChatGrupoScreen(
                 }
             }
 
-            // 🔥 BOTÓN FLOTANTE QUE CAMBIA DE LADO
-            MiniSwipeIndicator(
-                currentPage = pagerState.currentPage,
-                onClick = {
-                    coroutineScope.launch {
-                        pagerState.animateScrollToPage(
-                            if (pagerState.currentPage == 0) 1 else 0
-                        )
-                    }
-                },
-                modifier = Modifier
-                    .align(
-                        if (pagerState.currentPage == 0) {
-                            Alignment.CenterEnd // Chat: lado derecho (para ir al mapa →)
-                        } else {
-                            Alignment.CenterStart // Mapa: lado izquierdo (para volver al chat ←)
-                        }
-                    )
-                    .padding(
-                        start = if (pagerState.currentPage == 1) 16.dp else 0.dp,
-                        end = if (pagerState.currentPage == 0) 16.dp else 0.dp
-                    )
-            )
-
-            // 🔹 PageIndicator SOLO en el chat (página 0)
-            if (pagerState.currentPage == 0) {
-                PageIndicator(
+            // 🔥 BOTÓN FLOTANTE SOLO EN EL MAPA (lado izquierdo)
+            if (pagerState.currentPage == 1) {
+                MiniSwipeIndicator(
                     currentPage = pagerState.currentPage,
+                    onClick = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(0)
+                        }
+                    },
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 80.dp)
+                        .align(Alignment.CenterStart)
+                        .padding(start = 16.dp)
                 )
             }
+
+            // 🔥 PageIndicator ELIMINADO
         }
     }
 }
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatTopBar(
     grupoNombre: String,
-    isConnected: Boolean, // Lo recibimos pero no lo mostramos
+    isConnected: Boolean,
     onBackClick: () -> Unit,
     onGrupoClick: () -> Unit = {}
 ) {
@@ -237,7 +226,6 @@ fun ChatTopBar(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // 🔥 SOLO mostrar el nombre del grupo, sin estado de conexión
                 Text(
                     text = grupoNombre,
                     fontSize = 16.sp,
@@ -256,14 +244,7 @@ fun ChatTopBar(
                 iconColor = MaterialTheme.colorScheme.primary
             )
         },
-        actions = {
-            IconButton(onClick = { /* TODO: Más opciones */ }) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "Más opciones"
-                )
-            }
-        },
+        // 🔥 ACTIONS ELIMINADO (3 puntitos)
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
@@ -275,6 +256,7 @@ fun ChatInputBar(
     mensaje: String,
     onMensajeChange: (String) -> Unit,
     onEnviarClick: () -> Unit,
+    onMapClick: () -> Unit,
     enabled: Boolean = true
 ) {
     Surface(
@@ -290,6 +272,26 @@ fun ChatInputBar(
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.Bottom
         ) {
+            // 🗺️ BOTÓN DEL MAPA (izquierda)
+            FloatingActionButton(
+                onClick = onMapClick,
+                modifier = Modifier.size(48.dp),
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 2.dp,
+                    pressedElevation = 4.dp
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Map,
+                    contentDescription = "Abrir mapa",
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // 💬 CAMPO DE TEXTO (centro)
             Surface(
                 shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -313,7 +315,7 @@ fun ChatInputBar(
                     BasicTextField(
                         value = mensaje,
                         onValueChange = onMensajeChange,
-                        enabled = true, // 🔥 SIEMPRE habilitado
+                        enabled = true,
                         modifier = Modifier.weight(1f),
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -321,36 +323,39 @@ fun ChatInputBar(
                         decorationBox = { innerTextField ->
                             if (mensaje.isEmpty()) {
                                 Text(
-                                    text = "Escribe un mensaje...", // 🔥 SIEMPRE el mismo texto
+                                    text = "Escribe un mensaje...",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                 )
                             }
                             innerTextField()
                         },
-                        maxLines = 5
+                        maxLines = 5,
+                        // 🔥 PRIMERA LETRA EN MAYÚSCULA
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                            imeAction = ImeAction.Send
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onSend = {
+                                if (mensaje.isNotBlank()) {
+                                    onEnviarClick()
+                                }
+                            }
+                        )
                     )
 
-                    IconButton(
-                        onClick = { /* TODO: Adjuntar archivo */ },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AttachFile,
-                            contentDescription = "Adjuntar",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    // 🔥 ÍCONO DE DOCUMENTO ELIMINADO
                 }
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
+            // ✉️ BOTÓN DE ENVIAR (derecha)
             FloatingActionButton(
                 onClick = onEnviarClick,
                 modifier = Modifier.size(48.dp),
-                containerColor = MaterialTheme.colorScheme.primary, // 🔥 SIEMPRE mismo color
+                containerColor = MaterialTheme.colorScheme.primary,
                 elevation = FloatingActionButtonDefaults.elevation(
                     defaultElevation = 2.dp,
                     pressedElevation = 4.dp
@@ -374,7 +379,6 @@ fun ChatMessageList(
 ) {
     val listState = rememberLazyListState()
 
-    // Auto-scroll al último mensaje
     LaunchedEffect(mensajes.size) {
         if (mensajes.isNotEmpty()) {
             listState.animateScrollToItem(mensajes.size - 1)
@@ -382,7 +386,6 @@ fun ChatMessageList(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Fondo con patrón sutil
         Canvas(modifier = Modifier.fillMaxSize()) {
             val pattern = 20.dp.toPx()
             for (i in 0..(size.width / pattern).toInt()) {
@@ -440,7 +443,7 @@ fun ChatMessageList(
 @Composable
 fun MensajeBubble(
     mensaje: MensajeUI,
-    onReintentarEnvio: ((String) -> Unit)? = null // 🆕 Callback para reintentar
+    onReintentarEnvio: ((String) -> Unit)? = null
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -501,13 +504,11 @@ fun MensajeBubble(
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
 
-                    // 🔥 ICONOS DE ESTADO - SOLO PARA MENSAJES PROPIOS
                     if (mensaje.esMio) {
                         Spacer(modifier = Modifier.width(4.dp))
 
                         when (mensaje.estado) {
                             EstadoMensaje.ENVIANDO -> {
-                                // ⏳ Reloj de arena animado
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(14.dp),
                                     strokeWidth = 2.dp,
@@ -516,11 +517,10 @@ fun MensajeBubble(
                             }
 
                             EstadoMensaje.ERROR -> {
-                                // ❌ Error con opción de reintentar
                                 Icon(
                                     imageVector = Icons.Default.ErrorOutline,
                                     contentDescription = "Error al enviar",
-                                    tint = Color(0xFFE57373), // Rojo claro
+                                    tint = Color(0xFFE57373),
                                     modifier = Modifier
                                         .size(16.dp)
                                         .clickable {
@@ -530,17 +530,15 @@ fun MensajeBubble(
                             }
 
                             EstadoMensaje.LEIDO -> {
-                                // ✓✓ Azul: Leído por al menos 1 persona
                                 Icon(
                                     imageVector = Icons.Default.DoneAll,
                                     contentDescription = "Leído por ${mensaje.leidoPor}",
-                                    tint = Color(0xFF34B7F1), // Azul WhatsApp
+                                    tint = Color(0xFF34B7F1),
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
 
                             EstadoMensaje.ENTREGADO -> {
-                                // ✓✓ Gris: Entregado pero no leído
                                 Icon(
                                     imageVector = Icons.Default.DoneAll,
                                     contentDescription = "Entregado",
@@ -550,7 +548,6 @@ fun MensajeBubble(
                             }
 
                             EstadoMensaje.ENVIADO -> {
-                                // ✓ Gris: Enviado pero no entregado
                                 Icon(
                                     imageVector = Icons.Default.Done,
                                     contentDescription = "Enviado",
@@ -564,7 +561,6 @@ fun MensajeBubble(
             }
         }
 
-        // 🆕 Mensaje de error debajo del bubble
         if (mensaje.estado == EstadoMensaje.ERROR) {
             Text(
                 text = "No se pudo enviar. Toca para reintentar.",
