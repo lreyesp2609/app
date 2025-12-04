@@ -23,6 +23,7 @@ import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.screen.mapa.OpenStreetMap
 import com.example.app.screen.recordatorios.steps.ReminderStepsContent
+import com.example.app.utils.LocationManager
 import com.example.app.viewmodel.ReminderViewModel
 import com.example.app.viewmodel.ReminderViewModelFactory
 import kotlinx.coroutines.Job
@@ -36,6 +37,7 @@ fun ReminderMapScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val locationManager = remember { LocationManager.getInstance() }
 
     // Estados de ubicación
     var currentLat by remember { mutableStateOf(0.0) }
@@ -101,6 +103,19 @@ fun ReminderMapScreen(
             } catch (e: Exception) {
                 Log.e("POI_DEBUG", "❌ Error cargando POIs: ${e.message}", e)
             }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val cachedLocation = locationManager.getLastKnownLocation()
+        if (cachedLocation != null) {
+            Log.d("ReminderMapScreen", "⚡ Usando ubicación en caché")
+            currentLat = cachedLocation.latitude
+            currentLon = cachedLocation.longitude
+            mapCenterLat = cachedLocation.latitude
+            mapCenterLon = cachedLocation.longitude
+            selectedAddress = cachedLocation.address
+            locationObtained = true
         }
     }
 
@@ -226,6 +241,7 @@ fun ReminderMapScreen(
                                     lon = lon
                                 )
                                 selectedAddress = response.display_name ?: ""
+                                locationManager.updateLocation(lat, lon, selectedAddress)
                             } catch (e: Exception) {
                                 selectedAddress = "Error obteniendo dirección"
                             }

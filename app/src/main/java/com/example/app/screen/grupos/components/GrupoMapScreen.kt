@@ -43,6 +43,7 @@ import com.example.app.screen.mapa.LocationTracker
 import com.example.app.screen.mapa.MapControlButton
 import com.example.app.screen.mapa.OpenStreetMap
 import com.example.app.services.LocationTrackingService
+import com.example.app.utils.LocationManager
 import com.example.app.utils.SessionManager
 import com.example.app.viewmodel.LocationGrupoViewModel
 import com.example.app.websocket.WebSocketLocationManager
@@ -61,6 +62,7 @@ fun GrupoMapScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val locationManager = remember { LocationManager.getInstance() }
 
     val sessionManager = SessionManager.getInstance(context)
     val currentUser = sessionManager.getUser()
@@ -87,7 +89,7 @@ fun GrupoMapScreen(
     val ubicacionesMiembros by locationViewModel.ubicacionesMiembros.collectAsState()
 
     LaunchedEffect(grupoId) {
-        Log.d("GrupoMapScreen", "🚀 INICIANDO RASTREO AUTOMÁTICO")
+        Log.d("ReminderMapScreen", "🚀 INICIANDO RASTREO AUTOMÁTICO")
         val grupoNombre = "Grupo $grupoId"
         LocationTrackingService.startTracking(
             context = context,
@@ -116,6 +118,16 @@ fun GrupoMapScreen(
         LocationTracker { lat, lon ->
             currentLat = lat
             currentLon = lon
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val cachedLocation = locationManager.getLastKnownLocation()
+        if (cachedLocation != null) {
+            Log.d("GrupoMapScreen", "⚡ Usando ubicación en caché")
+            currentLat = cachedLocation.latitude
+            currentLon = cachedLocation.longitude
+            locationObtained = true
         }
     }
 
@@ -174,6 +186,7 @@ fun GrupoMapScreen(
                         currentLat = lat
                         currentLon = lon
                         locationObtained = true
+                        locationManager.updateLocation(lat, lon)
                     },
                     onError = { /* Manejar error */ },
                     onGpsDisabled = { showGpsButton = true }

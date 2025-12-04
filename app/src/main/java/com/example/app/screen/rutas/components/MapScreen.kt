@@ -1,5 +1,6 @@
 package com.example.app.screen.rutas.components
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -46,6 +47,7 @@ import com.example.app.screen.components.AppBackButton
 import com.example.app.screen.components.AppButton
 import com.example.app.screen.components.AppTextField
 import com.example.app.screen.mapa.MapControlButton
+import com.example.app.utils.LocationManager
 import com.example.app.utils.SessionManager
 import com.example.app.viewmodel.UbicacionesViewModel
 import com.example.app.viewmodel.UbicacionesViewModelFactory
@@ -54,9 +56,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
-              defaultLon: Double = 0.0, onConfirmClick: () -> Unit = {}) {
+fun MapScreen(
+    navController: NavController,
+    defaultLat: Double = 0.0,
+    defaultLon: Double = 0.0,
+    onConfirmClick: () -> Unit = {})
+{
+
     val context = LocalContext.current
+    val locationManager = remember { LocationManager.getInstance() }
     val sessionManager = remember { SessionManager.getInstance(context) }
     val token = sessionManager.getAccessToken() ?: return
 
@@ -86,9 +94,19 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
     val ubicacionesViewModel: UbicacionesViewModel = viewModel(
         factory = UbicacionesViewModelFactory(token)
     )
-
-    val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        val cachedLocation = locationManager.getLastKnownLocation()
+        if (cachedLocation != null) {
+            Log.d("MapScreen", "⚡ Usando ubicación en caché - Sin demora!")
+            currentLat = cachedLocation.latitude
+            currentLon = cachedLocation.longitude
+            currentAddress = cachedLocation.address
+            selectedAddress = cachedLocation.address
+            locationObtained = true
+        }
+    }
 
     // 🔥 Box principal que contiene todo
     Box(modifier = Modifier.fillMaxSize()) {
@@ -271,6 +289,7 @@ fun MapScreen(navController: NavController, defaultLat: Double = 0.0,
                                 selectedAddress = address
                                 mapCenterLat = lat
                                 mapCenterLon = lon
+                                locationManager.updateLocation(lat, lon, address)
                             } catch (e: Exception) {
                                 currentAddress = "Error obteniendo dirección"
                                 selectedAddress = "Error obteniendo dirección"

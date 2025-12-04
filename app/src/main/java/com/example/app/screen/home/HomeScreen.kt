@@ -79,6 +79,7 @@ import com.example.app.screen.grupos.CollaborativeGroupsScreen
 import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.services.LocationReminderService
+import com.example.app.utils.LocationManager
 import kotlinx.coroutines.launch
 
 @Composable
@@ -92,6 +93,7 @@ fun HomeScreen(
     val userState = authViewModel.user
     val isLoggedIn = authViewModel.isLoggedIn
     val accessToken = authViewModel.accessToken ?: ""
+    val locationManager = remember { LocationManager.getInstance() }
 
     var isVisible by remember { mutableStateOf(false) }
     var showContent by remember { mutableStateOf(false) }
@@ -178,6 +180,9 @@ fun HomeScreen(
             onLocationResult = { lat, lon ->
                 Log.d("HomeScreen", "📍 Ubicación obtenida: $lat, $lon")
 
+                // 🔥 GUARDAR EN LOCATIONMANAGER
+                locationManager.updateLocation(lat, lon)
+
                 if (!locationServiceStarted) {
                     LocationReminderService.start(context)
                     locationServiceStarted = true
@@ -185,6 +190,7 @@ fun HomeScreen(
                 }
             },
             onError = { error ->
+                locationManager.setError(error)
                 Log.e("HomeScreen", "❌ Error de ubicación: $error")
 
                 if (error.contains("Permiso de ubicación denegado")) {
