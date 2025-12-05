@@ -60,6 +60,13 @@ class MapViewModel(
 
     private val _rutaSeleccionadaPendiente = mutableStateOf<RouteAlternative?>(null)
 
+
+    private val _isRegeneratingRoutes = mutableStateOf(false)
+    val isRegeneratingRoutes: State<Boolean> = _isRegeneratingRoutes
+
+    private val _rutasGeneradasEvitandoZonas = mutableStateOf(false)
+    val rutasGeneradasEvitandoZonas: State<Boolean> = _rutasGeneradasEvitandoZonas
+
     // 🔥 FUNCIÓN PRINCIPAL MODIFICADA
     fun fetchAllRouteAlternatives(
         start: Pair<Double, Double>,
@@ -514,6 +521,223 @@ class MapViewModel(
                 Log.e("MapViewModel", "Error cancelando ruta", e)
             }
         }
+    }
+
+    fun regenerarRutasEvitandoZonasPeligrosas(
+        start: Pair<Double, Double>,
+        end: Pair<Double, Double>,
+        token: String,
+        ubicacionId: Int,
+        transporteTexto: String
+    ) {
+        viewModelScope.launch {
+            try {
+                _isRegeneratingRoutes.value = true
+                Log.d("MapViewModel", "🔄 Regenerando rutas evitando zonas peligrosas...")
+
+                // 1. Obtener zonas peligrosas del usuario
+                val zonasUsuario = try {
+                    RetrofitClient.rutasApiService.obtenerMisZonasPeligrosas(
+                        token = "Bearer $token",
+                        activasSolo = true
+                    )
+                } catch (e: Exception) {
+                    Log.e("MapViewModel", "Error obteniendo zonas: ${e.message}")
+                    emptyList()
+                }
+
+                if (zonasUsuario.isEmpty()) {
+                    Log.w("MapViewModel", "⚠️ Usuario no tiene zonas peligrosas marcadas")
+                    _isRegeneratingRoutes.value = false
+                    return@launch
+                }
+
+                Log.d("MapViewModel", "📍 Zonas peligrosas a evitar: ${zonasUsuario.size}")
+
+                // 2. ✅ CONVERTIR TODAS LAS ZONAS A UN SOLO OBJETO GeoJSON
+                val todosLosPoligonos = zonasUsuario.mapNotNull { zona ->
+                    try {
+                        val primerPunto = zona.poligono.firstOrNull()
+                        if (primerPunto == null) {
+                            Log.w("MapViewModel", "⚠️ Zona sin puntos en polígono: ${zona.nombre}")
+                            return@mapNotNull null
+                        }
+
+                        val lat = primerPunto.lat
+                        val lon = primerPunto.lon
+                        val radio = zona.radioMetros ?: 200
+
+                        Log.d("MapViewModel", "📍 Procesando zona '${zona.nombre}': lat=$lat, lon=$lon, radio=${radio}m")
+
+                        convertirCirculoAPoligono(lat, lon, radio)
+                    } catch (e: Exception) {
+                        Log.e("MapViewModel", "Error procesando zona ${zona.nombre}: ${e.message}")
+                        null
+                    }
+                }
+
+                if (todosLosPoligonos.isEmpty()) {
+                    Log.w("MapViewModel", "⚠️ No se pudieron procesar las zonas peligrosas")
+                    _isRegeneratingRoutes.value = false
+                    return@launch
+                }
+
+                // 3. ✅ CREAR EL OBJETO GeoJSON CORRECTO
+                val avoidPolygons = if (todosLosPoligonos.size == 1) {
+                    // Si es un solo polígono, usar tipo "Polygon"
+                    mapOf(
+                        "type" to "Polygon",
+                        "coordinates" to todosLosPoligonos  // Ya es una lista de anillos
+                    )
+                } else {
+                    // Si son múltiples polígonos, usar tipo "MultiPolygon"
+                    mapOf(
+                        "type" to "MultiPolygon",
+                        "coordinates" to todosLosPoligonos.map { listOf(it) }  // Cada polígono envuelto en otra lista
+                    )
+                }
+
+                Log.d("MapViewModel", "✅ GeoJSON generado correctamente")
+                Log.d("MapViewModel", "📦 JSON enviado: ${com.google.gson.Gson().toJson(avoidPolygons)}")
+
+                // 4. Calcular rutas con ORS evitando polígonos
+                val routes = listOf("fastest", "shortest", "recommended").map { preference ->
+                    async {
+                        try {
+                            val request = DirectionsRequest(
+                                coordinates = listOf(
+                                    listOf(start.second, start.first),
+                                    listOf(end.second, end.first)
+                                ),
+                                preference = preference,
+                                options = DirectionsOptions(
+                                    avoid_polygons = avoidPolygons
+                                )
+                            )
+
+                            // Log del request completo
+                            Log.d("MapViewModel", "📤 Request $preference: ${com.google.gson.Gson().toJson(request)}")
+
+                            val response = RetrofitInstance.api.getRoute(currentMode, request)
+                            val route = response.routes.firstOrNull()
+
+                            RouteAlternative(
+                                type = preference,
+                                displayName = getPreferenceDisplayName(preference),
+                                response = response.copy(profile = currentMode),
+                                distance = route?.summary?.distance ?: 0.0,
+                                duration = route?.summary?.duration ?: 0.0,
+                                isRecommended = false
+                            )
+                        } catch (e: retrofit2.HttpException) {
+                            val errorBody = e.response()?.errorBody()?.string()
+                            Log.e("MapViewModel", "❌ HTTP ${e.code()} - Error body: $errorBody")
+                            Log.e("MapViewModel", "Error calculando ruta $preference (evitando zonas)", e)
+                            null
+                        } catch (e: Exception) {
+                            Log.e("MapViewModel", "Error calculando ruta $preference (evitando zonas)", e)
+                            null
+                        }
+                    }
+                }.awaitAll().filterNotNull()
+
+                if (routes.isEmpty()) {
+                    Log.e("MapViewModel", "❌ No se pudieron calcular rutas alternativas")
+                    _isRegeneratingRoutes.value = false
+                    return@launch
+                }
+
+                // 5. Validar las nuevas rutas contra zonas peligrosas
+                try {
+                    val rutasParaValidar = routes.map { route ->
+                        RutaParaValidar(
+                            tipo = route.type,
+                            geometry = route.response.routes.first().geometry,
+                            distance = route.distance,
+                            duration = route.duration
+                        )
+                    }
+
+                    val validacion = RetrofitClient.rutasApiService.validarRutas(
+                        token = "Bearer $token",
+                        request = ValidarRutasRequest(
+                            rutas = rutasParaValidar,
+                            ubicacionId = ubicacionId
+                        )
+                    )
+
+                    _validacionSeguridad.value = validacion
+
+                    Log.d("MapViewModel", "🔐 Validación de rutas regeneradas:")
+                    Log.d("MapViewModel", "  - Todas seguras: ${validacion.todasSeguras}")
+                    Log.d("MapViewModel", "  - ML recomienda: ${validacion.tipoMlRecomendado}")
+
+                    // 6. Combinar rutas con información de seguridad
+                    val routesConSeguridad = routes.mapIndexed { index, route ->
+                        val validacionRuta = validacion.rutasValidadas[index]
+                        route.copy(
+                            isRecommended = route.type == validacion.tipoMlRecomendado,
+                            esSegura = validacionRuta.esSegura,
+                            nivelRiesgo = validacionRuta.nivelRiesgo,
+                            zonasDetectadas = validacionRuta.zonasDetectadas,
+                            mensajeSeguridad = validacionRuta.mensaje
+                        )
+                    }
+
+                    _alternativeRoutes.value = routesConSeguridad
+                    currentMLType = validacion.tipoMlRecomendado
+                    _rutasGeneradasEvitandoZonas.value = true
+
+                    Log.d("MapViewModel", "✅ ${routes.size} rutas regeneradas evitando zonas peligrosas")
+
+                } catch (e: Exception) {
+                    Log.e("MapViewModel", "⚠️ Error validando seguridad de rutas regeneradas", e)
+                    _alternativeRoutes.value = routes
+                    _rutasGeneradasEvitandoZonas.value = true
+                }
+
+                _isRegeneratingRoutes.value = false
+
+            } catch (e: Exception) {
+                Log.e("MapViewModel", "Error general regenerando rutas seguras", e)
+                _isRegeneratingRoutes.value = false
+            }
+        }
+    }
+
+    // ✅ Función auxiliar corregida - ahora retorna List<List<Double>>
+    private fun convertirCirculoAPoligono(lat: Double, lon: Double, radioMetros: Int): List<List<Double>> {
+        val puntos = mutableListOf<List<Double>>()
+        val numPuntos = 16
+
+        val radioTierraKm = 6371.0
+        val radioTierraMetros = radioTierraKm * 1000.0
+
+        for (i in 0 until numPuntos) {
+            val angulo = 2 * Math.PI * i / numPuntos
+
+            val deltaLat = (radioMetros / radioTierraMetros) * (180.0 / Math.PI)
+            val deltaLon = (radioMetros / radioTierraMetros) * (180.0 / Math.PI) /
+                    Math.cos(Math.toRadians(lat))
+
+            val newLat = lat + (deltaLat * Math.cos(angulo))
+            val newLon = lon + (deltaLon * Math.sin(angulo))
+
+            // ORS espera formato [lon, lat]
+            puntos.add(listOf(newLon, newLat))
+        }
+
+        // Cerrar el polígono
+        puntos.add(puntos.first())
+
+        Log.d("MapViewModel", "🔷 Polígono generado con ${puntos.size} puntos para radio ${radioMetros}m")
+
+        return puntos
+    }
+
+    // 🆕 Reset del estado de regeneración
+    fun resetRegeneracionZonas() {
+        _rutasGeneradasEvitandoZonas.value = false
     }
 
     // 🔥 FUNCIÓN para cerrar alerta de desobediencia

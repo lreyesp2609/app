@@ -125,6 +125,11 @@ fun MapScreen(
     val mostrarAdvertenciaSeguridad by mapViewModel.mostrarAdvertenciaSeguridad
     val validacionSeguridad by mapViewModel.validacionSeguridad
 
+    // 🆕 NUEVOS ESTADOS PARA REGENERACIÓN
+    val isRegeneratingRoutes by mapViewModel.isRegeneratingRoutes
+    val rutasGeneradasEvitandoZonas by mapViewModel.rutasGeneradasEvitandoZonas
+
+
     // Cargar desde caché
     LaunchedEffect(Unit) {
         val cachedLocation = locationManager.getLastKnownLocation()
@@ -364,6 +369,46 @@ fun MapScreen(
         }
 
         // DIÁLOGO PARA CREAR ZONA PELIGROSA
+        if (showRouteSelector) {
+            RouteSelectorDialog(
+                alternativeRoutes = alternativeRoutes,
+                validacionSeguridad = validacionSeguridad,
+                isRegenerating = isRegeneratingRoutes,
+                rutasGeneradasEvitandoZonas = rutasGeneradasEvitandoZonas,
+                onRouteSelected = { route ->
+                    // Obtener ubicacionId y transporte del contexto
+                    val ubicacionId = 1 // Cambiar según tu lógica
+                    val transporteTexto = "walking" // Cambiar según modo seleccionado
+
+                    mapViewModel.selectRouteAlternative(
+                        route,
+                        token,
+                        ubicacionId,
+                        transporteTexto
+                    )
+                },
+                onRegenerarEvitandoZonas = {
+                    // Regenerar rutas evitando zonas peligrosas
+                    val ubicacionId = 1 // Cambiar según tu lógica
+                    val transporteTexto = "walking"
+
+                    mapViewModel.regenerarRutasEvitandoZonasPeligrosas(
+                        start = Pair(currentLat, currentLon),
+                        end = Pair(mapCenterLat, mapCenterLon),
+                        token = token,
+                        ubicacionId = ubicacionId,
+                        transporteTexto = transporteTexto
+                    )
+                },
+                onDismiss = {
+                    mapViewModel.hideRouteSelector()
+                    // Reset estado de regeneración al cerrar
+                    mapViewModel.resetRegeneracionZonas()
+                }
+            )
+        }
+
+        // 🔥 DIÁLOGO PARA CREAR ZONA PELIGROSA
         if (mostrarDialogoZona && coordenadasZonaSeleccionada != null) {
             DialogoCrearZonaPeligrosa(
                 coordenadas = coordenadasZonaSeleccionada!!,
@@ -393,6 +438,7 @@ fun MapScreen(
 
                             Log.d("MapScreen", "Zona creada: ID=${response.id}, Radio=${radio}m")
 
+                            // 🔥 AGREGAR LA ZONA A LA LISTA PARA MOSTRARLA EN EL MAPA
                             zonasCreadas = zonasCreadas + ZonaGuardada(
                                 lat = coordenadasZonaSeleccionada!!.first,
                                 lon = coordenadasZonaSeleccionada!!.second,
@@ -423,7 +469,7 @@ fun MapScreen(
             )
         }
 
-        // SELECTOR DE RUTAS
+        // SELECTOR DE RUTAS (resto del código igual)
         if (showRouteSelector) {
             AlertDialog(
                 onDismissRequest = { mapViewModel.hideRouteSelector() },

@@ -1,6 +1,7 @@
 package com.example.app.models
 
 import android.util.Log
+import com.google.gson.annotations.SerializedName
 
 data class DirectionsResponse(
     val routes: List<Route>,
@@ -36,14 +37,22 @@ data class DirectionsRequest(
     val language: String = "es",
     val units: String = "km",
     val instructions: Boolean = true,
-    val preference: String = "fastest", // Nuevo: para ML
-    val options: AvoidOptions? = null   // Nuevo: para rutas scenic
+    val preference: String = "fastest",
+    val options: DirectionsOptions? = null  // 🔥 CAMBIO: de AvoidOptions a DirectionsOptions
 )
 
+// Puedes eliminar AvoidOptions si no la usas, o mantenerla si la necesitas para otro propósito
 data class AvoidOptions(
     val avoid_features: List<String> = emptyList()
 )
 
+data class DirectionsOptions(
+    @SerializedName("avoid_polygons")
+    val avoid_polygons: Map<String, Any>? = null,  // ✅ Map en lugar de List
+
+    @SerializedName("avoid_features")
+    val avoid_features: List<String>? = null
+)
 
 // función helper para mapear la instrucción a un tipo
 fun mapInstructionToType(instruction: String): Int {
@@ -121,3 +130,4 @@ data class ZonaGuardada(
     val nombre: String,
     val nivel: Int
 )
+

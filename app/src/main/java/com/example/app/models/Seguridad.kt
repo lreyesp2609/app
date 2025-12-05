@@ -12,6 +12,7 @@ data class ZonaPeligrosaCreate(
     @SerializedName("notas") val notas: String? = null
 )
 
+
 data class PuntoGeografico(
     @SerializedName("lat") val lat: Double,
     @SerializedName("lon") val lon: Double

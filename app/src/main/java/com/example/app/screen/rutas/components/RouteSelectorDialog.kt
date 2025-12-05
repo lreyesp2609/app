@@ -1,59 +1,37 @@
 package com.example.app.screen.rutas.components
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.models.RouteAlternative
 import com.example.app.models.ValidarRutasResponse
-import kotlin.collections.forEach
+import kotlin.math.roundToInt
 
 @Composable
-fun RouteAlternativesDialogWithSecurity(
-    alternatives: List<RouteAlternative>,
+fun RouteSelectorDialog(
+    alternativeRoutes: List<RouteAlternative>,
     validacionSeguridad: ValidarRutasResponse?,
-    transportMode: String,
-    isRegenerating: Boolean = false,  // 🆕 NUEVO
-    rutasGeneradasEvitandoZonas: Boolean = false,  // 🆕 NUEVO
-    onSelectRoute: (RouteAlternative) -> Unit,
-    onRegenerarEvitandoZonas: () -> Unit = {},  // 🆕 NUEVO
+    isRegenerating: Boolean,
+    rutasGeneradasEvitandoZonas: Boolean,
+    onRouteSelected: (RouteAlternative) -> Unit,
+    onRegenerarEvitandoZonas: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    var selectedRoute by remember { mutableStateOf<RouteAlternative?>(null) }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -64,7 +42,7 @@ fun RouteAlternativesDialogWithSecurity(
                     fontWeight = FontWeight.Bold
                 )
 
-                // 🆕 Indicador si ya se generaron rutas evitando zonas
+                // Indicador si ya se generaron rutas evitando zonas
                 if (rutasGeneradasEvitandoZonas) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
@@ -91,14 +69,15 @@ fun RouteAlternativesDialogWithSecurity(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                // 🚨 Advertencia general si ninguna es segura
+                // 🚨 Advertencia general de seguridad
                 validacionSeguridad?.advertenciaGeneral?.let { advertencia ->
-                    if (!rutasGeneradasEvitandoZonas) {  // 🆕 Solo mostrar si no se regeneró
+                    if (!rutasGeneradasEvitandoZonas) {
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = Color(0xFFFFEBEE)
                             )
@@ -125,7 +104,7 @@ fun RouteAlternativesDialogWithSecurity(
                     }
                 }
 
-                // 🆕 BOTÓN DE REGENERAR (solo si NO se ha regenerado aún)
+                // 🔄 BOTÓN DE REGENERAR (solo si NO se ha regenerado aún)
                 if (!rutasGeneradasEvitandoZonas &&
                     validacionSeguridad?.totalZonasUsuario != null &&
                     validacionSeguridad.totalZonasUsuario > 0) {
@@ -134,7 +113,8 @@ fun RouteAlternativesDialogWithSecurity(
                         onClick = onRegenerarEvitandoZonas,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp),
+                            .height(56.dp)
+                            .padding(bottom = 16.dp),
                         enabled = !isRegenerating,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF10B981),
@@ -167,30 +147,17 @@ fun RouteAlternativesDialogWithSecurity(
                     }
                 }
 
-                // Lista de rutas con chips mejorados
-                alternatives.forEach { route ->
-                    RouteChipCard(
+                // 📍 Lista de rutas alternativas
+                alternativeRoutes.forEach { route ->
+                    RutaCard(
                         route = route,
-                        isSelected = selectedRoute == route,
-                        onClick = {
-                            selectedRoute = route
-                        }
+                        onClick = { onRouteSelected(route) }
                     )
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    selectedRoute?.let { onSelectRoute(it) }
-                    onDismiss()
-                },
-                enabled = selectedRoute != null
-            ) {
-                Text("Confirmar")
-            }
-        },
-        dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancelar")
             }

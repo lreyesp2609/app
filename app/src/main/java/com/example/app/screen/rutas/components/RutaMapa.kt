@@ -394,11 +394,18 @@ fun RutaMapa(
                 }
 
                 // SELECTOR DE RUTAS CON SEGURIDAD
+                // SELECTOR DE RUTAS CON SEGURIDAD
                 if (showRouteSelector && alternativeRoutes.isNotEmpty()) {
+                    // 🆕 Obtener estados adicionales del ViewModel
+                    val isRegenerating by viewModel.isRegeneratingRoutes
+                    val rutasGeneradasEvitandoZonas by viewModel.rutasGeneradasEvitandoZonas
+
                     RouteAlternativesDialogWithSecurity(
                         alternatives = alternativeRoutes,
                         validacionSeguridad = validacionSeguridad,
                         transportMode = selectedTransportMode,
+                        isRegenerating = isRegenerating,  // 🆕 NUEVO
+                        rutasGeneradasEvitandoZonas = rutasGeneradasEvitandoZonas,  // 🆕 NUEVO
                         onSelectRoute = { alternative ->
                             viewModel.selectRouteAlternative(
                                 alternative = alternative,
@@ -415,7 +422,25 @@ fun RutaMapa(
                             transportMessage = "Ruta ${alternative.displayName} seleccionada"
                             showTransportMessage = true
                         },
-                        onDismiss = { viewModel.hideRouteSelector() }
+                        // 🆕 NUEVO: Callback para regenerar rutas
+                        onRegenerarEvitandoZonas = {
+                            selectedLocation?.let { destination ->
+                                val startPoint = Pair(userLat.value, userLon.value)
+                                val endPoint = Pair(destination.latitud, destination.longitud)
+
+                                viewModel.regenerarRutasEvitandoZonasPeligrosas(
+                                    start = startPoint,
+                                    end = endPoint,
+                                    token = token,
+                                    ubicacionId = selectedLocationId,
+                                    transporteTexto = selectedTransportMode
+                                )
+                            }
+                        },
+                        onDismiss = {
+                            viewModel.hideRouteSelector()
+                            viewModel.resetRegeneracionZonas()  // 🆕 Resetear estado
+                        }
                     )
                 }
 
