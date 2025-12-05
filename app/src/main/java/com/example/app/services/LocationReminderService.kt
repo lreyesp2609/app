@@ -100,10 +100,8 @@ class LocationReminderService : Service() {
 
     private fun createForegroundNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Recordatorios activos")
-            .setContentText("Rastreando ubicación para recordatorios cercanos")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_LOW) // Esto está bien para el servicio
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
     }

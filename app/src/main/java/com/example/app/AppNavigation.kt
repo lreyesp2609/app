@@ -195,7 +195,7 @@ fun AppNavigation(authViewModel: AuthViewModel) {
             val token = authViewModel.accessToken ?: ""
 
             val mapViewModel: MapViewModel = viewModel(
-                factory = MapViewModelFactory(RutasRepository())
+                factory = MapViewModelFactory()
             )
 
             val viewModel: UbicacionesViewModel = viewModel(

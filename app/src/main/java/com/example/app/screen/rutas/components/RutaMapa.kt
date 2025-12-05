@@ -1,7 +1,10 @@
 package com.example.app.screen.rutas.components
 
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,11 +12,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -23,8 +30,15 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
@@ -38,13 +52,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.app.models.RouteAlternative
 import com.example.app.models.UbicacionUsuarioResponse
+import com.example.app.models.ValidarRutasResponse
 import com.example.app.viewmodel.decodePolyline
 import com.example.app.viewmodel.MapViewModel
 import kotlin.collections.isNotEmpty
@@ -55,6 +76,9 @@ import com.example.app.screen.mapa.MapControlButton
 import com.example.app.screen.mapa.RouteInfoCard
 import com.example.app.screen.mapa.SimpleMapOSM
 import com.example.app.screen.mapa.calcularDistancia
+import com.example.app.utils.getModeDisplayName
+import com.example.app.utils.getNivelPeligroColor
+import com.example.app.viewmodel.MapViewModelFactory
 import kotlin.math.roundToInt
 
 @Composable
@@ -63,12 +87,11 @@ fun RutaMapa(
     defaultLat: Double = 0.0,
     defaultLon: Double = 0.0,
     ubicaciones: List<UbicacionUsuarioResponse> = emptyList(),
-    viewModel: MapViewModel = viewModel(),
+    viewModel: MapViewModel = viewModel(factory = MapViewModelFactory()),
     token: String,
     selectedLocationId: Int,
     navController: NavController,
-
-    ) {
+) {
     // Estados de ubicación y mapa
     val userLat = remember { mutableStateOf(defaultLat) }
     val userLon = remember { mutableStateOf(defaultLon) }
@@ -97,9 +120,15 @@ fun RutaMapa(
     var showTransportMessage by remember { mutableStateOf(false) }
     var transportMessage by remember { mutableStateOf("") }
 
-    // NUEVO: Estado para la alerta de desobediencia
+    // Estado para la alerta de desobediencia
     var showSecurityAlert by remember { mutableStateOf(false) }
     var securityMessage by remember { mutableStateOf("") }
+
+    // 🆕 Estados de SEGURIDAD del ViewModel
+    val mostrarAdvertenciaSeguridad by viewModel.mostrarAdvertenciaSeguridad
+    val validacionSeguridad by viewModel.validacionSeguridad
+    val alternativeRoutes by viewModel.alternativeRoutes
+    val showRouteSelector by viewModel.showRouteSelector
 
     // Estados del ViewModel
     val mostrarOpcionesFinalizar by viewModel.mostrarOpcionesFinalizar
@@ -107,15 +136,12 @@ fun RutaMapa(
     val mostrarAlertaDesobediencia by viewModel.mostrarAlertaDesobediencia
     val mensajeAlertaDesobediencia by viewModel.mensajeAlertaDesobediencia
 
-    val alternativeRoutes by viewModel.alternativeRoutes
-    val showRouteSelector by viewModel.showRouteSelector
-
-    // NUEVO: Observar la alerta de desobediencia y convertirla en notificación
+    // Observar la alerta de desobediencia y convertirla en notificación
     LaunchedEffect(mostrarAlertaDesobediencia, mensajeAlertaDesobediencia) {
         if (mostrarAlertaDesobediencia && mensajeAlertaDesobediencia != null) {
             securityMessage = mensajeAlertaDesobediencia ?: ""
             showSecurityAlert = true
-            viewModel.cerrarAlertaDesobediencia() // Cerrar la alerta del ViewModel inmediatamente
+            viewModel.cerrarAlertaDesobediencia()
         }
     }
 
@@ -259,19 +285,16 @@ fun RutaMapa(
                         .padding(end = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // ➕ Zoom In
                     MapControlButton(
                         icon = Icons.Default.Add,
                         onClick = { zoomInTrigger++ }
                     )
 
-                    // ➖ Zoom Out
                     MapControlButton(
                         icon = Icons.Default.Remove,
                         onClick = { zoomOutTrigger++ }
                     )
 
-                    // 🎯 Centrar usuario
                     MapControlButton(
                         icon = Icons.Default.MyLocation,
                         onClick = {
@@ -281,7 +304,6 @@ fun RutaMapa(
                         }
                     )
                 }
-
 
                 // Información de la ruta
                 if (showRouteInfo && (currentRoute != null || rutaEstado.activa)) {
@@ -345,9 +367,11 @@ fun RutaMapa(
                     }
                 }
 
+                // 🆕 SELECTOR DE RUTAS CON SEGURIDAD
                 if (showRouteSelector && alternativeRoutes.isNotEmpty()) {
-                    RouteAlternativesDialog(
+                    RouteAlternativesDialogWithSecurity(
                         alternatives = alternativeRoutes,
+                        validacionSeguridad = validacionSeguridad,
                         transportMode = selectedTransportMode,
                         onSelectRoute = { alternative ->
                             viewModel.selectRouteAlternative(
@@ -366,6 +390,116 @@ fun RutaMapa(
                             showTransportMessage = true
                         },
                         onDismiss = { viewModel.hideRouteSelector() }
+                    )
+                }
+
+                // 🆕 ADVERTENCIA DE RUTA INSEGURA
+                if (mostrarAdvertenciaSeguridad) {
+                    val rutaPendiente = alternativeRoutes.find {
+                        it.esSegura == false && (it.nivelRiesgo ?: 0) >= 3
+                    }
+
+                    AlertDialog(
+                        onDismissRequest = { viewModel.rechazarRutaInsegura() },
+                        icon = {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = Color.Red,
+                                modifier = Modifier.size(48.dp)
+                            )
+                        },
+                        title = {
+                            Text(
+                                "⚠️ ADVERTENCIA DE SEGURIDAD",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = Color.Red,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        text = {
+                            Column(
+                                modifier = Modifier.verticalScroll(rememberScrollState())
+                            ) {
+                                Text(
+                                    rutaPendiente?.mensajeSeguridad ?: "Esta ruta pasa por zonas que marcaste como peligrosas",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                rutaPendiente?.zonasDetectadas?.let { zonas ->
+                                    if (zonas.isNotEmpty()) {
+                                        Text(
+                                            "Zonas detectadas:",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        zonas.forEach { zona ->
+                                            Card(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 4.dp),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = getNivelPeligroColor(zona.nivelPeligro)
+                                                )
+                                            ) {
+                                                Column(modifier = Modifier.padding(12.dp)) {
+                                                    Text(
+                                                        zona.nombre,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 14.sp
+                                                    )
+                                                    Text(
+                                                        "Nivel de riesgo: ${zona.nivelPeligro}/5",
+                                                        fontSize = 12.sp
+                                                    )
+                                                    Text(
+                                                        "Afecta ${zona.porcentajeRuta.toInt()}% de la ruta",
+                                                        fontSize = 12.sp,
+                                                        fontStyle = FontStyle.Italic
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Text(
+                                    "¿Deseas continuar con esta ruta?",
+                                    fontStyle = FontStyle.Italic,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    viewModel.aceptarRiesgoRutaInsegura(
+                                        token,
+                                        selectedLocationId,
+                                        selectedTransportMode
+                                    )
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.Red
+                                )
+                            ) {
+                                Text("Aceptar Riesgo y Continuar")
+                            }
+                        },
+                        dismissButton = {
+                            OutlinedButton(
+                                onClick = { viewModel.rechazarRutaInsegura() }
+                            ) {
+                                Text("Cancelar")
+                            }
+                        }
                     )
                 }
 
@@ -398,9 +532,6 @@ fun RutaMapa(
                                 )
 
                                 transportMessage = "Calculando rutas alternativas..."
-                                showTransportMessage = true
-
-                                transportMessage = "Calculando ruta en ${getModeDisplayName(selectedTransportMode)}"
                                 showTransportMessage = true
                             } else {
                                 transportMessage = "Ubicación del usuario no disponible"
@@ -444,6 +575,251 @@ fun RutaMapa(
                 )
             }
         }
+    }
+}
+
+// 🆕 DIÁLOGO MEJORADO CON SEGURIDAD
+@Composable
+fun RouteAlternativesDialogWithSecurity(
+    alternatives: List<RouteAlternative>,
+    validacionSeguridad: ValidarRutasResponse?,
+    transportMode: String,
+    onSelectRoute: (RouteAlternative) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selectedRoute by remember { mutableStateOf<RouteAlternative?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Selecciona tu ruta",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Advertencia general si ninguna es segura
+                validacionSeguridad?.advertenciaGeneral?.let { advertencia ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFEBEE)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = Color.Red,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                advertencia,
+                                fontSize = 13.sp,
+                                color = Color(0xFFD32F2F)
+                            )
+                        }
+                    }
+                }
+
+                // Lista de rutas con chips mejorados
+                alternatives.forEach { route ->
+                    RouteChipCard(
+                        route = route,
+                        isSelected = selectedRoute == route,
+                        onClick = {
+                            selectedRoute = route
+                        }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    selectedRoute?.let { onSelectRoute(it) }
+                    onDismiss()
+                },
+                enabled = selectedRoute != null
+            ) {
+                Text("Confirmar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+@Composable
+fun RouteChipCard(
+    route: RouteAlternative,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+
+    // 🔥 FIX: Usa colores del tema que tienen buen contraste
+    val backgroundColor = when {
+        isSelected -> MaterialTheme.colorScheme.primaryContainer
+        route.esSegura == false -> if (isDarkTheme) {
+            Color(0xFF3E2723) // Marrón oscuro para tema oscuro
+        } else {
+            Color(0xFFFFEBEE) // Rosa claro para tema claro
+        }
+        route.isRecommended -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant // ← Mejor que surface
+    }
+
+    val contentColor = when {
+        isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant // ← Garantiza contraste
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 8.dp else 2.dp
+        ),
+        border = if (isSelected) {
+            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else null
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = getPreferenceIcon(route.type),
+                        contentDescription = null,
+                        // 🔥 FIX: Usa primary solo cuando NO está seleccionado
+                        tint = if (isSelected) {
+                            contentColor
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        },
+                        modifier = Modifier.size(24.dp)
+                    )
+
+                    Text(
+                        text = route.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = contentColor // ← Asegura legibilidad
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (route.isRecommended) {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ) {
+                            Text("🤖 ML", fontSize = 10.sp, color = Color.White)
+                        }
+                    }
+
+                    route.esSegura?.let { esSegura ->
+                        Badge(
+                            containerColor = if (esSegura) {
+                                Color(0xFF4CAF50)
+                            } else {
+                                Color(0xFFF44336)
+                            }
+                        ) {
+                            Text(
+                                if (esSegura) "✓ SEGURA" else "⚠ RIESGO",
+                                fontSize = 10.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                InfoChip(
+                    icon = Icons.Default.Straighten,
+                    text = "${(route.distance / 1000).roundToInt()} km",
+                    contentColor = contentColor
+                )
+                InfoChip(
+                    icon = Icons.Default.Schedule,
+                    text = "${(route.duration / 60).toInt()} min",
+                    contentColor = contentColor
+                )
+            }
+
+            route.mensajeSeguridad?.let { mensaje ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    mensaje,
+                    fontSize = 12.sp,
+                    color = if (isDarkTheme) Color(0xFFFFCDD2) else Color(0xFFC62828),
+                    fontStyle = FontStyle.Italic
+                )
+            }
+
+            route.zonasDetectadas?.let { zonas ->
+                if (zonas.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "${zonas.size} zona(s) de riesgo detectada(s)",
+                        fontSize = 11.sp,
+                        color = contentColor.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// 🔥 FIX: InfoChip también necesita contentColor
+@Composable
+fun InfoChip(icon: ImageVector, text: String, contentColor: Color = MaterialTheme.colorScheme.onSurface) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp)
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = contentColor
+        )
     }
 }
 
@@ -511,14 +887,5 @@ fun TransportButton(
             },
             modifier = Modifier.size(24.dp)
         )
-    }
-}
-
-fun getModeDisplayName(mode: String): String {
-    return when (mode) {
-        "foot-walking" -> "Caminar"
-        "driving-car" -> "Carro"
-        "cycling-regular" -> "Bicicleta"
-        else -> "Caminar"
     }
 }

@@ -7,7 +7,6 @@ import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.OvalShape
 import android.util.Log
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.add
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -21,13 +20,16 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Overlay
 import com.example.app.R
 import com.example.app.models.Feature
-import com.example.app.models.MiembroUbicacion
+import com.example.app.models.ZonaGuardada
 import com.example.app.models.getDisplayName
 import com.example.app.screen.recordatorios.components.getIconResource
+import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
-import kotlin.text.clear
+import org.osmdroid.views.overlay.MapEventsOverlay
+
+import org.osmdroid.views.overlay.Polygon
 
 @Composable
 fun OpenStreetMap(
@@ -42,7 +44,14 @@ fun OpenStreetMap(
     context: Context = LocalContext.current,
     pois: List<Feature> = emptyList(),
     showCenterPin: Boolean = true,
-    onLocationSelected: (lat: Double, lon: Double) -> Unit = { _, _ -> }
+    onLocationSelected: (lat: Double, lon: Double) -> Unit = { _, _ -> },
+    onLocationLongPress: ((Double, Double) -> Unit)? = null,
+    // Preview de zona en creación
+    zonaPreviewLat: Double? = null,
+    zonaPreviewLon: Double? = null,
+    zonaPreviewRadio: Int? = null,
+    // 🔥 ZONAS YA GUARDADAS
+    zonasGuardadas: List<ZonaGuardada> = emptyList()
 ) {
     val mapView = rememberMapView(context, zoom)
 
@@ -53,11 +62,99 @@ fun OpenStreetMap(
         )
     }
 
+    // 🔥 Centrar el mapa cuando cambien las coordenadas del usuario
+    LaunchedEffect(latitude, longitude) {
+        if (latitude != 0.0 && longitude != 0.0) {
+            Log.d("OpenStreetMap", "📍 Centrando mapa en: $latitude, $longitude")
+            mapView.controller.setCenter(GeoPoint(latitude, longitude))
+        }
+    }
+
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { mapView },
         update = { map ->
             map.overlays.clear()
+
+            // Detector de long press (debe ir PRIMERO)
+            if (onLocationLongPress != null) {
+                val mapEventsReceiver = object : MapEventsReceiver {
+                    override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean = false
+
+                    override fun longPressHelper(p: GeoPoint?): Boolean {
+                        if (p != null) {
+                            Log.d("OpenStreetMap", "🔴 Long press: ${p.latitude}, ${p.longitude}")
+                            onLocationLongPress.invoke(p.latitude, p.longitude)
+                        }
+                        return true
+                    }
+                }
+                map.overlays.add(MapEventsOverlay(mapEventsReceiver))
+            }
+
+            // 🔥 DIBUJAR ZONAS GUARDADAS (primero, para que estén debajo)
+            zonasGuardadas.forEach { zona ->
+                val center = GeoPoint(zona.lat, zona.lon)
+
+                // Círculo de la zona
+                val circle = Polygon(map).apply {
+                    points = Polygon.pointsAsCircle(center, zona.radio.toDouble())
+                    fillPaint.color = android.graphics.Color.parseColor("#33FF5252")
+                    outlinePaint.color = android.graphics.Color.parseColor("#FFFF5252")
+                    outlinePaint.strokeWidth = 3f
+                }
+                map.overlays.add(circle)
+
+                // Marcador con nivel de peligro
+                val markerColor = when (zona.nivel) {
+                    1 -> "#FF4CAF50" // Verde
+                    2 -> "#FFFFEB3B" // Amarillo
+                    3 -> "#FFFF9800" // Naranja
+                    4 -> "#FFFF5722" // Naranja oscuro
+                    5 -> "#FFF44336" // Rojo
+                    else -> "#FFFF5252"
+                }
+
+                val marker = Marker(map).apply {
+                    position = center
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                    icon = ShapeDrawable(OvalShape()).apply {
+                        intrinsicHeight = 35
+                        intrinsicWidth = 35
+                        paint.color = android.graphics.Color.parseColor(markerColor)
+                        paint.style = android.graphics.Paint.Style.FILL
+                    }
+                    title = zona.nombre
+                    snippet = "Nivel: ${zona.nivel}/5 • Radio: ${zona.radio}m"
+                }
+                map.overlays.add(marker)
+            }
+
+            // 🔥 PREVIEW DE ZONA EN CREACIÓN (si existe)
+            if (zonaPreviewLat != null && zonaPreviewLon != null && zonaPreviewRadio != null) {
+                val center = GeoPoint(zonaPreviewLat, zonaPreviewLon)
+                val circle = Polygon(map).apply {
+                    points = Polygon.pointsAsCircle(center, zonaPreviewRadio.toDouble())
+                    fillPaint.color = android.graphics.Color.parseColor("#44FF5252") // Más visible
+                    outlinePaint.color = android.graphics.Color.parseColor("#FFFF5252")
+                    outlinePaint.strokeWidth = 4f
+                    outlinePaint.pathEffect = android.graphics.DashPathEffect(floatArrayOf(10f, 10f), 0f) // Línea punteada
+                }
+                map.overlays.add(circle)
+
+                val centerMarker = Marker(map).apply {
+                    position = center
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                    icon = ShapeDrawable(OvalShape()).apply {
+                        intrinsicHeight = 40
+                        intrinsicWidth = 40
+                        paint.color = android.graphics.Color.parseColor("#FFFF5252")
+                        paint.style = android.graphics.Paint.Style.FILL
+                    }
+                    title = "Nueva Zona (${zonaPreviewRadio}m)"
+                }
+                map.overlays.add(centerMarker)
+            }
 
             // Usuario (punto azul)
             if (showUserLocation) {
@@ -114,29 +211,25 @@ fun OpenStreetMap(
         }
     )
 
-    // Recentrar mapa
+    // Recentrar mapa (con trigger manual)
     LaunchedEffect(recenterTrigger) {
         if (recenterTrigger > 0) {
             mapView.controller.animateTo(GeoPoint(latitude, longitude))
         }
     }
 
-    // ✅ NUEVO: Zoom In
+    // Zoom In
     LaunchedEffect(zoomInTrigger) {
         if (zoomInTrigger > 0) {
             mapView.controller.zoomIn()
         }
     }
 
-    // ✅ NUEVO: Zoom Out
+    // Zoom Out
     LaunchedEffect(zoomOutTrigger) {
         if (zoomOutTrigger > 0) {
             mapView.controller.zoomOut()
         }
-    }
-
-    LaunchedEffect(recenterTrigger) {
-        mapView.controller.animateTo(GeoPoint(latitude, longitude))
     }
 
     DisposableEffect(mapView) {

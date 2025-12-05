@@ -9,6 +9,7 @@ import com.example.app.models.*
 import com.example.app.network.RetrofitClient
 import com.example.app.network.RetrofitInstance
 import com.example.app.repository.RutasRepository
+import com.example.app.screen.rutas.components.getPreferenceDisplayName
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
@@ -22,7 +23,7 @@ class MapViewModel(
     private val _route = mutableStateOf<DirectionsResponse?>(null)
     val route: State<DirectionsResponse?> = _route
 
-    private var currentMode = "foot-walking" // foot-walking, cycling-regular, etc.
+    private var currentMode = "foot-walking"
     private var currentMLType: String? = null
     private var currentToken: String? = null
 
@@ -32,7 +33,6 @@ class MapViewModel(
     private val _mostrarOpcionesFinalizar = mutableStateOf(false)
     val mostrarOpcionesFinalizar: State<Boolean> = _mostrarOpcionesFinalizar
 
-    // 🔥 NUEVAS VARIABLES para guardar datos de la ruta actual
     private var rutaActualUbicacionId: Int? = null
     private var rutaActualDistancia: Double? = null
     private var rutaActualDuracion: Double? = null
@@ -51,6 +51,16 @@ class MapViewModel(
     private val _showRouteSelector = mutableStateOf(false)
     val showRouteSelector: State<Boolean> = _showRouteSelector
 
+    // 🆕 NUEVOS ESTADOS PARA SEGURIDAD
+    private val _validacionSeguridad = mutableStateOf<ValidarRutasResponse?>(null)
+    val validacionSeguridad: State<ValidarRutasResponse?> = _validacionSeguridad
+
+    private val _mostrarAdvertenciaSeguridad = mutableStateOf(false)
+    val mostrarAdvertenciaSeguridad: State<Boolean> = _mostrarAdvertenciaSeguridad
+
+    private val _rutaSeleccionadaPendiente = mutableStateOf<RouteAlternative?>(null)
+
+    // 🔥 FUNCIÓN PRINCIPAL MODIFICADA
     fun fetchAllRouteAlternatives(
         start: Pair<Double, Double>,
         end: Pair<Double, Double>,
@@ -65,7 +75,7 @@ class MapViewModel(
             try {
                 Log.d("MapViewModel", "🔄 Calculando 3 rutas alternativas...")
 
-                // Calcular las 3 rutas en paralelo
+                // 1. Calcular las 3 rutas con ORS (como antes)
                 val routes = listOf("fastest", "shortest", "recommended").map { preference ->
                     async {
                         try {
@@ -86,7 +96,7 @@ class MapViewModel(
                                 response = response.copy(profile = currentMode),
                                 distance = route?.summary?.distance ?: 0.0,
                                 duration = route?.summary?.duration ?: 0.0,
-                                isRecommended = false // Lo marcaremos después con ML
+                                isRecommended = false
                             )
                         } catch (e: Exception) {
                             Log.e("MapViewModel", "Error calculando ruta $preference", e)
@@ -95,30 +105,61 @@ class MapViewModel(
                     }
                 }.awaitAll().filterNotNull()
 
-                if (routes.isNotEmpty()) {
-                    // Obtener recomendación ML
-                    try {
-                        val recomendacion = RetrofitClient.mlService.getRecomendacionTipoRuta(
-                            "Bearer $token",
-                            TipoRutaRequest(ubicacionId)
+                if (routes.isEmpty()) {
+                    Log.e("MapViewModel", "❌ No se pudieron calcular rutas")
+                    return@launch
+                }
+
+                // 2. 🆕 VALIDAR RUTAS CONTRA ZONAS PELIGROSAS
+                try {
+                    val rutasParaValidar = routes.map { route ->
+                        RutaParaValidar(
+                            tipo = route.type,
+                            geometry = route.response.routes.first().geometry,
+                            distance = route.distance,
+                            duration = route.duration
                         )
-
-                        // Marcar la recomendada
-                        val routesWithRecommendation = routes.map { route ->
-                            route.copy(isRecommended = route.type == recomendacion.tipo_ruta)
-                        }
-
-                        _alternativeRoutes.value = routesWithRecommendation
-                        currentMLType = recomendacion.tipo_ruta
-
-                        Log.d("MapViewModel", "✅ 3 rutas calculadas. ML recomienda: ${recomendacion.tipo_ruta}")
-                    } catch (e: Exception) {
-                        Log.e("MapViewModel", "Error obteniendo recomendación ML", e)
-                        _alternativeRoutes.value = routes
                     }
 
-                    _showRouteSelector.value = true
+
+                    val validacion = RetrofitClient.rutasApiService.validarRutas(
+                        token = "Bearer $token",
+                        request = ValidarRutasRequest(
+                            rutas = rutasParaValidar,
+                            ubicacionId = ubicacionId
+                        )
+                    )
+
+                    _validacionSeguridad.value = validacion
+
+                    Log.d("MapViewModel", "🔐 Validación de seguridad completada:")
+                    Log.d("MapViewModel", "  - Todas seguras: ${validacion.todasSeguras}")
+                    Log.d("MapViewModel", "  - ML recomienda: ${validacion.tipoMlRecomendado}")
+
+                    // 3. Combinar rutas con información de seguridad
+                    val routesConSeguridad = routes.mapIndexed { index, route ->
+                        val validacionRuta = validacion.rutasValidadas[index]
+                        route.copy(
+                            isRecommended = route.type == validacion.tipoMlRecomendado,
+                            esSegura = validacionRuta.esSegura,
+                            nivelRiesgo = validacionRuta.nivelRiesgo,
+                            zonasDetectadas = validacionRuta.zonasDetectadas,
+                            mensajeSeguridad = validacionRuta.mensaje
+                        )
+                    }
+
+                    _alternativeRoutes.value = routesConSeguridad
+                    currentMLType = validacion.tipoMlRecomendado
+
+                    Log.d("MapViewModel", "✅ ${routes.size} rutas con información de seguridad")
+
+                } catch (e: Exception) {
+                    Log.e("MapViewModel", "⚠️ Error validando seguridad, continuando sin validación", e)
+                    // Si falla la validación, mostrar rutas sin información de seguridad
+                    _alternativeRoutes.value = routes
                 }
+
+                _showRouteSelector.value = true
 
             } catch (e: Exception) {
                 Log.e("MapViewModel", "Error general calculando alternativas", e)
@@ -126,24 +167,69 @@ class MapViewModel(
         }
     }
 
-    // 🆕 Seleccionar una ruta alternativa
+    // 🆕 Seleccionar ruta con validación de seguridad
     fun selectRouteAlternative(alternative: RouteAlternative, token: String, ubicacionId: Int, transporteTexto: String) {
         viewModelScope.launch {
-            _route.value = alternative.response
-            currentMLType = alternative.type
-            rutaActualDistancia = alternative.distance
-            rutaActualDuracion = alternative.duration
-            _showRouteSelector.value = false
+            // Si la ruta NO es segura Y tiene nivel de riesgo alto (>=3), mostrar advertencia
+            val esRutaPeligrosa = alternative.esSegura == false &&
+                    alternative.nivelRiesgo != null &&
+                    alternative.nivelRiesgo >= 3
 
-            // Guardar en backend
-            guardarRutaEnBackend(
-                alternative.response,
-                token,
-                ubicacionId,
-                transporteTexto,
-                alternative.type
-            )
+            if (esRutaPeligrosa) {
+                _rutaSeleccionadaPendiente.value = alternative
+                _mostrarAdvertenciaSeguridad.value = true
+                Log.d("MapViewModel", "⚠️ Ruta insegura detectada, mostrando advertencia")
+                return@launch
+            }
+
+            // Si es segura o el usuario ya aceptó el riesgo, continuar
+            confirmarSeleccionRuta(alternative, token, ubicacionId, transporteTexto)
         }
+    }
+
+    // 🆕 Confirmar selección de ruta (después de aceptar riesgo)
+    private suspend fun confirmarSeleccionRuta(
+        alternative: RouteAlternative,
+        token: String,
+        ubicacionId: Int,
+        transporteTexto: String
+    ) {
+        _route.value = alternative.response
+        currentMLType = alternative.type
+        rutaActualDistancia = alternative.distance
+        rutaActualDuracion = alternative.duration
+        _showRouteSelector.value = false
+        _mostrarAdvertenciaSeguridad.value = false
+
+        // Guardar en backend
+        guardarRutaEnBackend(
+            alternative.response,
+            token,
+            ubicacionId,
+            transporteTexto,
+            alternative.type
+        )
+
+        if (alternative.esSegura == false) {
+            Log.d("MapViewModel", "⚠️ Usuario aceptó ruta con riesgo nivel ${alternative.nivelRiesgo}")
+        }
+    }
+
+    // 🆕 Usuario acepta el riesgo de ruta insegura
+    fun aceptarRiesgoRutaInsegura(token: String, ubicacionId: Int, transporteTexto: String) {
+        viewModelScope.launch {
+            _rutaSeleccionadaPendiente.value?.let { ruta ->
+                confirmarSeleccionRuta(ruta, token, ubicacionId, transporteTexto)
+                _rutaSeleccionadaPendiente.value = null
+            }
+        }
+    }
+
+    // 🆕 Usuario rechaza ruta insegura
+    fun rechazarRutaInsegura() {
+        _mostrarAdvertenciaSeguridad.value = false
+        _rutaSeleccionadaPendiente.value = null
+        Log.d("MapViewModel", "❌ Usuario rechazó ruta insegura")
     }
 
     fun hideRouteSelector() {
@@ -157,7 +243,6 @@ class MapViewModel(
             timestamp = System.currentTimeMillis()
         )
         _puntosGPSReales.add(punto)
-        Log.d("MapViewModel", "📍 Punto GPS agregado: $punto")
     }
 
     fun setMode(mode: String) {
@@ -166,85 +251,6 @@ class MapViewModel(
 
     fun setToken(token: String) {
         currentToken = token
-    }
-
-    // Función principal con ML y autenticación
-    fun fetchRouteWithML(
-        start: Pair<Double, Double>,
-        end: Pair<Double, Double>,
-        token: String,
-        ubicacionId: Int,
-        transporteTexto: String? = null
-    ) {
-        currentToken = token
-        rutaActualUbicacionId = ubicacionId // 🔥 GUARDAR para el feedback
-
-        viewModelScope.launch {
-            try {
-                // PASO 1: Obtener recomendación ML
-                Log.d("MapViewModel", "Consultando ML con token...")
-
-                val recomendacion = RetrofitClient.mlService.getRecomendacionTipoRuta(
-                    "Bearer $token",
-                    TipoRutaRequest(ubicacionId)
-                )
-
-                currentMLType = recomendacion.tipo_ruta
-                Log.d(
-                    "MapViewModel",
-                    "ML recomienda: ${recomendacion.tipo_ruta} para usuario ${recomendacion.usuario_id}"
-                )
-
-                // PASO 2: Configurar OpenRouteService según ML
-                val (preference, avoidOptions) = recomendacion.tipo_ruta.toORSConfig()
-
-                val request = DirectionsRequest(
-                    coordinates = listOf(
-                        listOf(start.second, start.first),
-                        listOf(end.second, end.first)
-                    ),
-                    preference = preference,
-                    options = avoidOptions
-                )
-
-                Log.d("MapViewModel", "Enviando request ORS: $request")
-                Log.d(
-                    "MapViewModel",
-                    "🔥 USANDO TIPO ML: ${recomendacion.tipo_ruta} -> ORS preference: $preference"
-                )
-
-                // PASO 3: Obtener ruta de OpenRouteService
-                val response = RetrofitInstance.api.getRoute(currentMode, request)
-                val responseWithProfile = response.copy(profile = currentMode)
-
-                response.routes.firstOrNull()?.summary?.let { summary ->
-                    rutaActualDistancia = summary.distance.toDouble()
-                    rutaActualDuracion = summary.duration
-                }
-
-                Log.d(
-                    "MapViewModel",
-                    "Ruta obtenida: distancia=${response.routes.firstOrNull()?.summary?.distance}m"
-                )
-
-                _route.value = responseWithProfile
-
-                // PASO 4: Guardar ruta CON el tipo usado
-                if (transporteTexto != null) {
-                    guardarRutaEnBackend(
-                        responseWithProfile,
-                        token,
-                        ubicacionId,
-                        transporteTexto,
-                        recomendacion.tipo_ruta
-                    )
-                }
-
-            } catch (e: Exception) {
-                Log.e("MapViewModel", "Error fetching route with ML", e)
-                _route.value = null
-            }
-        }
     }
 
     private suspend fun guardarRutaEnBackend(
@@ -261,14 +267,9 @@ class MapViewModel(
                 tipoRutaUsado = tipoRutaUsado
             )
 
-            Log.d("MapViewModel", "📅 Fecha de inicio generada en Android: ${rutaJson.fecha_inicio}")
-
-            Log.d("MapViewModel", "Guardando ruta con tipo ML: $tipoRutaUsado")
-
             val result = rutasRepository.guardarRuta(token, rutaJson)
             result.onSuccess { rutaGuardada ->
-                Log.d("MapViewModel", "✅ Ruta guardada correctamente con tipo: $tipoRutaUsado")
-                Log.d("MapViewModel", "Ruta completa: $rutaGuardada")
+                Log.d("MapViewModel", "✅ Ruta guardada correctamente")
                 _rutaIdActiva.value = rutaGuardada.id
                 _mostrarOpcionesFinalizar.value = true
             }.onFailure { error ->
@@ -286,7 +287,11 @@ class MapViewModel(
         rutaActualDistancia = null
         rutaActualDuracion = null
         _puntosGPSReales.clear()
+        _validacionSeguridad.value = null
+        _mostrarAdvertenciaSeguridad.value = false
+        _rutaSeleccionadaPendiente.value = null
     }
+
 
     private fun calcularSimilitudRuta(): Pair<Boolean, Double> {
         Log.d("MapViewModel", "🚀 INICIANDO calcularSimilitudRuta()...")

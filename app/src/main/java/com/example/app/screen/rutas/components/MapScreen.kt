@@ -8,10 +8,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -21,6 +24,7 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,37 +36,49 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.app.models.RouteAlternative
 import com.example.app.models.UbicacionUsuarioCreate
+import com.example.app.models.ZonaGuardada
+import com.example.app.models.ZonaPeligrosaCreate
 import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.screen.mapa.OpenStreetMap
 import com.example.app.network.NominatimClient
+import com.example.app.network.RetrofitClient
+import com.example.app.repository.RutasRepository
 import com.example.app.screen.components.AppBackButton
 import com.example.app.screen.components.AppButton
 import com.example.app.screen.components.AppTextField
 import com.example.app.screen.mapa.MapControlButton
+import com.example.app.utils.DialogoCrearZonaPeligrosa
 import com.example.app.utils.LocationManager
 import com.example.app.utils.SessionManager
+import com.example.app.utils.getNivelPeligroColor
+import com.example.app.viewmodel.MapViewModel
+import com.example.app.viewmodel.MapViewModelFactory
 import com.example.app.viewmodel.UbicacionesViewModel
 import com.example.app.viewmodel.UbicacionesViewModelFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Composable
 fun MapScreen(
     navController: NavController,
     defaultLat: Double = 0.0,
     defaultLon: Double = 0.0,
-    onConfirmClick: () -> Unit = {})
-{
-
+    onConfirmClick: () -> Unit = {},
+    mapViewModel: MapViewModel = viewModel(factory = MapViewModelFactory())
+) {
     val context = LocalContext.current
     val locationManager = remember { LocationManager.getInstance() }
     val sessionManager = remember { SessionManager.getInstance(context) }
@@ -91,15 +107,29 @@ fun MapScreen(
 
     var showLocationCards by remember { mutableStateOf(true) }
 
+    // 🆕 ESTADOS PARA CREAR ZONA PELIGROSA
+    var mostrarDialogoZona by remember { mutableStateOf(false) }
+    var coordenadasZonaSeleccionada by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var radioPreview by remember { mutableStateOf(200) }
+
+    // 🔥 LISTA DE ZONAS CREADAS EN ESTA SESIÓN (para mostrarlas en el mapa)
+    var zonasCreadas by remember { mutableStateOf<List<ZonaGuardada>>(emptyList()) }
+
     val ubicacionesViewModel: UbicacionesViewModel = viewModel(
         factory = UbicacionesViewModelFactory(token)
     )
     val scope = rememberCoroutineScope()
 
+    // Estados del MapViewModel para seguridad
+    val alternativeRoutes by mapViewModel.alternativeRoutes
+    val showRouteSelector by mapViewModel.showRouteSelector
+    val mostrarAdvertenciaSeguridad by mapViewModel.mostrarAdvertenciaSeguridad
+    val validacionSeguridad by mapViewModel.validacionSeguridad
+
     LaunchedEffect(Unit) {
         val cachedLocation = locationManager.getLastKnownLocation()
         if (cachedLocation != null) {
-            Log.d("MapScreen", "⚡ Usando ubicación en caché - Sin demora!")
+            Log.d("MapScreen", "⚡ Usando ubicación en caché")
             currentLat = cachedLocation.latitude
             currentLon = cachedLocation.longitude
             currentAddress = cachedLocation.address
@@ -108,7 +138,6 @@ fun MapScreen(
         }
     }
 
-    // 🔥 Box principal que contiene todo
     Box(modifier = Modifier.fillMaxSize()) {
         when {
             locationObtained -> {
@@ -137,7 +166,18 @@ fun MapScreen(
                                     selectedAddress = "Error obteniendo dirección"
                                 }
                             }
-                        }
+                        },
+                        onLocationLongPress = { lat, lon ->
+                            coordenadasZonaSeleccionada = Pair(lat, lon)
+                            mostrarDialogoZona = true
+                            radioPreview = 200
+                        },
+                        // Preview de la zona que se está creando
+                        zonaPreviewLat = if (mostrarDialogoZona) coordenadasZonaSeleccionada?.first else null,
+                        zonaPreviewLon = if (mostrarDialogoZona) coordenadasZonaSeleccionada?.second else null,
+                        zonaPreviewRadio = if (mostrarDialogoZona) radioPreview else null,
+                        // 🔥 ZONAS YA CREADAS
+                        zonasGuardadas = zonasCreadas
                     )
 
                     AppBackButton(
@@ -261,9 +301,7 @@ fun MapScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         "Obteniendo ubicación...",
@@ -302,9 +340,233 @@ fun MapScreen(
             }
         }
 
-        // 🔥 GPS BUTTON SE SUPERPONE - SIEMPRE AL FINAL
+        // 🔥 DIÁLOGO PARA CREAR ZONA PELIGROSA
+        if (mostrarDialogoZona && coordenadasZonaSeleccionada != null) {
+            DialogoCrearZonaPeligrosa(
+                coordenadas = coordenadasZonaSeleccionada!!,
+                onConfirmar = { nombre, radio, nivel, tipo, notas ->
+                    scope.launch {
+                        try {
+                            val request = ZonaPeligrosaCreate(
+                                nombre = nombre,
+                                lat = coordenadasZonaSeleccionada!!.first,
+                                lon = coordenadasZonaSeleccionada!!.second,
+                                radioMetros = radio,
+                                nivelPeligro = nivel,
+                                tipo = tipo,
+                                notas = notas
+                            )
+
+                            val response = RetrofitClient.rutasApiService.marcarZonaPeligrosa(
+                                token = "Bearer $token",
+                                zona = request
+                            )
+
+                            Toast.makeText(
+                                context,
+                                "✅ Zona marcada: ${response.nombre} (${radio}m)",
+                                Toast.LENGTH_LONG
+                            ).show()
+
+                            Log.d("MapScreen", "Zona creada: ID=${response.id}, Radio=${radio}m")
+
+                            // 🔥 AGREGAR LA ZONA A LA LISTA PARA MOSTRARLA EN EL MAPA
+                            zonasCreadas = zonasCreadas + ZonaGuardada(
+                                lat = coordenadasZonaSeleccionada!!.first,
+                                lon = coordenadasZonaSeleccionada!!.second,
+                                radio = radio,
+                                nombre = nombre,
+                                nivel = nivel
+                            )
+
+                            mostrarDialogoZona = false
+                            radioPreview = 200
+                        } catch (e: Exception) {
+                            Toast.makeText(
+                                context,
+                                "❌ Error: ${e.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            Log.e("MapScreen", "Error creando zona", e)
+                        }
+                    }
+                },
+                onCancelar = {
+                    mostrarDialogoZona = false
+                    radioPreview = 200
+                },
+                onRadioChanged = { nuevoRadio ->
+                    radioPreview = nuevoRadio
+                }
+            )
+        }
+
+        // SELECTOR DE RUTAS (resto del código igual)
+        if (showRouteSelector) {
+            AlertDialog(
+                onDismissRequest = { mapViewModel.hideRouteSelector() },
+                title = {
+                    Text(
+                        "Selecciona tu ruta",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        validacionSeguridad?.advertenciaGeneral?.let { advertencia ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFFFEBEE)
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = Color.Red,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        advertencia,
+                                        fontSize = 13.sp,
+                                        color = Color(0xFFD32F2F)
+                                    )
+                                }
+                            }
+                        }
+
+                        alternativeRoutes.forEach { route ->
+                            RutaCard(
+                                route = route,
+                                onClick = {
+                                    val ubicacionId = 1
+                                    val transporteTexto = "walking"
+
+                                    mapViewModel.selectRouteAlternative(
+                                        route,
+                                        token,
+                                        ubicacionId,
+                                        transporteTexto
+                                    )
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { mapViewModel.hideRouteSelector() }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
+
         if (showGpsButton) {
             GpsEnableButton(onEnableGps = { showGpsButton = false })
+        }
+    }
+}
+
+// 🆕 Card de ruta con badge de seguridad
+@Composable
+fun RutaCard(route: RouteAlternative, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (route.isRecommended) Color(0xFFE8F5E9) else Color.White
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    route.displayName,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Badge ML
+                    if (route.isRecommended) {
+                        Badge(
+                            containerColor = Color(0xFF4CAF50)
+                        ) {
+                            Text("🤖 ML", fontSize = 10.sp, color = Color.White)
+                        }
+                    }
+
+                    // 🆕 Badge de Seguridad
+                    route.esSegura?.let { esSegura ->
+                        Badge(
+                            containerColor = if (esSegura) Color(0xFF4CAF50) else Color(0xFFF44336)
+                        ) {
+                            Text(
+                                if (esSegura) "✓ SEGURA" else "⚠ RIESGO",
+                                fontSize = 10.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Distancia y duración
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    "📏 ${(route.distance / 1000).roundToInt()} km",
+                    fontSize = 14.sp
+                )
+                Text(
+                    "⏱ ${(route.duration / 60).toInt()} min",
+                    fontSize = 14.sp
+                )
+            }
+
+            // 🆕 Mensaje de seguridad si existe
+            route.mensajeSeguridad?.let { mensaje ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    mensaje,
+                    fontSize = 12.sp,
+                    color = Color(0xFFF44336),
+                    fontStyle = FontStyle.Italic
+                )
+            }
+
+            // 🆕 Número de zonas detectadas
+            route.zonasDetectadas?.let { zonas ->
+                if (zonas.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "${zonas.size} zona(s) de riesgo detectada(s)",
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
         }
     }
 }

@@ -44,15 +44,6 @@ data class AvoidOptions(
     val avoid_features: List<String> = emptyList()
 )
 
-// Helper para convertir tipo ML a configuración OpenRouteService
-fun String.toORSConfig(): Pair<String, AvoidOptions?> {
-    return when (this) {
-        "fastest" -> "fastest" to null
-        "shortest" -> "shortest" to null
-        "recommended" -> "recommended" to null
-        else -> "fastest" to null
-    }
-}
 
 // función helper para mapear la instrucción a un tipo
 fun mapInstructionToType(instruction: String): Int {
@@ -113,14 +104,20 @@ data class RouteAlternative(
     val response: DirectionsResponse,
     val distance: Double,
     val duration: Double,
-    val isRecommended: Boolean
+    val isRecommended: Boolean,
+    //Campos de seguridad
+    val esSegura: Boolean? = null,
+    val nivelRiesgo: Int? = null,
+    val zonasDetectadas: List<ZonaDetectada>? = null,
+    val mensajeSeguridad: String? = null
 )
 
-fun getPreferenceDisplayName(preference: String): String {
-    return when (preference) {
-        "fastest" -> "Más Rápida"
-        "shortest" -> "Más Corta"
-        "recommended" -> "Recomendada ORS"
-        else -> preference
-    }
-}
+
+// 🔥 DATA CLASS PARA LAS ZONAS GUARDADAS
+data class ZonaGuardada(
+    val lat: Double,
+    val lon: Double,
+    val radio: Int,
+    val nombre: String,
+    val nivel: Int
+)
