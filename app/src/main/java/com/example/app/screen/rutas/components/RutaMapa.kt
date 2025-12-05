@@ -58,6 +58,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -76,6 +77,7 @@ import com.example.app.screen.mapa.MapControlButton
 import com.example.app.screen.mapa.RouteInfoCard
 import com.example.app.screen.mapa.SimpleMapOSM
 import com.example.app.screen.mapa.calcularDistancia
+import com.example.app.utils.LocationManager
 import com.example.app.utils.getModeDisplayName
 import com.example.app.utils.getNivelPeligroColor
 import com.example.app.viewmodel.MapViewModelFactory
@@ -92,6 +94,9 @@ fun RutaMapa(
     selectedLocationId: Int,
     navController: NavController,
 ) {
+    val context = LocalContext.current
+    val locationManager = remember { LocationManager.getInstance() }
+
     // Estados de ubicación y mapa
     val userLat = remember { mutableStateOf(defaultLat) }
     val userLon = remember { mutableStateOf(defaultLon) }
@@ -124,7 +129,7 @@ fun RutaMapa(
     var showSecurityAlert by remember { mutableStateOf(false) }
     var securityMessage by remember { mutableStateOf("") }
 
-    // 🆕 Estados de SEGURIDAD del ViewModel
+    // Estados de SEGURIDAD del ViewModel
     val mostrarAdvertenciaSeguridad by viewModel.mostrarAdvertenciaSeguridad
     val validacionSeguridad by viewModel.validacionSeguridad
     val alternativeRoutes by viewModel.alternativeRoutes
@@ -135,6 +140,23 @@ fun RutaMapa(
     val rutaIdActiva by viewModel.rutaIdActiva
     val mostrarAlertaDesobediencia by viewModel.mostrarAlertaDesobediencia
     val mensajeAlertaDesobediencia by viewModel.mensajeAlertaDesobediencia
+
+    // 🔥 NUEVO: Cargar ubicación desde caché
+    LaunchedEffect(Unit) {
+        val cachedLocation = locationManager.getLastKnownLocation()
+        if (cachedLocation != null) {
+            val ageSeconds = (System.currentTimeMillis() - cachedLocation.timestamp) / 1000
+            Log.d("RutaMapa", "⚡ Usando ubicación en caché (${ageSeconds}s de antigüedad)")
+
+            userLat.value = cachedLocation.latitude
+            userLon.value = cachedLocation.longitude
+            mapCenterLat = cachedLocation.latitude
+            mapCenterLon = cachedLocation.longitude
+            locationObtained = true
+        } else {
+            Log.d("RutaMapa", "⏳ No hay ubicación en caché, obteniendo nueva...")
+        }
+    }
 
     // Observar la alerta de desobediencia y convertirla en notificación
     LaunchedEffect(mostrarAlertaDesobediencia, mensajeAlertaDesobediencia) {
@@ -224,9 +246,13 @@ fun RutaMapa(
         }
     }
 
+    // 🔥 MEJORADO: LocationTracker con actualización de caché
     LocationTracker { lat, lon ->
         userLat.value = lat
         userLon.value = lon
+
+        // 🔥 Actualizar caché cuando hay nueva ubicación GPS
+        locationManager.updateLocation(lat, lon, "")
 
         if (rutaIdActiva != null) {
             viewModel.agregarPuntoGPSReal(lat, lon)
@@ -367,7 +393,7 @@ fun RutaMapa(
                     }
                 }
 
-                // 🆕 SELECTOR DE RUTAS CON SEGURIDAD
+                // SELECTOR DE RUTAS CON SEGURIDAD
                 if (showRouteSelector && alternativeRoutes.isNotEmpty()) {
                     RouteAlternativesDialogWithSecurity(
                         alternatives = alternativeRoutes,
@@ -393,7 +419,7 @@ fun RutaMapa(
                     )
                 }
 
-                // 🆕 ADVERTENCIA DE RUTA INSEGURA
+                // ADVERTENCIA DE RUTA INSEGURA
                 if (mostrarAdvertenciaSeguridad) {
                     val rutaPendiente = alternativeRoutes.find {
                         it.esSegura == false && (it.nivelRiesgo ?: 0) >= 3
@@ -553,14 +579,30 @@ fun RutaMapa(
                 )
             }
             else -> {
-                Box(
+                // 🔥 Pantalla de carga mientras obtiene ubicación
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background),
-                    contentAlignment = Alignment.Center
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Text(
+                        "Obteniendo ubicación...",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Esto puede tardar unos segundos",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     )
                 }
 
@@ -569,99 +611,20 @@ fun RutaMapa(
                         userLat.value = lat
                         userLon.value = lon
                         locationObtained = true
+
+                        // 🔥 Guardar en caché la primera ubicación obtenida
+                        locationManager.updateLocation(lat, lon, "")
+                        Log.d("RutaMapa", "✅ Primera ubicación obtenida y guardada en caché")
                     },
-                    onError = { showGpsButton = true },
+                    onError = {
+                        Log.e("RutaMapa", "Error de ubicación")
+                        showGpsButton = true
+                    },
                     onGpsDisabled = { showGpsButton = true }
                 )
             }
         }
     }
-}
-
-// 🆕 DIÁLOGO MEJORADO CON SEGURIDAD
-@Composable
-fun RouteAlternativesDialogWithSecurity(
-    alternatives: List<RouteAlternative>,
-    validacionSeguridad: ValidarRutasResponse?,
-    transportMode: String,
-    onSelectRoute: (RouteAlternative) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var selectedRoute by remember { mutableStateOf<RouteAlternative?>(null) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                "Selecciona tu ruta",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Advertencia general si ninguna es segura
-                validacionSeguridad?.advertenciaGeneral?.let { advertencia ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFFFEBEE)
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = Color.Red,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                advertencia,
-                                fontSize = 13.sp,
-                                color = Color(0xFFD32F2F)
-                            )
-                        }
-                    }
-                }
-
-                // Lista de rutas con chips mejorados
-                alternatives.forEach { route ->
-                    RouteChipCard(
-                        route = route,
-                        isSelected = selectedRoute == route,
-                        onClick = {
-                            selectedRoute = route
-                        }
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    selectedRoute?.let { onSelectRoute(it) }
-                    onDismiss()
-                },
-                enabled = selectedRoute != null
-            ) {
-                Text("Confirmar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
-    )
 }
 
 @Composable

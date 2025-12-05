@@ -57,19 +57,6 @@ class LocationManager private constructor() {
         }
     }
 
-    /**
-     * Verifica si tenemos una ubicación válida
-     */
-    fun hasValidLocation(maxAgeMillis: Long = 5 * 60 * 1000): Boolean {
-        return getLastKnownLocation(maxAgeMillis) != null
-    }
-
-    /**
-     * Marca la ubicación como cargando
-     */
-    fun setLoading() {
-        _locationState.value = LocationState.Loading
-    }
 
     /**
      * Marca un error en la ubicación
@@ -79,14 +66,6 @@ class LocationManager private constructor() {
         Log.e("LocationManager", "❌ Error de ubicación: $message")
     }
 
-    /**
-     * Limpia la ubicación guardada
-     */
-    fun clearLocation() {
-        lastKnownLocation = null
-        _locationState.value = LocationState.Loading
-        Log.d("LocationManager", "🗑️ Ubicación limpiada")
-    }
 }
 
 /**

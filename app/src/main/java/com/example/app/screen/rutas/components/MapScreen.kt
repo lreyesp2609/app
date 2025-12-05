@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
@@ -107,12 +108,10 @@ fun MapScreen(
 
     var showLocationCards by remember { mutableStateOf(true) }
 
-    // 🆕 ESTADOS PARA CREAR ZONA PELIGROSA
+    // Estados para zonas peligrosas
     var mostrarDialogoZona by remember { mutableStateOf(false) }
     var coordenadasZonaSeleccionada by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var radioPreview by remember { mutableStateOf(200) }
-
-    // 🔥 LISTA DE ZONAS CREADAS EN ESTA SESIÓN (para mostrarlas en el mapa)
     var zonasCreadas by remember { mutableStateOf<List<ZonaGuardada>>(emptyList()) }
 
     val ubicacionesViewModel: UbicacionesViewModel = viewModel(
@@ -126,15 +125,22 @@ fun MapScreen(
     val mostrarAdvertenciaSeguridad by mapViewModel.mostrarAdvertenciaSeguridad
     val validacionSeguridad by mapViewModel.validacionSeguridad
 
+    // Cargar desde caché
     LaunchedEffect(Unit) {
         val cachedLocation = locationManager.getLastKnownLocation()
         if (cachedLocation != null) {
-            Log.d("MapScreen", "⚡ Usando ubicación en caché")
+            val ageSeconds = (System.currentTimeMillis() - cachedLocation.timestamp) / 1000
+            Log.d("MapScreen", "⚡ Usando ubicación en caché (${ageSeconds}s de antigüedad)")
+
             currentLat = cachedLocation.latitude
             currentLon = cachedLocation.longitude
             currentAddress = cachedLocation.address
             selectedAddress = cachedLocation.address
+            mapCenterLat = cachedLocation.latitude
+            mapCenterLon = cachedLocation.longitude
             locationObtained = true
+        } else {
+            Log.d("MapScreen", "⏳ No hay ubicación en caché, obteniendo nueva...")
         }
     }
 
@@ -172,11 +178,9 @@ fun MapScreen(
                             mostrarDialogoZona = true
                             radioPreview = 200
                         },
-                        // Preview de la zona que se está creando
                         zonaPreviewLat = if (mostrarDialogoZona) coordenadasZonaSeleccionada?.first else null,
                         zonaPreviewLon = if (mostrarDialogoZona) coordenadasZonaSeleccionada?.second else null,
                         zonaPreviewRadio = if (mostrarDialogoZona) radioPreview else null,
-                        // 🔥 ZONAS YA CREADAS
                         zonasGuardadas = zonasCreadas
                     )
 
@@ -245,7 +249,11 @@ fun MapScreen(
                         Column(
                             modifier = Modifier
                                 .statusBarsPadding()
-                                .padding(top = 80.dp, start = 16.dp, end = 16.dp),
+                                .padding(
+                                    top = 80.dp,
+                                    start = 16.dp,
+                                    end = 16.dp
+                                ),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             CompactLocationCard(
@@ -301,12 +309,22 @@ fun MapScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
                     Text(
                         "Obteniendo ubicación...",
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground,
-                        style = MaterialTheme.typography.bodyMedium
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Esto puede tardar unos segundos",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     )
                 }
 
@@ -328,19 +346,24 @@ fun MapScreen(
                                 mapCenterLat = lat
                                 mapCenterLon = lon
                                 locationManager.updateLocation(lat, lon, address)
+
+                                Log.d("MapScreen", "✅ Nueva ubicación obtenida y guardada en caché")
                             } catch (e: Exception) {
                                 currentAddress = "Error obteniendo dirección"
                                 selectedAddress = "Error obteniendo dirección"
+                                Log.e("MapScreen", "Error obteniendo dirección: ${e.message}")
                             }
                         }
                     },
-                    onError = { /* manejar error */ },
+                    onError = { error ->
+                        Log.e("MapScreen", "Error de ubicación: $error")
+                    },
                     onGpsDisabled = { showGpsButton = true }
                 )
             }
         }
 
-        // 🔥 DIÁLOGO PARA CREAR ZONA PELIGROSA
+        // DIÁLOGO PARA CREAR ZONA PELIGROSA
         if (mostrarDialogoZona && coordenadasZonaSeleccionada != null) {
             DialogoCrearZonaPeligrosa(
                 coordenadas = coordenadasZonaSeleccionada!!,
@@ -370,7 +393,6 @@ fun MapScreen(
 
                             Log.d("MapScreen", "Zona creada: ID=${response.id}, Radio=${radio}m")
 
-                            // 🔥 AGREGAR LA ZONA A LA LISTA PARA MOSTRARLA EN EL MAPA
                             zonasCreadas = zonasCreadas + ZonaGuardada(
                                 lat = coordenadasZonaSeleccionada!!.first,
                                 lon = coordenadasZonaSeleccionada!!.second,
@@ -401,7 +423,7 @@ fun MapScreen(
             )
         }
 
-        // SELECTOR DE RUTAS (resto del código igual)
+        // SELECTOR DE RUTAS
         if (showRouteSelector) {
             AlertDialog(
                 onDismissRequest = { mapViewModel.hideRouteSelector() },
@@ -480,7 +502,6 @@ fun MapScreen(
     }
 }
 
-// 🆕 Card de ruta con badge de seguridad
 @Composable
 fun RutaCard(route: RouteAlternative, onClick: () -> Unit) {
     Card(

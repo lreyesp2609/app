@@ -29,14 +29,12 @@ class LocationReminderService : Service() {
     private lateinit var repository: ReminderRepository
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val activeGeofences = mutableSetOf<Int>()
-
-    // 🔥 NUEVO: WakeLock para mantener el servicio activo
     private var wakeLock: PowerManager.WakeLock? = null
 
     companion object {
         private const val NOTIFICATION_ID = 12345
         private const val CHANNEL_ID = "location_reminder_service"
-        private const val CHANNEL_NAME = "Servicio de Recordatorios por Ubicación"
+        private const val CHANNEL_NAME = "Servicio de Recordatorios"
 
         fun start(context: Context) {
             val intent = Intent(context, LocationReminderService::class.java)
@@ -57,7 +55,6 @@ class LocationReminderService : Service() {
         super.onCreate()
         Log.d("LocationService", "🚀 Servicio de ubicación creado")
 
-        // 🔥 NUEVO: Adquirir WakeLock
         acquireWakeLock()
 
         val database = AppDatabase.getDatabase(applicationContext)
@@ -71,7 +68,6 @@ class LocationReminderService : Service() {
         startLocationUpdates()
     }
 
-    // 🔥 NUEVO: Adquirir WakeLock para mantener el servicio activo
     private fun acquireWakeLock() {
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
@@ -84,14 +80,16 @@ class LocationReminderService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // 🔥 CAMBIO: DEFAULT en lugar de LOW para el servicio
+            // 🔥 IMPORTANTE: Usar LOW para que sea menos intrusiva
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT // 🔥 Cambiado de LOW a DEFAULT
+                NotificationManager.IMPORTANCE_LOW // 🔥 LOW = sin sonido ni vibración
             ).apply {
-                description = "Rastrea tu ubicación para recordatorios basados en geolocalización"
-                setShowBadge(false)
+                description = "Monitoreo de ubicación para recordatorios"
+                setShowBadge(false) // No mostrar badge en el ícono de la app
+                setSound(null, null) // Sin sonido
+                enableVibration(false) // Sin vibración
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
@@ -99,10 +97,26 @@ class LocationReminderService : Service() {
     }
 
     private fun createForegroundNotification(): Notification {
+        // Intent para abrir la app al tocar la notificación
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOngoing(true)
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation) // 🔥 Ícono de ubicación
+            .setContentTitle("RecuerdaGo activo")
+            .setContentText("Monitoreando recordatorios por ubicación")
+            .setPriority(NotificationCompat.PRIORITY_LOW) // 🔥 Prioridad baja
+            .setOngoing(true) // No se puede deslizar para cerrar
+            .setContentIntent(pendingIntent) // Abre la app al tocar
+            .setSound(null) // Sin sonido
+            .setVibrate(null) // Sin vibración
             .build()
     }
 
@@ -223,12 +237,9 @@ class LocationReminderService : Service() {
     private fun triggerLocationNotification(reminder: ReminderEntity, transition: String) {
         Log.d("LocationService", "🔔 CREANDO NOTIFICACIÓN:")
 
-        // 🔥 DESPERTAR DISPOSITIVO
         NotificationHelper.wakeUpDevice(applicationContext)
-
         NotificationHelper.createNotificationChannel(applicationContext)
 
-        // 🔥 Intent para pantalla completa
         val fullScreenIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("reminder_id", reminder.id)
@@ -244,12 +255,12 @@ class LocationReminderService : Service() {
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(reminder.title)
             .setContentText("${reminder.description ?: "Sin descripción"} ($transition)")
-            .setPriority(NotificationCompat.PRIORITY_MAX) // 🔥 PRIORITY_MAX
-            .setCategory(NotificationCompat.CATEGORY_ALARM) // 🔥 CATEGORY_ALARM
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
-            .setFullScreenIntent(fullScreenPendingIntent, true) // 🔥 Pantalla completa
+            .setFullScreenIntent(fullScreenPendingIntent, true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setDefaults(NotificationCompat.DEFAULT_ALL) // 🔥 DEFAULT_ALL
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
 
         if (reminder.sound) {
             builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
@@ -284,7 +295,6 @@ class LocationReminderService : Service() {
         super.onDestroy()
         Log.d("LocationService", "🛑 Servicio destruido")
 
-        // 🔥 LIBERAR WAKELOCK
         wakeLock?.let {
             if (it.isHeld) {
                 it.release()
