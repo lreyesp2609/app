@@ -29,7 +29,6 @@ class MapViewModel(
 
     private val _rutaIdActiva = mutableStateOf<Int?>(null)
     val rutaIdActiva: State<Int?> = _rutaIdActiva
-
     private val _mostrarOpcionesFinalizar = mutableStateOf(false)
     val mostrarOpcionesFinalizar: State<Boolean> = _mostrarOpcionesFinalizar
 
@@ -67,6 +66,74 @@ class MapViewModel(
     private val _rutasGeneradasEvitandoZonas = mutableStateOf(false)
     val rutasGeneradasEvitandoZonas: State<Boolean> = _rutasGeneradasEvitandoZonas
 
+    private val _zonasPeligrosas = mutableStateOf<List<ZonaPeligrosaResponse>>(emptyList())
+    val zonasPeligrosas: State<List<ZonaPeligrosaResponse>> = _zonasPeligrosas
+
+    private val _mostrarZonasPeligrosas = mutableStateOf(true)
+    val mostrarZonasPeligrosas: State<Boolean> = _mostrarZonasPeligrosas
+
+    private val _cargandoZonas = mutableStateOf(false)
+    val cargandoZonas: State<Boolean> = _cargandoZonas
+
+    // 🆕 FUNCIÓN PARA CARGAR ZONAS PELIGROSAS
+    fun cargarZonasPeligrosas(token: String) {
+        viewModelScope.launch {
+            try {
+                _cargandoZonas.value = true
+                Log.d("MapViewModel", "🔄 Cargando zonas peligrosas del usuario...")
+
+                val zonas = RetrofitClient.rutasApiService.obtenerMisZonasPeligrosas(
+                    token = "Bearer $token",
+                    activasSolo = true
+                )
+
+                _zonasPeligrosas.value = zonas
+                Log.d("MapViewModel", "✅ ${zonas.size} zonas peligrosas cargadas")
+
+                // 🔍 Debug: Mostrar las primeras coordenadas
+                zonas.firstOrNull()?.let { zona ->
+                    Log.d("MapViewModel", "📍 Primera zona: ${zona.nombre}")
+                    Log.d("MapViewModel", "   Centro: lat=${zona.poligono.firstOrNull()?.lat}, lon=${zona.poligono.firstOrNull()?.lon}")
+                    Log.d("MapViewModel", "   Radio: ${zona.radioMetros}m")
+                }
+
+            } catch (e: Exception) {
+                Log.e("MapViewModel", "❌ Error cargando zonas peligrosas: ${e.message}", e)
+                _zonasPeligrosas.value = emptyList()
+            } finally {
+                _cargandoZonas.value = false
+            }
+        }
+    }
+
+    // 🆕 TOGGLE PARA MOSTRAR/OCULTAR ZONAS
+    fun toggleMostrarZonas() {
+        _mostrarZonasPeligrosas.value = !_mostrarZonasPeligrosas.value
+        Log.d("MapViewModel", "👁️ Zonas peligrosas: ${if (_mostrarZonasPeligrosas.value) "VISIBLES" else "OCULTAS"}")
+    }
+
+    // 🆕 FUNCIÓN PARA OBTENER COLOR SEGÚN NIVEL DE PELIGRO
+    fun getColorForDangerLevel(nivel: Int, isDarkTheme: Boolean): Int {
+        return when (nivel) {
+            1, 2 -> if (isDarkTheme) {
+                android.graphics.Color.argb(100, 251, 191, 36) // Warning con alpha
+            } else {
+                android.graphics.Color.argb(100, 245, 158, 11)
+            }
+            3, 4 -> if (isDarkTheme) {
+                android.graphics.Color.argb(120, 249, 115, 22) // WarningDark con alpha
+            } else {
+                android.graphics.Color.argb(120, 234, 88, 12)
+            }
+            5 -> if (isDarkTheme) {
+                android.graphics.Color.argb(140, 239, 68, 68) // Danger con alpha
+            } else {
+                android.graphics.Color.argb(140, 220, 38, 38)
+            }
+            else -> android.graphics.Color.argb(100, 156, 163, 175) // Gray por defecto
+        }
+    }
+
     // 🔥 FUNCIÓN PRINCIPAL MODIFICADA
     fun fetchAllRouteAlternatives(
         start: Pair<Double, Double>,
@@ -96,14 +163,17 @@ class MapViewModel(
 
                             val response = RetrofitInstance.api.getRoute(currentMode, request)
                             val route = response.routes.firstOrNull()
+                            Log.d("MapViewModel", "🚗 Modo actual: $currentMode")
+                            Log.d("MapViewModel", "📤 Enviando request a ORS con avoid_polygons")
 
                             RouteAlternative(
                                 type = preference,
                                 displayName = getPreferenceDisplayName(preference),
                                 response = response.copy(profile = currentMode),
-                                distance = route?.summary?.distance ?: 0.0,
+                                distance = (route?.summary?.distance ?: 0.0) * 1000,
                                 duration = route?.summary?.duration ?: 0.0,
                                 isRecommended = false
+
                             )
                         } catch (e: Exception) {
                             Log.e("MapViewModel", "Error calculando ruta $preference", e)
@@ -621,11 +691,16 @@ class MapViewModel(
                             val response = RetrofitInstance.api.getRoute(currentMode, request)
                             val route = response.routes.firstOrNull()
 
+                            Log.d("MapViewModel", "📊 Respuesta ORS para $preference:")
+                            Log.d("MapViewModel", "   - Distancia: ${route?.summary?.distance}")
+                            Log.d("MapViewModel", "   - Duración: ${route?.summary?.duration}")
+                            Log.d("MapViewModel", "   - Geometry: ${route?.geometry?.take(50)}...")
+
                             RouteAlternative(
                                 type = preference,
                                 displayName = getPreferenceDisplayName(preference),
                                 response = response.copy(profile = currentMode),
-                                distance = route?.summary?.distance ?: 0.0,
+                                distance = (route?.summary?.distance ?: 0.0) * 1000,
                                 duration = route?.summary?.duration ?: 0.0,
                                 isRecommended = false
                             )
@@ -749,5 +824,11 @@ class MapViewModel(
     fun ocultarOpcionesFinalizar() {
         _mostrarOpcionesFinalizar.value = false
         _rutaIdActiva.value = null
+    }
+
+
+    override fun onCleared() {
+        super.onCleared()
+        _zonasPeligrosas.value = emptyList()
     }
 }

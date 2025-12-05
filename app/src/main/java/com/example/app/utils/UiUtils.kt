@@ -117,7 +117,7 @@ fun DialogoCrearZonaPeligrosa(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                "Zona Peligrosa",
+                                "Zona peligrosa",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )

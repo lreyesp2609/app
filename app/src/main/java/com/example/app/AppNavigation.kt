@@ -43,20 +43,22 @@ import com.example.app.screen.rutas.components.EstadisticasScreen
 import com.example.app.screen.rutas.components.MapScreen
 import com.example.app.screen.rutas.components.RutaMapa
 import com.example.app.services.LocationTrackingService
+import com.example.app.utils.GlobalNotification
 import com.example.app.viewmodel.AuthViewModel
 import com.example.app.viewmodel.MapViewModel
 import com.example.app.viewmodel.MapViewModelFactory
+import com.example.app.viewmodel.NotificationViewModel
 import com.example.app.viewmodel.UbicacionesViewModel
 import com.example.app.viewmodel.UbicacionesViewModelFactory
 import com.example.app.websocket.NotificationWebSocketManager
 import com.example.app.websocket.WebSocketLocationManager
 import com.example.app.websocket.WebSocketManager
-import kotlinx.coroutines.delay
 
 @Composable
 fun AppNavigation(authViewModel: AuthViewModel) {
     val navController = rememberNavController()
     val context = LocalContext.current
+    val notificationViewModel: NotificationViewModel = viewModel()
 
     val isLoggedIn = authViewModel.isLoggedIn
     val isLoading = authViewModel.isLoading
@@ -150,232 +152,245 @@ fun AppNavigation(authViewModel: AuthViewModel) {
         return
     }
 
-    NavHost(navController = navController, startDestination = startDestination) {
-        composable("login") {
-            LoginScreen(navController = navController, authViewModel = authViewModel)
-        }
-        composable("register") {
-            RegisterScreen(navController = navController, authViewModel = authViewModel)
-        }
-
-        composable(
-            route = "home?skipPermissions={skipPermissions}",
-            arguments = listOf(
-                navArgument("skipPermissions") {
-                    type = NavType.BoolType
-                    defaultValue = false
-                }
-            )
-        ) { backStackEntry ->
-            val skipPermissions = backStackEntry.arguments?.getBoolean("skipPermissions") ?: false
-
-            HomeScreen(
-                authViewModel = authViewModel,
-                navController = navController,
-                skipPermissions = skipPermissions
-            )
-        }
-
-        composable("rutas") {
-            val token = authViewModel.accessToken ?: ""
-            AlternateRoutesScreen(
-                navController = navController,
-                token = token
-            )
-        }
-        composable("mapa") {
-            MapScreen(navController = navController)
-        }
-
-        composable(
-            "rutas_screen/{id}",
-            arguments = listOf(navArgument("id") { type = NavType.IntType })
-        ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getInt("id") ?: 0
-            val token = authViewModel.accessToken ?: ""
-
-            val mapViewModel: MapViewModel = viewModel(
-                factory = MapViewModelFactory()
-            )
-
-            val viewModel: UbicacionesViewModel = viewModel(
-                factory = UbicacionesViewModelFactory(token)
-            )
-
-            LaunchedEffect(id) {
-                viewModel.cargarUbicacionPorId(id)
-                mapViewModel.setToken(token)
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(navController = navController, startDestination = startDestination) {
+            composable("login") {
+                LoginScreen(
+                    navController = navController,
+                    authViewModel = authViewModel,
+                    notificationViewModel = notificationViewModel
+                )
+            }
+            composable("register") {
+                RegisterScreen(
+                    navController = navController,
+                    authViewModel = authViewModel,
+                    notificationViewModel = notificationViewModel
+                )
             }
 
-            val ubicacion = viewModel.ubicacionSeleccionada
-            val selectedLocationId = ubicacion?.id ?: 0
-
-            RutaMapa(
-                defaultLat = 0.0,
-                defaultLon = 0.0,
-                ubicaciones = if (ubicacion != null) listOf(ubicacion) else emptyList(),
-                viewModel = mapViewModel,
-                token = token,
-                selectedLocationId = selectedLocationId,
-                navController = navController
-            )
-        }
-
-        composable(
-            "estadisticas/{id}",
-            arguments = listOf(navArgument("id") { type = NavType.IntType })
-        ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getInt("id") ?: 0
-            val token = authViewModel.accessToken ?: ""
-
-            EstadisticasScreen(
-                ubicacionId = id,
-                token = token,
-                navController = navController
-            )
-        }
-
-        composable("grupos") {
-            val token = authViewModel.accessToken ?: ""
-            CollaborativeGroupsScreen(
-                navController = navController,
-                token = token
-            )
-        }
-
-        composable("settings") {
-            SettingsScreen(
-                userState = authViewModel.user,
-                onLogout = {
-                    Log.d("AppNavigation", "🔒 LOGOUT: CERRANDO TODOS LOS WEBSOCKETS")
-
-                    // ✅ Cerrar NUEVO servicio de rastreo
-                    if (LocationTrackingService.isTracking(context)) {
-                        LocationTrackingService.stopAllTracking(context)
-                        Log.d("AppNavigation", "🛑 Todos los servicios de rastreo detenidos")
+            composable(
+                route = "home?skipPermissions={skipPermissions}",
+                arguments = listOf(
+                    navArgument("skipPermissions") {
+                        type = NavType.BoolType
+                        defaultValue = false
                     }
+                )
+            ) { backStackEntry ->
+                val skipPermissions = backStackEntry.arguments?.getBoolean("skipPermissions") ?: false
 
-                    // Ahora sí cerrar todos los WebSockets
-                    NotificationWebSocketManager.close()
-                    WebSocketManager.close()
-                    WebSocketLocationManager.close()
+                HomeScreen(
+                    authViewModel = authViewModel,
+                    navController = navController,
+                    skipPermissions = skipPermissions
+                )
+            }
 
-                    authViewModel.logout(context) {
-                        navController.navigate("login") {
-                            popUpTo("home") { inclusive = true }
+            composable("rutas") {
+                val token = authViewModel.accessToken ?: ""
+                AlternateRoutesScreen(
+                    navController = navController,
+                    token = token
+                )
+            }
+            composable("mapa") {
+                MapScreen(navController = navController,
+                    notificationViewModel = notificationViewModel
+                )
+            }
+
+            composable(
+                "rutas_screen/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val id = backStackEntry.arguments?.getInt("id") ?: 0
+                val token = authViewModel.accessToken ?: ""
+
+                val mapViewModel: MapViewModel = viewModel(
+                    factory = MapViewModelFactory()
+                )
+
+                val viewModel: UbicacionesViewModel = viewModel(
+                    factory = UbicacionesViewModelFactory(token)
+                )
+
+                LaunchedEffect(id) {
+                    viewModel.cargarUbicacionPorId(id)
+                    mapViewModel.setToken(token)
+                }
+
+                val ubicacion = viewModel.ubicacionSeleccionada
+                val selectedLocationId = ubicacion?.id ?: 0
+
+                RutaMapa(
+                    defaultLat = 0.0,
+                    defaultLon = 0.0,
+                    ubicaciones = if (ubicacion != null) listOf(ubicacion) else emptyList(),
+                    viewModel = mapViewModel,
+                    token = token,
+                    selectedLocationId = selectedLocationId,
+                    navController = navController
+                )
+            }
+
+            composable(
+                "estadisticas/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val id = backStackEntry.arguments?.getInt("id") ?: 0
+                val token = authViewModel.accessToken ?: ""
+
+                EstadisticasScreen(
+                    ubicacionId = id,
+                    token = token,
+                    navController = navController
+                )
+            }
+
+            composable("grupos") {
+                val token = authViewModel.accessToken ?: ""
+                CollaborativeGroupsScreen(
+                    navController = navController,
+                    token = token
+                )
+            }
+
+            composable("settings") {
+                SettingsScreen(
+                    userState = authViewModel.user,
+                    onLogout = {
+                        Log.d("AppNavigation", "🔒 LOGOUT: CERRANDO TODOS LOS WEBSOCKETS")
+
+                        // ✅ Cerrar NUEVO servicio de rastreo
+                        if (LocationTrackingService.isTracking(context)) {
+                            LocationTrackingService.stopAllTracking(context)
+                            Log.d("AppNavigation", "🛑 Todos los servicios de rastreo detenidos")
+                        }
+
+                        // Ahora sí cerrar todos los WebSockets
+                        NotificationWebSocketManager.close()
+                        WebSocketManager.close()
+                        WebSocketLocationManager.close()
+
+                        authViewModel.logout(context) {
+                            navController.navigate("login") {
+                                popUpTo("home") { inclusive = true }
+                            }
                         }
                     }
-                }
-            )
-        }
+                )
+            }
 
-        composable("reminder_map") {
-            ReminderMapScreen(
-                navController = navController,
-                onLocationSelected = { lat, lon, address ->
-                    navController.navigate(
-                        "add_reminder/${Uri.encode(address)}/$lat/$lon"
-                    )
-                }
-            )
-        }
+            composable("reminder_map") {
+                ReminderMapScreen(
+                    navController = navController,
+                    onLocationSelected = { lat, lon, address ->
+                        navController.navigate(
+                            "add_reminder/${Uri.encode(address)}/$lat/$lon"
+                        )
+                    }
+                )
+            }
 
-        composable(
-            route = "add_reminder/{selectedAddress}/{latitude}/{longitude}",
-            arguments = listOf(
-                navArgument("selectedAddress") { type = NavType.StringType },
-                navArgument("latitude") { type = NavType.StringType },
-                navArgument("longitude") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val selectedAddress = backStackEntry.arguments?.getString("selectedAddress") ?: ""
-            val latitude = backStackEntry.arguments?.getString("latitude")?.toDoubleOrNull()
-            val longitude = backStackEntry.arguments?.getString("longitude")?.toDoubleOrNull()
+            composable(
+                route = "add_reminder/{selectedAddress}/{latitude}/{longitude}",
+                arguments = listOf(
+                    navArgument("selectedAddress") { type = NavType.StringType },
+                    navArgument("latitude") { type = NavType.StringType },
+                    navArgument("longitude") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val selectedAddress = backStackEntry.arguments?.getString("selectedAddress") ?: ""
+                val latitude = backStackEntry.arguments?.getString("latitude")?.toDoubleOrNull()
+                val longitude = backStackEntry.arguments?.getString("longitude")?.toDoubleOrNull()
 
-            AddReminderScreen(
-                navController = navController,
-                selectedAddress = selectedAddress,
-                latitude = latitude,
-                longitude = longitude
-            )
-        }
+                AddReminderScreen(
+                    navController = navController,
+                    selectedAddress = selectedAddress,
+                    latitude = latitude,
+                    longitude = longitude
+                )
+            }
 
-        composable(
-            route = "home?tab={tab}",
-            arguments = listOf(
-                navArgument("tab") {
-                    type = NavType.IntType
-                    defaultValue = 0
-                }
-            )
-        ) { backStackEntry ->
-            val initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
-            HomeScreen(
-                authViewModel = authViewModel,
-                navController = navController,
-                initialTab = initialTab,
-                skipPermissions = false
-            )
-        }
-        composable("create_group") {
-            val token = authViewModel.accessToken ?: ""
-            CreateGroupScreen(
-                token = token,
-                navController = navController
-            )
-        }
-        composable(
-            route = "chat_grupo/{grupoId}/{grupoNombre}",
-            arguments = listOf(
-                navArgument("grupoId") { type = NavType.IntType },
-                navArgument("grupoNombre") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
-            val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
+            composable(
+                route = "home?tab={tab}",
+                arguments = listOf(
+                    navArgument("tab") {
+                        type = NavType.IntType
+                        defaultValue = 0
+                    }
+                )
+            ) { backStackEntry ->
+                val initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
+                HomeScreen(
+                    authViewModel = authViewModel,
+                    navController = navController,
+                    initialTab = initialTab,
+                    skipPermissions = false
+                )
+            }
+            composable("create_group") {
+                val token = authViewModel.accessToken ?: ""
+                CreateGroupScreen(
+                    token = token,
+                    navController = navController
+                )
+            }
+            composable(
+                route = "chat_grupo/{grupoId}/{grupoNombre}",
+                arguments = listOf(
+                    navArgument("grupoId") { type = NavType.IntType },
+                    navArgument("grupoNombre") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
+                val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
 
-            // ✅ El LocationTrackingService se inicia desde GrupoMapScreen
-            // Aquí solo mostramos el chat
-            ChatGrupoScreen(
-                grupoId = grupoId,
-                grupoNombre = grupoNombre,
-                navController = navController,
-            )
-        }
-        // En tu NavHost, agrega esta ruta:
-        composable(
-            route = "grupo_detalle/{grupoId}/{grupoNombre}",
-            arguments = listOf(
-                navArgument("grupoId") { type = NavType.IntType },
-                navArgument("grupoNombre") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
-            val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
+                // ✅ El LocationTrackingService se inicia desde GrupoMapScreen
+                // Aquí solo mostramos el chat
+                ChatGrupoScreen(
+                    grupoId = grupoId,
+                    grupoNombre = grupoNombre,
+                    navController = navController,
+                )
+            }
+            // En tu NavHost, agrega esta ruta:
+            composable(
+                route = "grupo_detalle/{grupoId}/{grupoNombre}",
+                arguments = listOf(
+                    navArgument("grupoId") { type = NavType.IntType },
+                    navArgument("grupoNombre") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
+                val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
 
-            GrupoDetalleScreen(
-                grupoId = grupoId,
-                grupoNombre = grupoNombre,
-                navController = navController
-            )
-        }
+                GrupoDetalleScreen(
+                    grupoId = grupoId,
+                    grupoNombre = grupoNombre,
+                    navController = navController
+                )
+            }
 
-        // En tu NavHost, agrega esta ruta:
-        composable(
-            route = "participantes/{grupoId}/{grupoNombre}",
-            arguments = listOf(
-                navArgument("grupoId") { type = NavType.IntType },
-                navArgument("grupoNombre") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
-            val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
+            // En tu NavHost, agrega esta ruta:
+            composable(
+                route = "participantes/{grupoId}/{grupoNombre}",
+                arguments = listOf(
+                    navArgument("grupoId") { type = NavType.IntType },
+                    navArgument("grupoNombre") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
+                val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
 
-            ParticipantesScreen(
-                grupoId = grupoId,
-                grupoNombre = grupoNombre,
-                navController = navController
-            )
+                ParticipantesScreen(
+                    grupoId = grupoId,
+                    grupoNombre = grupoNombre,
+                    navController = navController
+                )
+            }
         }
+        GlobalNotification(notificationViewModel = notificationViewModel)
     }
 }

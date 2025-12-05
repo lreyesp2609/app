@@ -41,11 +41,6 @@ data class DirectionsRequest(
     val options: DirectionsOptions? = null  // 🔥 CAMBIO: de AvoidOptions a DirectionsOptions
 )
 
-// Puedes eliminar AvoidOptions si no la usas, o mantenerla si la necesitas para otro propósito
-data class AvoidOptions(
-    val avoid_features: List<String> = emptyList()
-)
-
 data class DirectionsOptions(
     @SerializedName("avoid_polygons")
     val avoid_polygons: Map<String, Any>? = null,  // ✅ Map en lugar de List

@@ -40,19 +40,6 @@ class MainActivity : ComponentActivity() {
             AuthViewModel.AuthViewModelFactory(this)
         )[AuthViewModel::class.java]
 
-        // 🔥 SOLICITAR EXCLUSIÓN DE OPTIMIZACIÓN DE BATERÍA
-        // Esto debe hacerse ANTES de iniciar el servicio
-        // requestBatteryOptimizationExemption()
-
-        // 🔹 SOLO iniciar el servicio SI los permisos están concedidos
-        // if (hasLocationPermissions()) {
-           // LocationReminderService.start(this)
-            // Log.d("MainActivity", "✅ Servicio de ubicación iniciado")
-        // } else {
-           // Log.w("MainActivity", "⚠️ Permisos de ubicación no concedidos, servicio no iniciado")
-        // }
-
-        // Configurar barras del sistema para toda la app
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.navigationBarColor = Color.Black.toArgb()
         window.statusBarColor = Color.Black.toArgb()

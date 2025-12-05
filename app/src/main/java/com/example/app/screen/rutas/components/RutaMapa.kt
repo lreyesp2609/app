@@ -1,10 +1,7 @@
 package com.example.app.screen.rutas.components
 
 import android.util.Log
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +16,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -30,17 +26,15 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,7 +48,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -64,9 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.app.models.RouteAlternative
 import com.example.app.models.UbicacionUsuarioResponse
-import com.example.app.models.ValidarRutasResponse
 import com.example.app.viewmodel.decodePolyline
 import com.example.app.viewmodel.MapViewModel
 import kotlin.collections.isNotEmpty
@@ -140,6 +131,18 @@ fun RutaMapa(
     val rutaIdActiva by viewModel.rutaIdActiva
     val mostrarAlertaDesobediencia by viewModel.mostrarAlertaDesobediencia
     val mensajeAlertaDesobediencia by viewModel.mensajeAlertaDesobediencia
+
+    val zonasPeligrosas by viewModel.zonasPeligrosas
+    val mostrarZonasPeligrosas by viewModel.mostrarZonasPeligrosas
+    val cargandoZonas by viewModel.cargandoZonas
+
+    // 🆕 CARGAR ZONAS AL INICIAR
+    LaunchedEffect(token) {
+        if (token.isNotEmpty()) {
+            viewModel.cargarZonasPeligrosas(token)
+        }
+    }
+
 
     // 🔥 NUEVO: Cargar ubicación desde caché
     LaunchedEffect(Unit) {
@@ -284,6 +287,9 @@ fun RutaMapa(
                     routeGeometry = currentRoute?.routes?.firstOrNull()?.geometry,
                     zoomInTrigger = zoomInTrigger,
                     zoomOutTrigger = zoomOutTrigger,
+                    zonasPeligrosas = zonasPeligrosas,
+                    mostrarZonasPeligrosas = mostrarZonasPeligrosas,
+                    viewModel = viewModel,
                     modifier = Modifier.fillMaxSize()
                 )
 
@@ -329,6 +335,20 @@ fun RutaMapa(
                             recenterTrigger++
                         }
                     )
+
+                    // 🆕 BOTÓN TOGGLE ZONAS PELIGROSAS
+                    if (zonasPeligrosas.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        MapControlButton(
+                            icon = if (mostrarZonasPeligrosas) {
+                                Icons.Default.Visibility
+                            } else {
+                                Icons.Default.VisibilityOff
+                            },
+                            onClick = { viewModel.toggleMostrarZonas() },
+                            badge = zonasPeligrosas.size.toString()
+                        )
+                    }
                 }
 
                 // Información de la ruta
@@ -393,7 +413,6 @@ fun RutaMapa(
                     }
                 }
 
-                // SELECTOR DE RUTAS CON SEGURIDAD
                 // SELECTOR DE RUTAS CON SEGURIDAD
                 if (showRouteSelector && alternativeRoutes.isNotEmpty()) {
                     // 🆕 Obtener estados adicionales del ViewModel
@@ -652,164 +671,6 @@ fun RutaMapa(
     }
 }
 
-@Composable
-fun RouteChipCard(
-    route: RouteAlternative,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val isDarkTheme = isSystemInDarkTheme()
-
-    // 🔥 FIX: Usa colores del tema que tienen buen contraste
-    val backgroundColor = when {
-        isSelected -> MaterialTheme.colorScheme.primaryContainer
-        route.esSegura == false -> if (isDarkTheme) {
-            Color(0xFF3E2723) // Marrón oscuro para tema oscuro
-        } else {
-            Color(0xFFFFEBEE) // Rosa claro para tema claro
-        }
-        route.isRecommended -> MaterialTheme.colorScheme.tertiaryContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant // ← Mejor que surface
-    }
-
-    val contentColor = when {
-        isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant // ← Garantiza contraste
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 8.dp else 2.dp
-        ),
-        border = if (isSelected) {
-            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-        } else null
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = getPreferenceIcon(route.type),
-                        contentDescription = null,
-                        // 🔥 FIX: Usa primary solo cuando NO está seleccionado
-                        tint = if (isSelected) {
-                            contentColor
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                        modifier = Modifier.size(24.dp)
-                    )
-
-                    Text(
-                        text = route.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = contentColor // ← Asegura legibilidad
-                    )
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (route.isRecommended) {
-                        Badge(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        ) {
-                            Text("🤖 ML", fontSize = 10.sp, color = Color.White)
-                        }
-                    }
-
-                    route.esSegura?.let { esSegura ->
-                        Badge(
-                            containerColor = if (esSegura) {
-                                Color(0xFF4CAF50)
-                            } else {
-                                Color(0xFFF44336)
-                            }
-                        ) {
-                            Text(
-                                if (esSegura) "✓ SEGURA" else "⚠ RIESGO",
-                                fontSize = 10.sp,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                InfoChip(
-                    icon = Icons.Default.Straighten,
-                    text = "${(route.distance / 1000).roundToInt()} km",
-                    contentColor = contentColor
-                )
-                InfoChip(
-                    icon = Icons.Default.Schedule,
-                    text = "${(route.duration / 60).toInt()} min",
-                    contentColor = contentColor
-                )
-            }
-
-            route.mensajeSeguridad?.let { mensaje ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    mensaje,
-                    fontSize = 12.sp,
-                    color = if (isDarkTheme) Color(0xFFFFCDD2) else Color(0xFFC62828),
-                    fontStyle = FontStyle.Italic
-                )
-            }
-
-            route.zonasDetectadas?.let { zonas ->
-                if (zonas.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "${zonas.size} zona(s) de riesgo detectada(s)",
-                        fontSize = 11.sp,
-                        color = contentColor.copy(alpha = 0.7f)
-                    )
-                }
-            }
-        }
-    }
-}
-
-// 🔥 FIX: InfoChip también necesita contentColor
-@Composable
-fun InfoChip(icon: ImageVector, text: String, contentColor: Color = MaterialTheme.colorScheme.onSurface) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(16.dp)
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = contentColor
-        )
-    }
-}
 
 @Composable
 fun TransportModeButtons(

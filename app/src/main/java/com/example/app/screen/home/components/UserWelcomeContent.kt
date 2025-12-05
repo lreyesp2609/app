@@ -21,49 +21,39 @@ import com.example.app.models.User
 
 @Composable
 fun UserWelcomeContent(userState: Any?) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        shape = MaterialTheme.shapes.large
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            val userName = (userState as? User)?.let { "${it.nombre} ${it.apellido}" } ?: "Usuario"
+        val userName = (userState as? User)?.let { "${it.nombre} ${it.apellido}" } ?: "Usuario"
 
-            androidx.compose.material3.Icon(
-                imageVector = androidx.compose.material.icons.Icons.Default.Person,
-                contentDescription = "User Icon",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .padding(bottom = 12.dp)
-                    .height(48.dp)
-            )
+        androidx.compose.material3.Icon(
+            imageVector = androidx.compose.material.icons.Icons.Default.Person,
+            contentDescription = "User Icon",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .padding(bottom = 12.dp)
+                .height(48.dp)
+        )
 
-            Text(
-                text = "¡Bienvenido, $userName!",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center
-            )
+        Text(
+            text = "¡Bienvenido, $userName!",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center
+        )
 
-            Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = "Nos alegra tenerte de vuelta.\nExplora las nuevas rutas y disfruta tu experiencia.",
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp
-            )
-        }
+        Text(
+            text = "Nos alegra tenerte de vuelta.\nExplora las nuevas rutas y disfruta tu experiencia.",
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp
+        )
     }
 }
-

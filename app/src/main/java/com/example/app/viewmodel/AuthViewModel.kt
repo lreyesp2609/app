@@ -105,7 +105,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
     }
 
     // 🔹 Función de login (actualizada)
-    fun login(email: String, password: String, onSuccess: () -> Unit) {
+    fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             isLoading = true
             errorMessage = null // Limpiar errores anteriores
@@ -123,7 +123,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                             // ✅ NUEVO: Restaurar recordatorios después del login
                             restoreUserReminders(context, loginResponse.accessToken)
                             enviarTokenFCMPendiente()
-                            onSuccess()
+                            onResult(true)
                         }                    },
                     onFailure = { exception ->
                         isLoggedIn = false
@@ -152,6 +152,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                                 "Error al iniciar sesión. Inténtalo nuevamente"
                             }
                         }
+                        onResult(false)
                     }
                 )
         }

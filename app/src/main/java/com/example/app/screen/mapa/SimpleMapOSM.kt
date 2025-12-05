@@ -3,6 +3,8 @@ package com.example.app.screen.mapa
 import android.content.Context
 import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.OvalShape
+import android.util.Log
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -19,7 +21,10 @@ import org.osmdroid.config.Configuration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.example.app.R
+import com.example.app.models.ZonaPeligrosaResponse
+import com.example.app.viewmodel.MapViewModel
 import com.example.app.viewmodel.decodePolyline
+import org.osmdroid.views.overlay.Polygon
 
 @Composable
 fun SimpleMapOSM(
@@ -34,13 +39,17 @@ fun SimpleMapOSM(
     context: Context = LocalContext.current,
     transportMode: String,
     routeGeometry: String? = null,
+    // 🆕 NUEVOS PARÁMETROS
+    zonasPeligrosas: List<ZonaPeligrosaResponse> = emptyList(),
+    mostrarZonasPeligrosas: Boolean = true,
+    viewModel: MapViewModel? = null
 ) {
     val mapView = rememberMapView(context, zoom)
+    val isDarkTheme = isSystemInDarkTheme()
 
     // Obtener colores del tema actual
     val primaryColor = MaterialTheme.colorScheme.primary
     val secondaryColor = MaterialTheme.colorScheme.secondary
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary
 
     // Inicializar configuración
     LaunchedEffect(Unit) {
@@ -50,15 +59,113 @@ fun SimpleMapOSM(
         )
     }
 
-    // Separar overlays del control de cámara
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { mapView },
         update = { map ->
-            // Solo actualizar overlays
+            // Limpiar overlays existentes
             map.overlays.clear()
 
-            // Ruta con colores del tema
+            // 🆕 AGREGAR ZONAS PELIGROSAS (PRIMERO, para que estén debajo de la ruta)
+            // 🆕 AGREGAR ZONAS PELIGROSAS (PRIMERO, para que estén debajo de la ruta)
+            if (mostrarZonasPeligrosas && zonasPeligrosas.isNotEmpty()) {
+                zonasPeligrosas.forEach { zona ->
+                    try {
+                        // 🔍 Verificar que tenga coordenadas válidas
+                        val puntosCentro = zona.poligono.firstOrNull()
+                        if (puntosCentro == null) {
+                            Log.w("SimpleMapOSM", "⚠️ Zona ${zona.nombre} sin coordenadas")
+                            return@forEach
+                        }
+
+                        val latCentro = puntosCentro.lat
+                        val lonCentro = puntosCentro.lon
+                        val radio = zona.radioMetros ?: 200
+
+                        Log.d("SimpleMapOSM", "📍 Dibujando zona: ${zona.nombre}")
+                        Log.d("SimpleMapOSM", "   Centro: ($latCentro, $lonCentro)")
+                        Log.d("SimpleMapOSM", "   Radio: ${radio}m")
+
+                        // 🔥 SIEMPRE REGENERAR LOCALMENTE (ignorar puntos del backend)
+                        Log.d("SimpleMapOSM", "🔄 Regenerando círculo localmente con código corregido")
+                        val puntosCirculo = generarPuntosCirculo(latCentro, lonCentro, radio)
+
+                        // Dibujar el círculo/polígono
+                        val circulo = Polygon(map).apply {
+                            points = puntosCirculo
+
+                            // Color según nivel de peligro
+                            val color = viewModel?.getColorForDangerLevel(zona.nivelPeligro, isDarkTheme)
+                                ?: android.graphics.Color.argb(100, 239, 68, 68)
+
+                            fillPaint.color = color
+                            fillPaint.style = android.graphics.Paint.Style.FILL
+
+                            // Borde más visible
+                            outlinePaint.color = when (zona.nivelPeligro) {
+                                1, 2 -> android.graphics.Color.rgb(245, 158, 11)
+                                3, 4 -> android.graphics.Color.rgb(234, 88, 12)
+                                5 -> android.graphics.Color.rgb(220, 38, 38)
+                                else -> android.graphics.Color.rgb(156, 163, 175)
+                            }
+                            outlinePaint.strokeWidth = 3f
+                            outlinePaint.style = android.graphics.Paint.Style.STROKE
+
+                            // Información al hacer tap
+                            title = zona.nombre
+                            snippet = buildString {
+                                append("Nivel de peligro: ${zona.nivelPeligro}/5")
+                                zona.tipo?.let { append("\nTipo: $it") }
+                                zona.notas?.let { append("\n$it") }
+                            }
+                        }
+
+                        map.overlays.add(circulo)
+
+                        // 🆕 Marcador central de la zona
+                        val marcadorZona = Marker(map).apply {
+                            position = GeoPoint(latCentro, lonCentro)
+                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+
+                            icon = ShapeDrawable(OvalShape()).apply {
+                                intrinsicHeight = when (zona.nivelPeligro) {
+                                    1, 2 -> 20
+                                    3, 4 -> 24
+                                    5 -> 28
+                                    else -> 20
+                                }
+                                intrinsicWidth = intrinsicHeight
+                                paint.apply {
+                                    color = when (zona.nivelPeligro) {
+                                        1, 2 -> android.graphics.Color.rgb(245, 158, 11)
+                                        3, 4 -> android.graphics.Color.rgb(234, 88, 12)
+                                        5 -> android.graphics.Color.rgb(220, 38, 38)
+                                        else -> android.graphics.Color.rgb(156, 163, 175)
+                                    }
+                                    style = android.graphics.Paint.Style.FILL
+                                    isAntiAlias = true
+                                }
+                            }
+
+                            title = "⚠️ ${zona.nombre}"
+                            snippet = "Nivel ${zona.nivelPeligro}/5 • Radio ${radio}m"
+
+                            setOnMarkerClickListener { marker, _ ->
+                                marker.showInfoWindow()
+                                true
+                            }
+                        }
+                        map.overlays.add(marcadorZona)
+
+                        Log.d("SimpleMapOSM", "✅ Zona ${zona.nombre} dibujada correctamente")
+
+                    } catch (e: Exception) {
+                        Log.e("SimpleMapOSM", "❌ Error dibujando zona ${zona.nombre}: ${e.message}", e)
+                    }
+                }
+            }
+
+            // Ruta con colores del tema (encima de las zonas)
             routeGeometry?.let { geometry ->
                 try {
                     val routePoints = geometry.decodePolyline()
@@ -66,10 +173,10 @@ fun SimpleMapOSM(
                         val polyline = Polyline().apply {
                             setPoints(routePoints)
                             color = when (transportMode) {
-                                "foot-walking" -> Color(0xFF4CAF50).toArgb() // Verde para caminar (mantener por visibilidad)
-                                "cycling-regular" -> secondaryColor.toArgb() // Usar color secundario del tema
-                                "driving-car" -> Color(0xFF9C27B0).toArgb() // Púrpura en lugar de naranja
-                                else -> primaryColor.toArgb() // Color principal del tema como fallback
+                                "foot-walking" -> android.graphics.Color.rgb(76, 175, 80)
+                                "cycling-regular" -> secondaryColor.toArgb()
+                                "driving-car" -> android.graphics.Color.rgb(156, 39, 176)
+                                else -> primaryColor.toArgb()
                             }
                             width = 12f
                         }
@@ -80,7 +187,7 @@ fun SimpleMapOSM(
                 }
             }
 
-            // Marcador usuario (azul como estaba originalmente)
+            // Marcador usuario (encima de todo)
             val userMarker = Marker(map).apply {
                 position = GeoPoint(userLat, userLon)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
@@ -88,7 +195,7 @@ fun SimpleMapOSM(
                     intrinsicHeight = 36
                     intrinsicWidth = 36
                     paint.apply {
-                        color = android.graphics.Color.rgb(33, 150, 243) // Azul original
+                        color = android.graphics.Color.rgb(33, 150, 243)
                         style = android.graphics.Paint.Style.FILL
                         isAntiAlias = true
                     }
@@ -114,22 +221,21 @@ fun SimpleMapOSM(
         }
     )
 
-    // CAMBIO PRINCIPAL: Seguir la ubicación del usuario cuando cambie
+    // SEGUIR UBICACIÓN DEL USUARIO
     LaunchedEffect(userLat, userLon) {
         if (userLat != 0.0 && userLon != 0.0) {
-            // Mantener el zoom actual del usuario y solo cambiar la posición
             mapView.controller.animateTo(GeoPoint(userLat, userLon))
         }
     }
 
-    // Recentrar mapa al presionar el botón - AHORA CENTRADO EN EL USUARIO
+    // Recentrar mapa
     LaunchedEffect(recenterTrigger) {
         if (recenterTrigger > 0 && userLat != 0.0 && userLon != 0.0) {
             mapView.controller.animateTo(GeoPoint(userLat, userLon))
         }
     }
 
-    // Ajustar cámara al cargar nueva ruta - SOLO cuando hay nueva ruta
+    // Ajustar cámara al cargar nueva ruta
     LaunchedEffect(routeGeometry) {
         routeGeometry?.let { geometry ->
             try {
@@ -166,4 +272,29 @@ fun SimpleMapOSM(
             if (currentZoom > mapView.minZoomLevel) mapView.controller.zoomTo(currentZoom - 1.0)
         }
     }
+}
+
+private fun generarPuntosCirculo(
+    lat: Double,
+    lon: Double,
+    radioMetros: Int
+): List<GeoPoint> {
+    val puntos = mutableListOf<GeoPoint>()
+    val numPuntos = 32
+
+    // 🔥 FIX: Conversión correcta de metros a grados
+    val radioGradosLat = radioMetros / 111320.0
+    val radioGradosLon = radioMetros / (111320.0 * Math.cos(Math.toRadians(lat)))
+
+    for (i in 0..numPuntos) {
+        val angulo = 2 * Math.PI * i / numPuntos
+
+        // 🔥 CORRECCIÓN: Sin() para latitud, Cos() para longitud
+        val newLat = lat + (radioGradosLat * Math.sin(angulo))  // ✅ Cambio aquí
+        val newLon = lon + (radioGradosLon * Math.cos(angulo))  // ✅ Cambio aquí
+
+        puntos.add(GeoPoint(newLat, newLon))
+    }
+
+    return puntos
 }

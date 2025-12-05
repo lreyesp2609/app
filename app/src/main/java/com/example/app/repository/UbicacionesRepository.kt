@@ -14,14 +14,14 @@ class UbicacionesRepository {
             val response = api.crearUbicacion("Bearer $token", ubicacion)
             if (response.isSuccessful) {
                 response.body()?.let { Result.success(it) }
-                    ?: Result.failure(Exception("Respuesta vacía"))
+                    ?: Result.failure(Exception("EMPTY_RESPONSE"))
             } else {
-                Result.failure(Exception(response.errorBody()?.string() ?: "Error desconocido"))
+                Result.failure(Exception(response.errorBody()?.string() ?: "UNKNOWN_ERROR"))
             }
         } catch (e: IOException) {
-            Result.failure(Exception("Error de red: ${e.message}"))
+            Result.failure(Exception("NETWORK_ERROR"))
         } catch (e: HttpException) {
-            Result.failure(Exception("Error HTTP: ${e.message}"))
+            Result.failure(Exception("HTTP_ERROR"))
         }
     }
 
@@ -30,29 +30,31 @@ class UbicacionesRepository {
             val response = api.obtenerUbicaciones("Bearer $token")
             if (response.isSuccessful) {
                 response.body()?.let { Result.success(it) }
-                    ?: Result.failure(Exception("Lista vacía"))
+                    ?: Result.failure(Exception("EMPTY_LIST"))
             } else {
-                Result.failure(Exception(response.errorBody()?.string() ?: "Error desconocido"))
+                Result.failure(Exception(response.errorBody()?.string() ?: "UNKNOWN_ERROR"))
             }
         } catch (e: IOException) {
-            Result.failure(Exception("Error de red: ${e.message}"))
+            Result.failure(Exception("NETWORK_ERROR"))
         } catch (e: HttpException) {
-            Result.failure(Exception("Error HTTP: ${e.message}"))
+            Result.failure(Exception("HTTP_ERROR"))
         }
     }
+
     suspend fun obtenerUbicacionPorId(token: String, id: Int): Result<UbicacionUsuarioResponse> {
         return try {
             val response = api.obtenerUbicacionPorId("Bearer $token", id)
             if (response.isSuccessful) {
                 response.body()?.let { Result.success(it) }
-                    ?: Result.failure(Exception("Ubicación no encontrada"))
+                    ?: Result.failure(Exception("NOT_FOUND"))
             } else {
-                Result.failure(Exception(response.errorBody()?.string() ?: "Error desconocido"))
+                Result.failure(Exception(response.errorBody()?.string() ?: "UNKNOWN_ERROR"))
             }
         } catch (e: IOException) {
-            Result.failure(Exception("Error de red: ${e.message}"))
+            Result.failure(Exception("NETWORK_ERROR"))
         } catch (e: HttpException) {
-            Result.failure(Exception("Error HTTP: ${e.message}"))
+            Result.failure(Exception("HTTP_ERROR"))
         }
     }
+
 }

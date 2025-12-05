@@ -138,7 +138,7 @@ fun RouteSelectorDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                "🔄 Regenerar evitando ${validacionSeguridad.totalZonasUsuario} zona(s) peligrosa(s)",
+                                "Regenerar evitando ${validacionSeguridad.totalZonasUsuario} zona(s) peligrosa(s)",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center

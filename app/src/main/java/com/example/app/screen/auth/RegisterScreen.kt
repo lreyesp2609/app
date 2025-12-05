@@ -11,7 +11,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -26,8 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -36,13 +33,15 @@ import com.example.app.screen.components.AppButton
 import com.example.app.screen.components.AppTextField
 import com.example.app.ui.theme.getBackgroundGradient
 import com.example.app.viewmodel.AuthViewModel
+import com.example.app.viewmodel.NotificationViewModel
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     navController: NavController,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    notificationViewModel: NotificationViewModel
 ) {
     val context = LocalContext.current
     var nombre by remember { mutableStateOf("") }
@@ -283,16 +282,13 @@ fun RegisterScreen(
                     when {
                         nombre.isBlank() || apellido.isBlank() || correo.isBlank() ||
                                 contrasenia.isBlank() || confirmarContrasenia.isBlank() -> {
-                            errorNotificationMessage = "Completa todos los campos"
-                            showErrorNotification = true
+                            notificationViewModel.showError("Completa todos los campos")
                         }
                         contrasenia != confirmarContrasenia -> {
-                            errorNotificationMessage = "Las contraseñas no coinciden"
-                            showErrorNotification = true
+                            notificationViewModel.showError("Las contraseñas no coinciden")
                         }
                         contrasenia.length < 6 -> {
-                            errorNotificationMessage = "La contraseña debe tener al menos 6 caracteres"
-                            showErrorNotification = true
+                            notificationViewModel.showError("La contraseña debe tener al menos 6 caracteres")
                         }
                         else -> {
                             authViewModel.registerUser(
@@ -302,8 +298,7 @@ fun RegisterScreen(
                                 contrasenia
                             ) { registroExitoso ->
                                 if (registroExitoso) {
-                                    successNotificationMessage = "¡Cuenta creada! Iniciando sesión..."
-                                    showSuccessNotification = true
+                                    notificationViewModel.showSuccess("¡Cuenta creada! Iniciando sesión...")
 
                                     authViewModel.login(correo, contrasenia) {
                                         navController.navigate("home?skipPermissions=true") {

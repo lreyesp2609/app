@@ -17,29 +17,48 @@ class UbicacionesViewModel(private val token: String) : ViewModel() {
     var ubicaciones by mutableStateOf<List<UbicacionUsuarioResponse>>(emptyList())
         private set
 
+    var ubicacionSeleccionada by mutableStateOf<UbicacionUsuarioResponse?>(null)
+        private set
+
     var isLoading by mutableStateOf(false)
         private set
 
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
-    // 👇 Nueva variable para la ubicación individual
-    var ubicacionSeleccionada by mutableStateOf<UbicacionUsuarioResponse?>(null)
-        private set
-
-    // --- métodos existentes ---
-    fun crearUbicacion(ubicacion: UbicacionUsuarioCreate, onSuccess: () -> Unit = {}) {
+    fun crearUbicacion(
+        ubicacion: UbicacionUsuarioCreate,
+        callback: (success: Boolean, error: String?) -> Unit
+    ) {
         viewModelScope.launch {
             isLoading = true
-            errorMessage = null
-            repository.crearUbicacion(token, ubicacion).fold(onSuccess = {
-                ubicaciones = ubicaciones + it
-                isLoading = false
-                onSuccess()
-            }, onFailure = {
-                errorMessage = it.message
-                isLoading = false
-            })
+
+            repository.crearUbicacion(token, ubicacion).fold(
+                onSuccess = { nuevaUbicacion ->
+                    ubicaciones = ubicaciones + nuevaUbicacion
+                    isLoading = false
+                    callback(true, null)
+                },
+                onFailure = { exception ->
+                    isLoading = false
+
+                    val error = when {
+                        exception.message?.contains("LOCATION_NAME_ALREADY_EXISTS") == true ->
+                            "Ya tienes una ubicación con este nombre"
+
+                        exception.message?.contains("NETWORK_ERROR") == true ->
+                            "Error de conexión. Verifica tu internet"
+
+                        exception.message?.contains("HTTP_ERROR") == true ->
+                            "Error de comunicación con el servidor"
+
+                        else ->
+                            "Error al crear la ubicación"
+                    }
+
+                    callback(false, error)
+                }
+            )
         }
     }
 
@@ -47,13 +66,17 @@ class UbicacionesViewModel(private val token: String) : ViewModel() {
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
-            repository.obtenerUbicaciones(token).fold(onSuccess = {
-                ubicaciones = it
-                isLoading = false
-            }, onFailure = {
-                errorMessage = it.message
-                isLoading = false
-            })
+
+            repository.obtenerUbicaciones(token).fold(
+                onSuccess = {
+                    ubicaciones = it
+                    isLoading = false
+                },
+                onFailure = {
+                    isLoading = false
+                    errorMessage = "No se pudieron cargar las ubicaciones"
+                }
+            )
         }
     }
 
@@ -61,13 +84,18 @@ class UbicacionesViewModel(private val token: String) : ViewModel() {
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
-            repository.obtenerUbicacionPorId(token, id).fold(onSuccess = {
-                ubicacionSeleccionada = it
-                isLoading = false
-            }, onFailure = {
-                errorMessage = it.message
-                isLoading = false
-            })
+
+            repository.obtenerUbicacionPorId(token, id).fold(
+                onSuccess = {
+                    ubicacionSeleccionada = it
+                    isLoading = false
+                },
+                onFailure = {
+                    isLoading = false
+                    errorMessage = "No se pudo cargar la ubicación solicitada"
+                }
+            )
         }
     }
+
 }

@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
@@ -54,7 +53,6 @@ import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.screen.mapa.OpenStreetMap
 import com.example.app.network.NominatimClient
 import com.example.app.network.RetrofitClient
-import com.example.app.repository.RutasRepository
 import com.example.app.screen.components.AppBackButton
 import com.example.app.screen.components.AppButton
 import com.example.app.screen.components.AppTextField
@@ -62,9 +60,9 @@ import com.example.app.screen.mapa.MapControlButton
 import com.example.app.utils.DialogoCrearZonaPeligrosa
 import com.example.app.utils.LocationManager
 import com.example.app.utils.SessionManager
-import com.example.app.utils.getNivelPeligroColor
 import com.example.app.viewmodel.MapViewModel
 import com.example.app.viewmodel.MapViewModelFactory
+import com.example.app.viewmodel.NotificationViewModel
 import com.example.app.viewmodel.UbicacionesViewModel
 import com.example.app.viewmodel.UbicacionesViewModelFactory
 import kotlinx.coroutines.Job
@@ -78,7 +76,8 @@ fun MapScreen(
     defaultLat: Double = 0.0,
     defaultLon: Double = 0.0,
     onConfirmClick: () -> Unit = {},
-    mapViewModel: MapViewModel = viewModel(factory = MapViewModelFactory())
+    mapViewModel: MapViewModel = viewModel(factory = MapViewModelFactory()),
+    notificationViewModel: NotificationViewModel
 ) {
     val context = LocalContext.current
     val locationManager = remember { LocationManager.getInstance() }
@@ -129,6 +128,8 @@ fun MapScreen(
     val isRegeneratingRoutes by mapViewModel.isRegeneratingRoutes
     val rutasGeneradasEvitandoZonas by mapViewModel.rutasGeneradasEvitandoZonas
 
+    var mostrarZonasPeligrosas by remember { mutableStateOf(true) }
+    var cargandoZonas by remember { mutableStateOf(false) }
 
     // Cargar desde caché
     LaunchedEffect(Unit) {
@@ -146,6 +147,46 @@ fun MapScreen(
             locationObtained = true
         } else {
             Log.d("MapScreen", "⏳ No hay ubicación en caché, obteniendo nueva...")
+        }
+    }
+
+    LaunchedEffect(token) {
+        if (token.isNotEmpty()) {
+            cargandoZonas = true
+            scope.launch {
+                try {
+                    val response = RetrofitClient.rutasApiService.obtenerMisZonasPeligrosas("Bearer $token")
+
+                    // 🔥 CORRECCIÓN: Usar los nombres correctos de las propiedades
+                    zonasCreadas = response.mapNotNull { zona ->
+                        // Validar que tenga las coordenadas necesarias
+                        val coordenadas = zona.poligono?.firstOrNull()
+                        if (coordenadas != null) {
+                            ZonaGuardada(
+                                lat = coordenadas.lat,
+                                lon = coordenadas.lon,
+                                radio = zona.radioMetros ?: 200,
+                                nombre = zona.nombre,
+                                nivel = zona.nivelPeligro
+                            )
+                        } else {
+                            Log.w("MapScreen", "Zona '${zona.nombre}' sin coordenadas, ignorando")
+                            null
+                        }
+                    }
+
+                    Log.d("MapScreen", "✅ ${zonasCreadas.size} zonas cargadas desde el backend")
+
+                    if (zonasCreadas.isNotEmpty()) {
+                        notificationViewModel.showSuccess("${zonasCreadas.size} zonas peligrosas cargadas")
+                    }
+                } catch (e: Exception) {
+                    Log.e("MapScreen", "Error cargando zonas: ${e.message}", e)
+                    notificationViewModel.showError("No se pudieron cargar las zonas peligrosas")
+                } finally {
+                    cargandoZonas = false
+                }
+            }
         }
     }
 
@@ -186,7 +227,7 @@ fun MapScreen(
                         zonaPreviewLat = if (mostrarDialogoZona) coordenadasZonaSeleccionada?.first else null,
                         zonaPreviewLon = if (mostrarDialogoZona) coordenadasZonaSeleccionada?.second else null,
                         zonaPreviewRadio = if (mostrarDialogoZona) radioPreview else null,
-                        zonasGuardadas = zonasCreadas
+                        zonasGuardadas = if (mostrarZonasPeligrosas) zonasCreadas else emptyList()
                     )
 
                     AppBackButton(
@@ -241,6 +282,26 @@ fun MapScreen(
                                 recenterTrigger++
                             }
                         )
+
+                        // 🆕 BOTÓN TOGGLE ZONAS PELIGROSAS (solo agregar esto)
+                        if (zonasCreadas.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            MapControlButton(
+                                icon = if (mostrarZonasPeligrosas) {
+                                    Icons.Default.Visibility
+                                } else {
+                                    Icons.Default.VisibilityOff
+                                },
+                                onClick = {
+                                    mostrarZonasPeligrosas = !mostrarZonasPeligrosas
+                                    notificationViewModel.showInfo(
+                                        if (mostrarZonasPeligrosas) "Zonas peligrosas visibles"
+                                        else "Zonas peligrosas ocultas"
+                                    )
+                                },
+                                badge = zonasCreadas.size.toString()
+                            )
+                        }
                     }
 
                     AnimatedVisibility(
@@ -292,13 +353,13 @@ fun MapScreen(
                                     longitud = mapCenterLon,
                                     direccion_completa = selectedAddress
                                 )
-                                ubicacionesViewModel.crearUbicacion(nuevaUbicacion) {
-                                    Toast.makeText(
-                                        context,
-                                        "Ubicación guardada exitosamente",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    navController.popBackStack()
+                                ubicacionesViewModel.crearUbicacion(nuevaUbicacion) { success, error ->
+                                    if (success) {
+                                        notificationViewModel.showSuccess("Destino guardado correctamente")
+                                        navController.popBackStack()
+                                    } else {
+                                        notificationViewModel.showError(error ?: "Error guardando el destino")
+                                    }
                                 }
                             }
                         }
@@ -354,9 +415,7 @@ fun MapScreen(
 
                                 Log.d("MapScreen", "✅ Nueva ubicación obtenida y guardada en caché")
                             } catch (e: Exception) {
-                                currentAddress = "Error obteniendo dirección"
-                                selectedAddress = "Error obteniendo dirección"
-                                Log.e("MapScreen", "Error obteniendo dirección: ${e.message}")
+                                notificationViewModel.showError("Error creando zona peligrosa: ${e.message}")
                             }
                         }
                     },
@@ -430,15 +489,13 @@ fun MapScreen(
                                 zona = request
                             )
 
-                            Toast.makeText(
-                                context,
-                                "✅ Zona marcada: ${response.nombre} (${radio}m)",
-                                Toast.LENGTH_LONG
-                            ).show()
+                            notificationViewModel.showSuccess(
+                                "Zona marcada correctamente: ${response.nombre}"
+                            )
 
                             Log.d("MapScreen", "Zona creada: ID=${response.id}, Radio=${radio}m")
 
-                            // 🔥 AGREGAR LA ZONA A LA LISTA PARA MOSTRARLA EN EL MAPA
+                            // 🔥 AGREGAR A LA LISTA LOCAL
                             zonasCreadas = zonasCreadas + ZonaGuardada(
                                 lat = coordenadasZonaSeleccionada!!.first,
                                 lon = coordenadasZonaSeleccionada!!.second,
@@ -449,12 +506,11 @@ fun MapScreen(
 
                             mostrarDialogoZona = false
                             radioPreview = 200
+
                         } catch (e: Exception) {
-                            Toast.makeText(
-                                context,
-                                "❌ Error: ${e.message}",
-                                Toast.LENGTH_LONG
-                            ).show()
+                            notificationViewModel.showError(
+                                "Error al crear la zona: ${e.message}"
+                            )
                             Log.e("MapScreen", "Error creando zona", e)
                         }
                     }
@@ -587,7 +643,7 @@ fun RutaCard(route: RouteAlternative, onClick: () -> Unit) {
                             containerColor = if (esSegura) Color(0xFF4CAF50) else Color(0xFFF44336)
                         ) {
                             Text(
-                                if (esSegura) "✓ SEGURA" else "⚠ RIESGO",
+                                if (esSegura) "SEGURA" else "RIESGO",
                                 fontSize = 10.sp,
                                 color = Color.White
                             )

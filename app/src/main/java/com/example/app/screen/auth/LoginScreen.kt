@@ -24,12 +24,14 @@ import com.example.app.screen.components.AppButton
 import com.example.app.screen.components.AppTextField
 import com.example.app.ui.theme.getBackgroundGradient
 import com.example.app.viewmodel.AuthViewModel
+import com.example.app.viewmodel.NotificationViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     navController: NavController,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    notificationViewModel: NotificationViewModel
 ) {
     val context = LocalContext.current
     var email by remember { mutableStateOf("") }
@@ -42,6 +44,14 @@ fun LoginScreen(
             navController.navigate("home") {
                 popUpTo("login") { inclusive = true }
             }
+        }
+    }
+
+    // 🆕 Observar errores del AuthViewModel y mostrarlos con notificaciones
+    LaunchedEffect(authViewModel.errorMessage) {
+        authViewModel.errorMessage?.let { error ->
+            notificationViewModel.showError(error)
+            authViewModel.clearError()
         }
     }
 
@@ -138,17 +148,27 @@ fun LoginScreen(
             text = if (authViewModel.isLoading) "Iniciando sesión..." else "Iniciar sesión",
             isLoading = authViewModel.isLoading,
             onClick = {
-                if (email.isNotBlank() && password.isNotBlank()) {
-                    authViewModel.login(email, password) { }
-                } else {
-                    Toast.makeText(
-                        context,
-                        "Por favor completa todos los campos",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                when {
+                    email.isBlank() && password.isBlank() -> {
+                        notificationViewModel.showError("Por favor completa todos los campos")
+                    }
+                    email.isBlank() -> {
+                        notificationViewModel.showError("Ingresa tu correo electrónico")
+                    }
+                    password.isBlank() -> {
+                        notificationViewModel.showError("Ingresa tu contraseña")
+                    }
+                    else -> {
+                        authViewModel.login(email, password) { loginExitoso ->
+                            if (loginExitoso) {
+                                notificationViewModel.showSuccess("¡Bienvenido de nuevo!")
+                            }
+                        }
+                    }
                 }
             }
         )
+
 
         Spacer(modifier = Modifier.weight(1f))
 

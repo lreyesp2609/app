@@ -63,5 +63,4 @@ interface RutasApiService {
         @Header("Authorization") token: String
     ): EstadisticasSeguridad
 
-
 }

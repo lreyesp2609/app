@@ -94,66 +94,101 @@ fun OpenStreetMap(
 
             // 🔥 DIBUJAR ZONAS GUARDADAS (primero, para que estén debajo)
             zonasGuardadas.forEach { zona ->
-                val center = GeoPoint(zona.lat, zona.lon)
+                try {
+                    val center = GeoPoint(zona.lat, zona.lon)
 
-                // Círculo de la zona
-                val circle = Polygon(map).apply {
-                    points = Polygon.pointsAsCircle(center, zona.radio.toDouble())
-                    fillPaint.color = android.graphics.Color.parseColor("#33FF5252")
-                    outlinePaint.color = android.graphics.Color.parseColor("#FFFF5252")
-                    outlinePaint.strokeWidth = 3f
-                }
-                map.overlays.add(circle)
+                    Log.d("OpenStreetMap", "🎯 Dibujando zona guardada: ${zona.nombre}")
+                    Log.d("OpenStreetMap", "   Centro: (${zona.lat}, ${zona.lon})")
+                    Log.d("OpenStreetMap", "   Radio: ${zona.radio}m")
 
-                // Marcador con nivel de peligro
-                val markerColor = when (zona.nivel) {
-                    1 -> "#FF4CAF50" // Verde
-                    2 -> "#FFFFEB3B" // Amarillo
-                    3 -> "#FFFF9800" // Naranja
-                    4 -> "#FFFF5722" // Naranja oscuro
-                    5 -> "#FFF44336" // Rojo
-                    else -> "#FFFF5252"
-                }
+                    // 🔥 USAR FUNCIÓN PERSONALIZADA (NO Polygon.pointsAsCircle)
+                    val puntosCirculo = crearCirculoPersonalizado(
+                        lat = zona.lat,
+                        lon = zona.lon,
+                        radioMetros = zona.radio.toInt()  // ✅ Convertir Double a Int
+                    )
 
-                val marker = Marker(map).apply {
-                    position = center
-                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                    icon = ShapeDrawable(OvalShape()).apply {
-                        intrinsicHeight = 35
-                        intrinsicWidth = 35
-                        paint.color = android.graphics.Color.parseColor(markerColor)
-                        paint.style = android.graphics.Paint.Style.FILL
+                    // Círculo de la zona
+                    val circle = Polygon(map).apply {
+                        points = puntosCirculo
+                        fillPaint.color = android.graphics.Color.parseColor("#33FF5252")
+                        outlinePaint.color = android.graphics.Color.parseColor("#FFFF5252")
+                        outlinePaint.strokeWidth = 3f
                     }
-                    title = zona.nombre
-                    snippet = "Nivel: ${zona.nivel}/5 • Radio: ${zona.radio}m"
+                    map.overlays.add(circle)
+
+                    // Marcador con nivel de peligro
+                    val markerColor = when (zona.nivel) {
+                        1 -> "#FF4CAF50" // Verde
+                        2 -> "#FFFFEB3B" // Amarillo
+                        3 -> "#FFFF9800" // Naranja
+                        4 -> "#FFFF5722" // Naranja oscuro
+                        5 -> "#FFF44336" // Rojo
+                        else -> "#FFFF5252"
+                    }
+
+                    val marker = Marker(map).apply {
+                        position = center
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                        icon = ShapeDrawable(OvalShape()).apply {
+                            intrinsicHeight = 35
+                            intrinsicWidth = 35
+                            paint.color = android.graphics.Color.parseColor(markerColor)
+                            paint.style = android.graphics.Paint.Style.FILL
+                        }
+                        title = zona.nombre
+                        snippet = "Nivel: ${zona.nivel}/5 • Radio: ${zona.radio}m"
+                    }
+                    map.overlays.add(marker)
+
+                    Log.d("OpenStreetMap", "✅ Zona ${zona.nombre} dibujada con ${puntosCirculo.size} puntos")
+
+                } catch (e: Exception) {
+                    Log.e("OpenStreetMap", "❌ Error dibujando zona ${zona.nombre}: ${e.message}", e)
                 }
-                map.overlays.add(marker)
             }
 
             // 🔥 PREVIEW DE ZONA EN CREACIÓN (si existe)
             if (zonaPreviewLat != null && zonaPreviewLon != null && zonaPreviewRadio != null) {
-                val center = GeoPoint(zonaPreviewLat, zonaPreviewLon)
-                val circle = Polygon(map).apply {
-                    points = Polygon.pointsAsCircle(center, zonaPreviewRadio.toDouble())
-                    fillPaint.color = android.graphics.Color.parseColor("#44FF5252") // Más visible
-                    outlinePaint.color = android.graphics.Color.parseColor("#FFFF5252")
-                    outlinePaint.strokeWidth = 4f
-                    outlinePaint.pathEffect = android.graphics.DashPathEffect(floatArrayOf(10f, 10f), 0f) // Línea punteada
-                }
-                map.overlays.add(circle)
+                try {
+                    val center = GeoPoint(zonaPreviewLat, zonaPreviewLon)
 
-                val centerMarker = Marker(map).apply {
-                    position = center
-                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                    icon = ShapeDrawable(OvalShape()).apply {
-                        intrinsicHeight = 40
-                        intrinsicWidth = 40
-                        paint.color = android.graphics.Color.parseColor("#FFFF5252")
-                        paint.style = android.graphics.Paint.Style.FILL
+                    Log.d("OpenStreetMap", "👁️ Preview zona en ($zonaPreviewLat, $zonaPreviewLon) - Radio: ${zonaPreviewRadio}m")
+
+                    // 🔥 USAR FUNCIÓN PERSONALIZADA
+                    val puntosPreview = crearCirculoPersonalizado(
+                        lat = zonaPreviewLat,
+                        lon = zonaPreviewLon,
+                        radioMetros = zonaPreviewRadio
+                    )
+
+                    val circle = Polygon(map).apply {
+                        points = puntosPreview
+                        fillPaint.color = android.graphics.Color.parseColor("#44FF5252")
+                        outlinePaint.color = android.graphics.Color.parseColor("#FFFF5252")
+                        outlinePaint.strokeWidth = 4f
+                        outlinePaint.pathEffect = android.graphics.DashPathEffect(floatArrayOf(10f, 10f), 0f)
                     }
-                    title = "Nueva Zona (${zonaPreviewRadio}m)"
+                    map.overlays.add(circle)
+
+                    val centerMarker = Marker(map).apply {
+                        position = center
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                        icon = ShapeDrawable(OvalShape()).apply {
+                            intrinsicHeight = 40
+                            intrinsicWidth = 40
+                            paint.color = android.graphics.Color.parseColor("#FFFF5252")
+                            paint.style = android.graphics.Paint.Style.FILL
+                        }
+                        title = "Nueva Zona (${zonaPreviewRadio}m)"
+                    }
+                    map.overlays.add(centerMarker)
+
+                    Log.d("OpenStreetMap", "✅ Preview dibujado con ${puntosPreview.size} puntos")
+
+                } catch (e: Exception) {
+                    Log.e("OpenStreetMap", "❌ Error dibujando preview: ${e.message}", e)
                 }
-                map.overlays.add(centerMarker)
             }
 
             // Usuario (punto azul)
@@ -279,4 +314,30 @@ class CenteredPinOverlay(private val context: Context) : Overlay() {
             drawable.draw(canvas)
         }
     }
+}
+
+// 🔥 FUNCIÓN PERSONALIZADA - NUNCA USAR Polygon.pointsAsCircle()
+private fun crearCirculoPersonalizado(
+    lat: Double,
+    lon: Double,
+    radioMetros: Int  // ✅ Cambiado a Int como en SimpleMapOSM
+): List<GeoPoint> {
+    val puntos = mutableListOf<GeoPoint>()
+    val numPuntos = 32
+
+    // Conversión correcta de metros a grados
+    val radioGradosLat = radioMetros / 111320.0
+    val radioGradosLon = radioMetros / (111320.0 * Math.cos(Math.toRadians(lat)))
+
+    for (i in 0..numPuntos) {
+        val angulo = 2 * Math.PI * i / numPuntos
+
+        // ✅ CORRECTO: Cos() para latitud, Sin() para longitud
+        val newLat = lat + (radioGradosLat * Math.cos(angulo))
+        val newLon = lon + (radioGradosLon * Math.sin(angulo))
+
+        puntos.add(GeoPoint(newLat, newLon))
+    }
+
+    return puntos
 }
