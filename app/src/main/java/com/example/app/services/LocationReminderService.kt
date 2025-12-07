@@ -5,7 +5,9 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
@@ -80,16 +82,15 @@ class LocationReminderService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // 🔥 IMPORTANTE: Usar LOW para que sea menos intrusiva
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW // 🔥 LOW = sin sonido ni vibración
+                NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Monitoreo de ubicación para recordatorios"
-                setShowBadge(false) // No mostrar badge en el ícono de la app
-                setSound(null, null) // Sin sonido
-                enableVibration(false) // Sin vibración
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
@@ -97,7 +98,6 @@ class LocationReminderService : Service() {
     }
 
     private fun createForegroundNotification(): Notification {
-        // Intent para abrir la app al tocar la notificación
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -109,14 +109,14 @@ class LocationReminderService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation) // 🔥 Ícono de ubicación
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentTitle("RecuerdaGo activo")
             .setContentText("Monitoreando recordatorios por ubicación")
-            .setPriority(NotificationCompat.PRIORITY_LOW) // 🔥 Prioridad baja
-            .setOngoing(true) // No se puede deslizar para cerrar
-            .setContentIntent(pendingIntent) // Abre la app al tocar
-            .setSound(null) // Sin sonido
-            .setVibrate(null) // Sin vibración
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .setContentIntent(pendingIntent)
+            .setSound(null)
+            .setVibrate(null)
             .build()
     }
 
@@ -150,7 +150,7 @@ class LocationReminderService : Service() {
 
         val locationRequest = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
-            10000L // Cada 10 segundos
+            10000L
         ).apply {
             setMinUpdateIntervalMillis(5000L)
             setMaxUpdateDelayMillis(15000L)
@@ -238,7 +238,21 @@ class LocationReminderService : Service() {
         Log.d("LocationService", "🔔 CREANDO NOTIFICACIÓN:")
 
         NotificationHelper.wakeUpDevice(applicationContext)
-        NotificationHelper.createNotificationChannel(applicationContext)
+
+        // 🔥 DETERMINAR QUÉ CANAL USAR (igual que ReminderReceiver)
+        val channelId = when {
+            reminder.sound && !reminder.sound_uri.isNullOrEmpty() -> {
+                NotificationHelper.createCustomSoundChannel(applicationContext, reminder.sound_uri)
+            }
+            reminder.sound -> {
+                NotificationHelper.CHANNEL_ID
+            }
+            else -> {
+                NotificationHelper.createSilentChannel(applicationContext)
+            }
+        }
+
+        Log.d("LocationService", "   📡 Canal usado: $channelId")
 
         val fullScreenIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -251,7 +265,7 @@ class LocationReminderService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val builder = NotificationCompat.Builder(this, NotificationHelper.CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(reminder.title)
             .setContentText("${reminder.description ?: "Sin descripción"} ($transition)")
@@ -260,17 +274,34 @@ class LocationReminderService : Service() {
             .setAutoCancel(true)
             .setFullScreenIntent(fullScreenPendingIntent, true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setDefaults(0)
 
-        if (reminder.sound) {
-            builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
-            Log.d("LocationService", "   🔊 Sonido activado")
+        // 🔥 IMPORTANTE: NO configurar sonido aquí en Android 8+
+        // El sonido ya está configurado en el canal
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            if (reminder.sound && reminder.sound_uri != null) {
+                try {
+                    val soundUri = Uri.parse(reminder.sound_uri)
+                    builder.setSound(soundUri)
+                    Log.d("LocationService", "   🔊 Sonido configurado (Android < 8): $soundUri")
+                } catch (e: Exception) {
+                    val defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                    builder.setSound(defaultSound)
+                    Log.e("LocationService", "   ⚠️ Error al cargar sonido: ${e.message}")
+                }
+            }
+        } else {
+            Log.d("LocationService", "   🔊 Sonido controlado por canal (Android 8+)")
         }
 
         if (reminder.vibration) {
             builder.setVibrate(longArrayOf(0, 500, 250, 500, 250, 500))
             Log.d("LocationService", "   📳 Vibración activada")
+        } else {
+            Log.d("LocationService", "   📳 Vibración desactivada")
         }
+
+        builder.setLights(Color.BLUE, 1000, 1000)
 
         val notificationId = Random.nextInt(1000, 9999)
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

@@ -36,7 +36,6 @@ import com.example.app.screen.grupos.components.CreateGroupScreen
 import com.example.app.screen.grupos.components.GrupoDetalleScreen
 import com.example.app.screen.grupos.components.ParticipantesScreen
 import com.example.app.screen.home.HomeScreen
-import com.example.app.screen.recordatorios.components.AddReminderScreen
 import com.example.app.screen.recordatorios.components.ReminderMapScreen
 import com.example.app.screen.rutas.AlternateRoutesScreen
 import com.example.app.screen.rutas.components.EstadisticasScreen
@@ -289,31 +288,12 @@ fun AppNavigation(authViewModel: AuthViewModel, mapViewModel: MapViewModel) {
             composable("reminder_map") {
                 ReminderMapScreen(
                     navController = navController,
+                    notificationViewModel = notificationViewModel,
                     onLocationSelected = { lat, lon, address ->
                         navController.navigate(
                             "add_reminder/${Uri.encode(address)}/$lat/$lon"
                         )
                     }
-                )
-            }
-
-            composable(
-                route = "add_reminder/{selectedAddress}/{latitude}/{longitude}",
-                arguments = listOf(
-                    navArgument("selectedAddress") { type = NavType.StringType },
-                    navArgument("latitude") { type = NavType.StringType },
-                    navArgument("longitude") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val selectedAddress = backStackEntry.arguments?.getString("selectedAddress") ?: ""
-                val latitude = backStackEntry.arguments?.getString("latitude")?.toDoubleOrNull()
-                val longitude = backStackEntry.arguments?.getString("longitude")?.toDoubleOrNull()
-
-                AddReminderScreen(
-                    navController = navController,
-                    selectedAddress = selectedAddress,
-                    latitude = latitude,
-                    longitude = longitude
                 )
             }
 

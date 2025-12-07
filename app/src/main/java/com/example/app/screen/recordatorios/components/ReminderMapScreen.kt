@@ -24,6 +24,7 @@ import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.screen.mapa.OpenStreetMap
 import com.example.app.screen.recordatorios.steps.ReminderStepsContent
 import com.example.app.utils.LocationManager
+import com.example.app.viewmodel.NotificationViewModel
 import com.example.app.viewmodel.ReminderViewModel
 import com.example.app.viewmodel.ReminderViewModelFactory
 import kotlinx.coroutines.Job
@@ -33,8 +34,10 @@ import kotlinx.coroutines.launch
 @Composable
 fun ReminderMapScreen(
     navController: NavController,
-    onLocationSelected: (lat: Double, lon: Double, address: String) -> Unit
+    onLocationSelected: (lat: Double, lon: Double, address: String) -> Unit,
+    notificationViewModel: NotificationViewModel
 ) {
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val locationManager = remember { LocationManager.getInstance() }
@@ -71,7 +74,7 @@ fun ReminderMapScreen(
     var triggerType by remember { mutableStateOf("enter") }
     var enableVibration by remember { mutableStateOf(true) }
     var enableSound by remember { mutableStateOf(true) }
-    var selectedSoundType by remember { mutableStateOf("default") }
+    var selectedSoundUri by remember { mutableStateOf("") }  // ← CAMBIO: selectedSoundType → selectedSoundUri
 
     // ViewModel
     val database = remember { AppDatabase.getDatabase(context) }
@@ -175,7 +178,7 @@ fun ReminderMapScreen(
                         triggerType = triggerType,
                         enableVibration = enableVibration,
                         enableSound = enableSound,
-                        selectedSoundType = selectedSoundType,
+                        selectedSoundUri = selectedSoundUri,  // ← CAMBIO: selectedSoundType → selectedSoundUri
                         // Callbacks de actualización
                         onTitleChange = { title = it },
                         onDescriptionChange = { description = it },
@@ -186,7 +189,7 @@ fun ReminderMapScreen(
                         onTriggerTypeChange = { triggerType = it },
                         onEnableVibrationChange = { enableVibration = it },
                         onEnableSoundChange = { enableSound = it },
-                        onSelectedSoundTypeChange = { selectedSoundType = it },
+                        onSelectedSoundUriChange = { selectedSoundUri = it },  // ← CAMBIO: onSelectedSoundTypeChange → onSelectedSoundUriChange
                         // Navegación
                         onNextStep = { currentStep++ },
                         onPreviousStep = {
@@ -205,7 +208,8 @@ fun ReminderMapScreen(
                                 popUpTo("home") { inclusive = false }
                                 launchSingleTop = true
                             }
-                        }
+                        },
+                        notificationViewModel = notificationViewModel
                     )
                 }
             }

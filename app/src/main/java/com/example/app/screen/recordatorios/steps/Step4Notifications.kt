@@ -1,6 +1,7 @@
 package com.example.app.screen.recordatorios.steps
 
 import android.content.Context
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -20,10 +22,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
@@ -35,6 +39,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,18 +55,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.app.models.NotificationSound
 import com.example.app.models.Reminder
 import com.example.app.screen.components.AppButton
+import com.example.app.viewmodel.NotificationViewModel
 import com.example.app.viewmodel.ReminderViewModel
+import com.example.app.viewmodel.rememberSystemNotificationSounds
 
 @Composable
 fun Step4Notifications(
     enableVibration: Boolean,
     enableSound: Boolean,
-    selectedSoundType: String,
+    selectedSoundUri: String,
     onEnableVibrationChange: (Boolean) -> Unit,
     onEnableSoundChange: (Boolean) -> Unit,
-    onSelectedSoundTypeChange: (String) -> Unit,
+    onSelectedSoundUriChange: (String) -> Unit,
     onBackClick: () -> Unit,
     viewModel: ReminderViewModel,
     context: Context,
@@ -74,18 +83,26 @@ fun Step4Notifications(
     selectedAddress: String,
     latitude: Double,
     longitude: Double,
-    onSaveSuccess: () -> Unit
+    onSaveSuccess: () -> Unit,
+    notificationViewModel: NotificationViewModel // 🆕 Agregar este parámetro
 ) {
     val scrollState = rememberScrollState()
     var showSoundPicker by remember { mutableStateOf(false) }
+    val systemSounds = rememberSystemNotificationSounds(context)
+
+    // Obtener el título del sonido seleccionado
+    val selectedSoundTitle = remember(selectedSoundUri, systemSounds) {
+        systemSounds.find { it.uri == selectedSoundUri }?.title ?: "Predeterminado del sistema"
+    }
 
     // Dialog selector de sonido
     if (showSoundPicker) {
         SoundPickerDialog(
-            selectedSoundType = selectedSoundType,
-            onSoundSelected = { soundType ->
-                onSelectedSoundTypeChange(soundType)
-                viewModel.playPreviewSound(context, soundType)
+            systemSounds = systemSounds,
+            selectedSoundUri = selectedSoundUri,
+            onSoundSelected = { uri ->
+                onSelectedSoundUriChange(uri)
+                viewModel.playPreviewSound(context, uri)
             },
             onDismiss = { showSoundPicker = false },
             viewModel = viewModel,
@@ -118,10 +135,12 @@ fun Step4Notifications(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(20.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
@@ -129,113 +148,159 @@ fun Step4Notifications(
                         Icon(
                             Icons.Default.Notifications,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "Configuración de notificación",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     // Switch para vibración
-                    Row(
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onEnableVibrationChange(!enableVibration) }
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onEnableVibrationChange(!enableVibration) },
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Phone,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Column {
-                                Text(
-                                    text = "Vibración",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Phone,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
                                 )
-                                Text(
-                                    text = "Vibrar al recibir notificación",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                )
+                                Column {
+                                    Text(
+                                        text = "Vibración",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "Vibrar al recibir notificación",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
+                            Switch(
+                                checked = enableVibration,
+                                onCheckedChange = onEnableVibrationChange
+                            )
                         }
-                        Switch(
-                            checked = enableVibration,
-                            onCheckedChange = onEnableVibrationChange
-                        )
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Switch para sonido
-                    Row(
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onEnableSoundChange(!enableSound) }
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onEnableSoundChange(!enableSound) },
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Column {
-                                Text(
-                                    text = "Sonido",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
                                 )
-                                Text(
-                                    text = "Reproducir tono de notificación",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                )
+                                Column {
+                                    Text(
+                                        text = "Sonido",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "Reproducir tono de notificación",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
+                            Switch(
+                                checked = enableSound,
+                                onCheckedChange = onEnableSoundChange
+                            )
                         }
-                        Switch(
-                            checked = enableSound,
-                            onCheckedChange = onEnableSoundChange
-                        )
                     }
 
                     // Selector de tono (solo si el sonido está habilitado)
                     if (enableSound) {
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        AppButton(
-                            text = when (selectedSoundType) {
-                                "gentle" -> "Suave"
-                                "alert" -> "Alerta"
-                                "chime" -> "Campanilla"
-                                else -> "Predeterminado"
-                            },
-                            onClick = { showSoundPicker = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            outlined = true,
-                            leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) }
-                        )
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { showSoundPicker = true },
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Column {
+                                        Text(
+                                            text = "Tono de notificación",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = selectedSoundTitle,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    Icons.Default.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -272,32 +337,71 @@ fun Step4Notifications(
                 text = "Guardar",
                 icon = Icons.Default.Check,
                 onClick = {
-                    if (viewModel.isLoading) return@AppButton
+                    // 🔥 VALIDACIONES CON NOTIFICACIONES
+                    when {
+                        viewModel.isLoading -> {
+                            notificationViewModel.showError("Espera, guardando recordatorio...")
+                            return@AppButton
+                        }
+                        title.isBlank() -> {
+                            notificationViewModel.showError("El título no puede estar vacío")
+                            return@AppButton
+                        }
+                        reminderType == "datetime" && selectedDays.isEmpty() -> {
+                            notificationViewModel.showError("Debes seleccionar al menos un día")
+                            return@AppButton
+                        }
+                        reminderType == "datetime" && selectedTime == null -> {
+                            notificationViewModel.showError("Debes seleccionar una hora")
+                            return@AppButton
+                        }
+                        reminderType == "location" && selectedAddress.isBlank() -> {
+                            notificationViewModel.showError("Debes seleccionar una ubicación")
+                            return@AppButton
+                        }
+                        reminderType == "both" && (selectedDays.isEmpty() || selectedTime == null) -> {
+                            notificationViewModel.showError("Debes completar días y hora")
+                            return@AppButton
+                        }
+                        reminderType == "both" && selectedAddress.isBlank() -> {
+                            notificationViewModel.showError("Debes seleccionar una ubicación")
+                            return@AppButton
+                        }
+                        else -> {
+                            // ✅ Validaciones pasadas, crear recordatorio
+                            val timeStr = selectedTime?.let {
+                                "${it.first.toString().padStart(2,'0')}:${it.second.toString().padStart(2,'0')}:00"
+                            }
 
-                    val timeStr = selectedTime?.let {
-                        "${it.first.toString().padStart(2,'0')}:${it.second.toString().padStart(2,'0')}:00"
-                    }
+                            val daysList = if (selectedDays.isEmpty()) null else selectedDays.toList()
 
-                    val daysList = if (selectedDays.isEmpty()) null else selectedDays.toList()
+                            val reminder = Reminder(
+                                title = title,
+                                description = description.ifEmpty { null },
+                                reminder_type = reminderType,
+                                trigger_type = triggerType,
+                                vibration = enableVibration,
+                                sound = enableSound,
+                                sound_uri = if (enableSound) selectedSoundUri else null,
+                                days = daysList,
+                                time = timeStr,
+                                location = selectedAddress,
+                                latitude = latitude,
+                                longitude = longitude,
+                                radius = proximityRadius.toDouble()
+                            )
 
-                    val reminder = Reminder(
-                        title = title,
-                        description = description.ifEmpty { null },
-                        reminder_type = reminderType,
-                        trigger_type = triggerType,
-                        vibration = enableVibration,
-                        sound = enableSound,
-                        sound_type = if (enableSound) selectedSoundType else null,
-                        days = daysList,
-                        time = timeStr,
-                        location = selectedAddress,
-                        latitude = latitude,
-                        longitude = longitude,
-                        radius = proximityRadius.toDouble()
-                    )
-
-                    viewModel.createReminder(reminder, context) {
-                        onSaveSuccess()
+                            viewModel.createReminder(reminder, context) { success ->
+                                if (success) {
+                                    notificationViewModel.showSuccess("¡Recordatorio creado exitosamente!")
+                                    onSaveSuccess()
+                                } else {
+                                    // 🔥 Mostrar el error específico que viene del ViewModel
+                                    val errorMessage = viewModel.error.value ?: "Error al crear el recordatorio"
+                                    notificationViewModel.showError(errorMessage)
+                                }
+                            }
+                        }
                     }
                 },
                 modifier = Modifier.weight(1f),
@@ -309,7 +413,8 @@ fun Step4Notifications(
 
 @Composable
 fun SoundPickerDialog(
-    selectedSoundType: String,
+    systemSounds: List<NotificationSound>,
+    selectedSoundUri: String,
     onSoundSelected: (String) -> Unit,
     onDismiss: () -> Unit,
     viewModel: ReminderViewModel,
@@ -319,60 +424,79 @@ fun SoundPickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cerrar")
+                Text("Cerrar", color = MaterialTheme.colorScheme.primary)
             }
         },
-        title = { Text("Seleccionar tono") },
+        title = {
+            Text(
+                "Seleccionar tono",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val soundOptions = listOf(
-                    "default" to "Predeterminado",
-                    "gentle" to "Suave",
-                    "alert" to "Alerta",
-                    "chime" to "Campanilla"
-                )
-
-                soundOptions.forEach { (value, label) ->
-                    Row(
+                systemSounds.forEach { sound ->
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onSoundSelected(value) }
-                            .background(
-                                if (selectedSoundType == value)
-                                    MaterialTheme.colorScheme.primaryContainer
-                                else
-                                    Color.Transparent
-                            )
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onSoundSelected(sound.uri) },
+                        color = if (selectedSoundUri == sound.uri)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            RadioButton(
-                                selected = selectedSoundType == value,
-                                onClick = { onSoundSelected(value) }
-                            )
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                RadioButton(
+                                    selected = selectedSoundUri == sound.uri,
+                                    onClick = { onSoundSelected(sound.uri) },
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                                Text(
+                                    text = sound.title,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (selectedSoundUri == sound.uri)
+                                        MaterialTheme.colorScheme.onSurface
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = if (selectedSoundUri == sound.uri)
+                                        FontWeight.SemiBold
+                                    else
+                                        FontWeight.Normal
+                                )
+                            }
 
-                        IconButton(onClick = {
-                            onSoundSelected(value)
-                        }) {
-                            Icon(
-                                Icons.Default.PlayArrow,
-                                contentDescription = "Reproducir",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                            IconButton(
+                                onClick = {
+                                    onSoundSelected(sound.uri)
+                                    viewModel.playPreviewSound(context, sound.uri)
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.PlayArrow,
+                                    contentDescription = "Reproducir",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 }
@@ -395,28 +519,30 @@ fun ReminderSummaryCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        )
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Icon(
                     Icons.Default.Info,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(24.dp)
                 )
                 Text(
                     text = "Resumen",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Título
             SummaryItem(label = "Título", value = title)
@@ -471,16 +597,19 @@ fun ReminderSummaryCard(
 
 @Composable
 fun SummaryItem(label: String, value: String) {
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+    Column(modifier = Modifier.padding(vertical = 6.dp)) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
         )
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

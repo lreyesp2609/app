@@ -1,5 +1,7 @@
 package com.example.app.screen.recordatorios
 
+import android.media.RingtoneManager
+import android.net.Uri
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -694,13 +696,21 @@ fun ReminderCard(
                             Spacer(modifier = Modifier.width(8.dp))
                         }
                         if (reminder.sound) {
+                            // CAMBIO: Ahora mostramos el nombre del tono desde la URI
+                            val context = LocalContext.current
+                            val soundName = remember(reminder.sound_uri) {
+                                reminder.sound_uri?.let { uri ->
+                                    try {
+                                        val ringtone = RingtoneManager.getRingtone(context, Uri.parse(uri))
+                                        ringtone.getTitle(context) ?: "Sonido"
+                                    } catch (e: Exception) {
+                                        "Sonido"
+                                    }
+                                } ?: "Sonido"
+                            }
+
                             Chip(
-                                label = when (reminder.sound_type) {
-                                    "gentle" -> "Sonido suave"
-                                    "alert" -> "Alerta"
-                                    "chime" -> "Campanilla"
-                                    else -> "Sonido"
-                                },
+                                label = soundName,
                                 icon = Icons.Default.VolumeUp
                             )
                         }

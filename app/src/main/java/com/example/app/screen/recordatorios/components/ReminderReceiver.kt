@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.media.RingtoneManager
+import android.net.Uri
+import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.app.MainActivity
@@ -75,11 +77,27 @@ class ReminderReceiver : BroadcastReceiver() {
         Log.d("ReminderReceiver", "📢 MOSTRANDO NOTIFICACIÓN:")
         Log.d("ReminderReceiver", "   Título: ${reminder.title}")
 
-        NotificationHelper.createNotificationChannel(context)
-
         val title = reminder.title
         val description = reminder.description ?: "Recordatorio"
         val day = intent.getStringExtra("day") ?: ""
+
+        // 🔥 DETERMINAR QUÉ CANAL USAR SEGÚN LA CONFIGURACIÓN
+        val channelId = when {
+            // Si tiene sonido personalizado, crear canal con ese sonido
+            reminder.sound && !reminder.sound_uri.isNullOrEmpty() -> {
+                NotificationHelper.createCustomSoundChannel(context, reminder.sound_uri)
+            }
+            // Si tiene sonido pero sin URI personalizada, usar canal por defecto
+            reminder.sound -> {
+                NotificationHelper.CHANNEL_ID
+            }
+            // Si no tiene sonido, usar canal silencioso
+            else -> {
+                NotificationHelper.createSilentChannel(context)
+            }
+        }
+
+        Log.d("ReminderReceiver", "   📡 Canal usado: $channelId")
 
         // Intent para pantalla completa
         val fullScreenIntent = Intent(context, MainActivity::class.java).apply {
@@ -93,7 +111,7 @@ class ReminderReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notificationBuilder = NotificationCompat.Builder(context, NotificationHelper.CHANNEL_ID)
+        val notificationBuilder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
             .setContentText("$description${if (day.isNotEmpty()) " ($day)" else ""}")
@@ -103,46 +121,23 @@ class ReminderReceiver : BroadcastReceiver() {
             .setFullScreenIntent(fullScreenPendingIntent, true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
-        // 🔥 IMPORTANTE: NO uses DEFAULT_ALL si vas a configurar sonido manualmente
-        // En su lugar, configura cada cosa por separado
-
-        // 🔥 Configurar sonido según el tipo seleccionado
-        if (reminder.sound) {
-            val soundUri = when (reminder.sound_type) {
-                "default" -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                "gentle" -> {
-                    val ringtoneManager = RingtoneManager(context)
-                    ringtoneManager.setType(RingtoneManager.TYPE_NOTIFICATION)
-                    val cursor = ringtoneManager.cursor
-                    if (cursor.moveToPosition(0)) {
-                        ringtoneManager.getRingtoneUri(0)
-                    } else {
-                        RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                    }
+        // 🔥 IMPORTANTE: NO configurar sonido aquí en Android 8+
+        // El sonido ya está configurado en el canal
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            // Solo para Android < 8, configurar sonido directamente
+            if (reminder.sound && reminder.sound_uri != null) {
+                try {
+                    val soundUri = Uri.parse(reminder.sound_uri)
+                    notificationBuilder.setSound(soundUri)
+                    Log.d("ReminderReceiver", "   🔊 Sonido configurado (Android < 8): $soundUri")
+                } catch (e: Exception) {
+                    val defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                    notificationBuilder.setSound(defaultSound)
+                    Log.e("ReminderReceiver", "   ⚠️ Error al cargar sonido: ${e.message}")
                 }
-                "alert" -> {
-                    RingtoneManager.getActualDefaultRingtoneUri(
-                        context,
-                        RingtoneManager.TYPE_ALARM
-                    ) ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                }
-                "chime" -> {
-                    val ringtoneManager = RingtoneManager(context)
-                    ringtoneManager.setType(RingtoneManager.TYPE_RINGTONE)
-                    val cursor = ringtoneManager.cursor
-                    if (cursor.moveToPosition(0)) {
-                        ringtoneManager.getRingtoneUri(0)
-                    } else {
-                        RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-                    }
-                }
-                else -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             }
-
-            notificationBuilder.setSound(soundUri)
-            Log.d("ReminderReceiver", "   🔊 Sonido: ${reminder.sound_type} - URI: $soundUri")
         } else {
-            Log.d("ReminderReceiver", "   🔇 Sonido: desactivado")
+            Log.d("ReminderReceiver", "   🔊 Sonido controlado por canal (Android 8+)")
         }
 
         // 🔥 Configurar vibración
@@ -153,10 +148,10 @@ class ReminderReceiver : BroadcastReceiver() {
             Log.d("ReminderReceiver", "   📳 Vibración: desactivada")
         }
 
-        // 🔥 Luces (opcional pero bueno tenerlo)
+        // 🔥 Luces
         notificationBuilder
             .setLights(Color.BLUE, 1000, 1000)
-            .setDefaults(0) // 🔥 IMPORTANTE: Sin defaults automáticos
+            .setDefaults(0) // Sin defaults automáticos
 
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

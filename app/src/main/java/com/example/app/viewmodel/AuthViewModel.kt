@@ -180,7 +180,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                             description = reminderResponse.description,
                             reminder_type = reminderResponse.reminder_type,
                             trigger_type = reminderResponse.trigger_type,
-                            sound_type = reminderResponse.sound_type,
+                            sound_uri = reminderResponse.sound_uri,  // ← CAMBIO: sound_type → sound_uri
                             vibration = reminderResponse.vibration,
                             sound = reminderResponse.sound,
                             days = reminderResponse.days,

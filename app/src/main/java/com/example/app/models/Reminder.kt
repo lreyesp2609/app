@@ -3,17 +3,10 @@ package com.example.app.models
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-enum class ReminderType {
-    LOCATION, DATETIME, BOTH
-}
-
-enum class TriggerType {
-    ENTER, EXIT, BOTH
-}
-
-enum class SoundType {
-    DEFAULT, GENTLE, ALERT, CHIME
-}
+data class NotificationSound(
+    val uri: String,
+    val title: String
+)
 
 data class ReminderResponse(
     val id: Int,
@@ -24,7 +17,7 @@ data class ReminderResponse(
     val trigger_type: String,
     val vibration: Boolean = false,
     val sound: Boolean = false,
-    val sound_type: String? = null,
+    val sound_uri: String? = null,
     val days: String? = null,
     val time: String?,
     val location: String?,
@@ -44,7 +37,7 @@ data class Reminder(
     val trigger_type: String,
     val vibration: Boolean = false,
     val sound: Boolean = false,
-    val sound_type: String? = null,
+    val sound_uri: String? = null,
     val days: List<String>? = null,
     val time: String?,
     val location: String?,
@@ -62,7 +55,7 @@ data class ReminderEntity(
     val description: String?,
     val reminder_type: String,
     val trigger_type: String,
-    val sound_type: String?,
+    val sound_uri: String?,
     val vibration: Boolean,
     val sound: Boolean,
     val days: String?,
@@ -86,7 +79,7 @@ fun ReminderResponse.toReminder(): Reminder {
         trigger_type = trigger_type,
         vibration = vibration,
         sound = sound,
-        sound_type = sound_type,
+        sound_uri = sound_uri,
         days = days?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() },
         time = time,
         location = location,
@@ -108,7 +101,7 @@ fun Reminder.toReminderResponse(): ReminderResponse {
         trigger_type = trigger_type,
         vibration = vibration,
         sound = sound,
-        sound_type = sound_type,
+        sound_uri = sound_uri,
         days = days?.joinToString(","),
         time = time,
         location = location,
@@ -130,7 +123,7 @@ fun ReminderEntity.toReminder(): Reminder {
         trigger_type = trigger_type,
         vibration = vibration,
         sound = sound,
-        sound_type = sound_type,
+        sound_uri = sound_uri,
         days = days?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() },
         time = time,
         location = location,

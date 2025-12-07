@@ -1,9 +1,13 @@
 package com.example.app.screen.recordatorios.steps
 
+import android.content.Context
+import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -28,17 +33,22 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,9 +61,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.example.app.screen.components.AppButton
 import com.example.app.screen.components.AppSlider
+import com.example.app.viewmodel.NotificationType
+import com.example.app.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Polygon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,13 +82,16 @@ fun Step3ReminderType(
     proximityRadius: Float,
     triggerType: String,
     selectedAddress: String,
+    latitude: Double,  // 🆕 Nuevo parámetro
+    longitude: Double, // 🆕 Nuevo parámetro
     onReminderTypeChange: (String) -> Unit,
     onSelectedDaysChange: (Set<String>) -> Unit,
     onSelectedTimeChange: (Pair<Int, Int>?) -> Unit,
     onProximityRadiusChange: (Float) -> Unit,
     onTriggerTypeChange: (String) -> Unit,
     onNextClick: () -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    notificationViewModel: NotificationViewModel
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -94,7 +115,7 @@ fun Step3ReminderType(
                     showTimePicker = false
                     showTimeError = false
                 }) {
-                    Text("Aceptar")
+                    Text("Aceptar", color = MaterialTheme.colorScheme.primary)
                 }
             },
             dismissButton = {
@@ -127,13 +148,14 @@ fun Step3ReminderType(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             // Tipo de recordatorio
             Text(
                 text = "Tipo de recordatorio",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Row(
@@ -174,19 +196,20 @@ fun Step3ReminderType(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                )
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         Icons.Default.Info,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                     Text(
                         text = when (reminderType) {
@@ -195,38 +218,27 @@ fun Step3ReminderType(
                             "both" -> "Se activará cuando llegues al lugar en los días y hora seleccionados"
                             else -> ""
                         },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
 
             // Configuración según tipo
             when (reminderType) {
-                "datetime" -> {
-                    DaysAndTimeSelector(
-                        selectedDays = selectedDays,
-                        selectedTime = selectedTime,
-                        showDaysError = showDaysError,
-                        showTimeError = showTimeError,
-                        onSelectedDaysChange = {
-                            onSelectedDaysChange(it)
-                            showDaysError = false
-                        },
-                        onTimePickerClick = { showTimePicker = true }
-                    )
-                }
                 "location" -> {
                     LocationProximityConfig(
                         selectedAddress = selectedAddress,
                         proximityRadius = proximityRadius,
                         triggerType = triggerType,
+                        latitude = latitude,      // 🆕 Pasar coordenadas
+                        longitude = longitude,    // 🆕 Pasar coordenadas
                         onProximityRadiusChange = onProximityRadiusChange,
                         onTriggerTypeChange = onTriggerTypeChange
                     )
                 }
                 "both" -> {
-                    // Primero días y hora
                     DaysAndTimeSelector(
                         selectedDays = selectedDays,
                         selectedTime = selectedTime,
@@ -241,11 +253,12 @@ fun Step3ReminderType(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Luego configuración de ubicación
                     LocationProximityConfig(
                         selectedAddress = selectedAddress,
                         proximityRadius = proximityRadius,
                         triggerType = triggerType,
+                        latitude = latitude,      // 🆕 Pasar coordenadas
+                        longitude = longitude,    // 🆕 Pasar coordenadas
                         onProximityRadiusChange = onProximityRadiusChange,
                         onTriggerTypeChange = onTriggerTypeChange
                     )
@@ -274,7 +287,6 @@ fun Step3ReminderType(
                 onClick = {
                     var hasError = false
 
-                    // Validar según el tipo
                     if (reminderType == "datetime" || reminderType == "both") {
                         if (selectedDays.isEmpty()) {
                             showDaysError = true
@@ -282,12 +294,12 @@ fun Step3ReminderType(
                             scope.launch {
                                 scrollState.animateScrollTo(scrollState.maxValue)
                             }
-                            Toast.makeText(context, "Debes seleccionar al menos un día", Toast.LENGTH_SHORT).show()
+                            notificationViewModel.showError("Debes seleccionar al menos un día")
                         }
                         if (selectedTime == null) {
                             showTimeError = true
                             hasError = true
-                            Toast.makeText(context, "Debes seleccionar una hora", Toast.LENGTH_SHORT).show()
+                            notificationViewModel.showError("Debes seleccionar una hora")
                         }
                     }
 
@@ -311,20 +323,25 @@ fun DaysAndTimeSelector(
     onSelectedDaysChange: (Set<String>) -> Unit,
     onTimePickerClick: () -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             text = "Días de la semana *",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
                 containerColor = if (showDaysError)
-                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                    MaterialTheme.colorScheme.errorContainer
                 else
-                    MaterialTheme.colorScheme.surfaceVariant
+                    MaterialTheme.colorScheme.surface
+            ),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = if (showDaysError) 0.dp else 2.dp
             )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -338,28 +355,40 @@ fun DaysAndTimeSelector(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    AppButton(
-                        text = "Todos",
+                    OutlinedButton(
                         onClick = { onSelectedDaysChange(daysOfWeek.toSet()) },
                         modifier = Modifier.weight(1f),
-                        outlined = true
-                    )
-                    AppButton(
-                        text = "Limpiar",
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                    ) {
+                        Text("Todos")
+                    }
+                    OutlinedButton(
                         onClick = { onSelectedDaysChange(emptySet()) },
                         modifier = Modifier.weight(1f),
-                        outlined = true
-                    )
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                    ) {
+                        Text("Limpiar")
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Días individuales
-                daysOfWeek.forEach { day ->
-                    Row(
+                daysOfWeek.forEachIndexed { index, day ->
+                    if (index > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .clickable {
                                 onSelectedDaysChange(
                                     if (selectedDays.contains(day)) {
@@ -368,39 +397,60 @@ fun DaysAndTimeSelector(
                                         selectedDays + day
                                     }
                                 )
-                            }
-                            .background(
-                                if (selectedDays.contains(day))
-                                    MaterialTheme.colorScheme.primaryContainer
-                                else
-                                    Color.Transparent
-                            )
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            },
+                        color = if (selectedDays.contains(day))
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(
-                            text = day,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (selectedDays.contains(day))
-                                FontWeight.SemiBold
-                            else
-                                FontWeight.Normal
-                        )
-                        Checkbox(
-                            checked = selectedDays.contains(day),
-                            onCheckedChange = null
-                        )
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = day,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (selectedDays.contains(day))
+                                    FontWeight.SemiBold
+                                else
+                                    FontWeight.Normal,
+                                color = if (selectedDays.contains(day))
+                                    MaterialTheme.colorScheme.onSurface
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Checkbox(
+                                checked = selectedDays.contains(day),
+                                onCheckedChange = null,
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                        }
                     }
                 }
 
                 if (showDaysError) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Debes seleccionar al menos un día",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Debes seleccionar al menos un día",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
@@ -408,29 +458,89 @@ fun DaysAndTimeSelector(
         // Selector de hora
         Text(
             text = "Hora *",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Column {
-            AppButton(
-                text = if (selectedTime != null) {
-                    String.format("%02d:%02d", selectedTime.first, selectedTime.second)
-                } else "Seleccionar hora",
-                onClick = onTimePickerClick,
-                modifier = Modifier.fillMaxWidth(),
-                outlined = true,
-                leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) },
-                trailingIcon = { Icon(Icons.Default.KeyboardArrowRight, contentDescription = null) }
-            )
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onTimePickerClick),
+                color = if (showTimeError)
+                    MaterialTheme.colorScheme.errorContainer
+                else
+                    MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(
+                    1.dp,
+                    if (showTimeError)
+                        MaterialTheme.colorScheme.error
+                    else if (selectedTime != null)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.outline
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Notifications,
+                            contentDescription = null,
+                            tint = if (selectedTime != null)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = if (selectedTime != null) {
+                                String.format("%02d:%02d", selectedTime.first, selectedTime.second)
+                            } else "Seleccionar hora",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (selectedTime != null) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (selectedTime != null)
+                                MaterialTheme.colorScheme.onSurface
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        Icons.Default.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             if (showTimeError) {
-                Text(
-                    text = "Debes seleccionar una hora",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.padding(start = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Debes seleccionar una hora",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
     }
@@ -442,40 +552,63 @@ fun LocationProximityConfig(
     selectedAddress: String,
     proximityRadius: Float,
     triggerType: String,
+    latitude: Double,          // 🆕 Nuevo parámetro
+    longitude: Double,         // 🆕 Nuevo parámetro
     onProximityRadiusChange: (Float) -> Unit,
     onTriggerTypeChange: (String) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             text = "Configuración de proximidad",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer
-            )
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 // Ubicación
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(
-                        Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = selectedAddress,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
-                    )
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = selectedAddress,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 🗺️ MAPA DE PREVIEW DEL RADIO
+                ProximityMapPreview(
+                    latitude = latitude,
+                    longitude = longitude,
+                    radiusMeters = proximityRadius,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -488,16 +621,16 @@ fun LocationProximityConfig(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
                     text = "Activar cuando:",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -527,5 +660,170 @@ fun LocationProximityConfig(
                 )
             }
         }
+    }
+}
+
+
+@Composable
+fun ProximityMapPreview(
+    latitude: Double,
+    longitude: Double,
+    radiusMeters: Float,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val mapView = rememberProximityMapView(context, latitude, longitude)
+
+    // Actualizar el círculo cuando cambie el radio
+    LaunchedEffect(radiusMeters) {
+        updateProximityCircle(mapView, latitude, longitude, radiusMeters)
+    }
+
+    // Inicializar configuración de OSM
+    LaunchedEffect(Unit) {
+        Configuration.getInstance().load(
+            context,
+            context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
+        )
+    }
+
+    Box(modifier = modifier) {
+        AndroidView(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(12.dp)),
+            factory = { mapView },
+            update = { map ->
+                // Actualizar overlays
+                updateProximityCircle(map, latitude, longitude, radiusMeters)
+            }
+        )
+
+        // Overlay con información del radio
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = "${radiusMeters.toInt()}m",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        // Indicador de ubicación central
+        Icon(
+            Icons.Default.LocationOn,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(32.dp)
+                .offset(y = (-16).dp) // Ajuste para que la punta del pin esté en el centro
+        )
+    }
+}
+
+@Composable
+private fun rememberProximityMapView(
+    context: Context,
+    latitude: Double,
+    longitude: Double
+): MapView {
+    return remember(latitude, longitude) {
+        MapView(context).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(false) // 🔥 Deshabilitar interacción
+            setBuiltInZoomControls(false)
+            isFlingEnabled = false
+            isVerticalMapRepetitionEnabled = false
+            isHorizontalMapRepetitionEnabled = false
+
+            // Centrar en la ubicación
+            controller.setCenter(GeoPoint(latitude, longitude))
+            controller.setZoom(16.0)
+        }
+    }
+}
+
+private fun updateProximityCircle(
+    mapView: MapView,
+    latitude: Double,
+    longitude: Double,
+    radiusMeters: Float
+) {
+    try {
+        mapView.overlays.clear()
+
+        val center = GeoPoint(latitude, longitude)
+
+        // Crear puntos del círculo
+        val circlePoints = crearCirculoProximidad(
+            lat = latitude,
+            lon = longitude,
+            radioMetros = radiusMeters.toInt()
+        )
+
+        // Círculo de proximidad (relleno semitransparente)
+        val circle = Polygon(mapView).apply {
+            points = circlePoints
+            fillPaint.color = android.graphics.Color.parseColor("#4400BCD4") // Cyan semitransparente
+            outlinePaint.color = android.graphics.Color.parseColor("#FF00BCD4") // Cyan sólido
+            outlinePaint.strokeWidth = 3f
+        }
+        mapView.overlays.add(circle)
+
+        // Ajustar zoom para que el círculo sea visible
+        val zoomLevel = calculateZoomLevel(radiusMeters)
+        mapView.controller.setZoom(zoomLevel)
+        mapView.controller.setCenter(center)
+
+        mapView.invalidate()
+
+        Log.d("ProximityMapPreview", "✅ Círculo actualizado: ${radiusMeters.toInt()}m, zoom: $zoomLevel")
+
+    } catch (e: Exception) {
+        Log.e("ProximityMapPreview", "❌ Error actualizando círculo: ${e.message}", e)
+    }
+}
+
+private fun crearCirculoProximidad(
+    lat: Double,
+    lon: Double,
+    radioMetros: Int
+): List<GeoPoint> {
+    val puntos = mutableListOf<GeoPoint>()
+    val numPuntos = 32
+
+    val radioGradosLat = radioMetros / 111320.0
+    val radioGradosLon = radioMetros / (111320.0 * Math.cos(Math.toRadians(lat)))
+
+    for (i in 0..numPuntos) {
+        val angulo = 2 * Math.PI * i / numPuntos
+        val newLat = lat + (radioGradosLat * Math.cos(angulo))
+        val newLon = lon + (radioGradosLon * Math.sin(angulo))
+        puntos.add(GeoPoint(newLat, newLon))
+    }
+
+    return puntos
+}
+
+// Calcular nivel de zoom apropiado según el radio
+private fun calculateZoomLevel(radiusMeters: Float): Double {
+    return when {
+        radiusMeters <= 200f -> 17.0
+        radiusMeters <= 500f -> 16.0
+        radiusMeters <= 1000f -> 15.0
+        radiusMeters <= 2000f -> 14.5
+        radiusMeters <= 3000f -> 14.0
+        else -> 13.5
     }
 }

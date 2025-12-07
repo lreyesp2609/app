@@ -6,14 +6,18 @@ import android.content.Context
 import android.content.Intent
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.app.models.NotificationSound
 import com.example.app.models.Reminder
 import com.example.app.models.ReminderEntity
 import com.example.app.models.toReminder
@@ -96,7 +100,7 @@ class ReminderViewModel(
         }
     }
 
-    fun createReminder(reminder: Reminder, context: Context, onSuccess: () -> Unit) {
+    fun createReminder(reminder: Reminder, context: Context, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
                 isLoading = true
@@ -125,14 +129,28 @@ class ReminderViewModel(
                         if (response.isSuccessful && response.body() != null) {
                             reminderId = response.body()!!.id
                             Log.d("ReminderViewModel", "✅ Recordatorio creado en API con ID: $reminderId")
-                            Toast.makeText(context, "Recordatorio creado", Toast.LENGTH_SHORT).show()
                         } else {
                             // ❌ ERROR EN API - DETENER EJECUCIÓN
                             val errorBody = response.errorBody()?.string()
                             val errorMessage = try {
-                                // Intentar parsear el JSON de error
                                 val jsonError = org.json.JSONObject(errorBody ?: "{}")
-                                jsonError.optString("detail", "Error desconocido")
+                                val detail = jsonError.optString("detail", "Error desconocido")
+
+                                // 🔥 Limpiar el mensaje de error para hacerlo más legible
+                                when {
+                                    detail.contains("Ya existe un recordatorio con ese título", ignoreCase = true) -> {
+                                        "Ya existe un recordatorio con ese título"
+                                    }
+                                    detail.contains("400:", ignoreCase = true) -> {
+                                        // Extraer solo el mensaje después de "400: "
+                                        detail.substringAfter("400: ", detail).trim()
+                                    }
+                                    detail.contains("Error creating reminder:", ignoreCase = true) -> {
+                                        // Extraer solo el mensaje después de "Error creating reminder: "
+                                        detail.substringAfter("Error creating reminder:", "").trim()
+                                    }
+                                    else -> detail
+                                }
                             } catch (e: Exception) {
                                 errorBody ?: "Error ${response.code()}"
                             }
@@ -140,29 +158,24 @@ class ReminderViewModel(
                             Log.e("ReminderViewModel", "❌ Error en API: ${response.code()}")
                             Log.e("ReminderViewModel", "   Detalle: $errorMessage")
 
-                            Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
-
-                            // ✅ IMPORTANTE: Detener ejecución
                             _error.value = errorMessage
-                            return@launch  // ← SALIR AQUÍ, NO CONTINUAR
+                            onComplete(false) // 🔥 Notificar fallo
+                            return@launch
                         }
                     } catch (e: Exception) {
                         Log.e("ReminderViewModel", "❌ Error de red: ${e.message}")
                         e.printStackTrace()
 
                         val errorMsg = "Error de red: ${e.message}"
-                        Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
                         _error.value = errorMsg
-
-                        // ✅ IMPORTANTE: Detener ejecución
-                        return@launch  // ← SALIR AQUÍ, NO CONTINUAR
+                        onComplete(false) // 🔥 Notificar fallo
+                        return@launch
                     }
                 } else {
-                    // Sin token
                     val errorMsg = "No hay sesión activa"
                     Log.e("ReminderViewModel", "❌ $errorMsg")
-                    Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
                     _error.value = errorMsg
+                    onComplete(false) // 🔥 Notificar fallo
                     return@launch
                 }
 
@@ -178,7 +191,7 @@ class ReminderViewModel(
                     description = reminder.description,
                     reminder_type = reminder.reminder_type,
                     trigger_type = reminder.trigger_type,
-                    sound_type = reminder.sound_type,
+                    sound_uri = reminder.sound_uri,
                     vibration = reminder.vibration,
                     sound = reminder.sound,
                     days = daysString,
@@ -197,7 +210,6 @@ class ReminderViewModel(
                 Log.d("ReminderViewModel", "💾 Recordatorio guardado localmente")
 
                 // 3️⃣ PROGRAMAR SEGÚN TIPO DE RECORDATORIO
-                // 3️⃣ PROGRAMAR SEGÚN TIPO DE RECORDATORIO
                 when (reminder.reminder_type) {
                     "datetime" -> {
                         Log.d("ReminderViewModel", "⏰ Tipo: DATETIME - Programando alarmas...")
@@ -207,37 +219,24 @@ class ReminderViewModel(
                     "location" -> {
                         Log.d("ReminderViewModel", "📍 Tipo: LOCATION - Verificando permisos...")
 
-                        // ✅ VERIFICAR PERMISOS
                         if (PermissionUtils.hasLocationPermissions(context)) {
                             LocationReminderService.start(context)
                             Log.d("ReminderViewModel", "✅ Servicio de ubicación iniciado")
                         } else {
                             Log.w("ReminderViewModel", "⚠️ Sin permisos de ubicación - servicio NO iniciado")
-                            Toast.makeText(
-                                context,
-                                "Activa los permisos de ubicación para este recordatorio",
-                                Toast.LENGTH_LONG
-                            ).show()
                         }
                     }
 
                     "both" -> {
                         Log.d("ReminderViewModel", "🎯 Tipo: BOTH - Programando AMBOS sistemas...")
 
-                        // Programar alarmas de fecha/hora
                         programarAlarmasFechaHora(context, reminder, reminderEntity, localId)
 
-                        // ✅ VERIFICAR PERMISOS para ubicación
                         if (PermissionUtils.hasLocationPermissions(context)) {
                             LocationReminderService.start(context)
                             Log.d("ReminderViewModel", "✅ Servicio de ubicación iniciado para tipo BOTH")
                         } else {
                             Log.w("ReminderViewModel", "⚠️ Sin permisos de ubicación - solo alarmas programadas")
-                            Toast.makeText(
-                                context,
-                                "Activa los permisos de ubicación para el recordatorio completo",
-                                Toast.LENGTH_LONG
-                            ).show()
                         }
                     }
                 }
@@ -246,13 +245,13 @@ class ReminderViewModel(
                 token?.let { fetchReminders(it) }
 
                 Log.d("ReminderViewModel", "✅ Proceso completado: ${reminder.title}")
-                onSuccess()
+                onComplete(true) // 🔥 Notificar éxito
 
             } catch (e: Exception) {
                 _error.value = "Error al crear recordatorio: ${e.message}"
                 Log.e("ReminderViewModel", "❌ Error COMPLETO: ${e.message}", e)
                 e.printStackTrace()
-                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                onComplete(false) // 🔥 Notificar fallo
             } finally {
                 isLoading = false
             }
@@ -373,45 +372,14 @@ class ReminderViewModel(
         }
     }
     // Preview de sonidos
-    fun playPreviewSound(context: Context, soundType: String) {
+    fun playPreviewSound(context: Context, soundUri: String) {
         playbackJob?.cancel()
         currentRingtone?.stop()
 
         playbackJob = viewModelScope.launch {
             try {
-                val soundUri = when (soundType) {
-                    "default" -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                    "gentle" -> {
-                        val ringtoneManager = RingtoneManager(context)
-                        ringtoneManager.setType(RingtoneManager.TYPE_NOTIFICATION)
-                        val cursor = ringtoneManager.cursor
-                        if (cursor.moveToPosition(0)) {
-                            ringtoneManager.getRingtoneUri(0)
-                        } else {
-                            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                        }
-                    }
-                    "alert" -> {
-                        RingtoneManager.getActualDefaultRingtoneUri(
-                            context,
-                            RingtoneManager.TYPE_ALARM
-                        ) ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                    }
-                    "chime" -> {
-                        val ringtoneManager = RingtoneManager(context)
-                        ringtoneManager.setType(RingtoneManager.TYPE_RINGTONE)
-                        val cursor = ringtoneManager.cursor
-                        if (cursor.moveToPosition(0)) {
-                            ringtoneManager.getRingtoneUri(0)
-                        } else {
-                            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-                        }
-                    }
-                    else -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                }
-
-                Log.d("ReminderViewModel", "Reproduciendo sonido: $soundType con URI: $soundUri")
-                currentRingtone = RingtoneManager.getRingtone(context, soundUri)
+                Log.d("ReminderViewModel", "Reproduciendo sonido con URI: $soundUri")
+                currentRingtone = RingtoneManager.getRingtone(context, Uri.parse(soundUri))
                 currentRingtone?.play()
 
                 delay(2000)
@@ -494,5 +462,36 @@ class ReminderViewModelFactory(
             return ReminderViewModel(repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
+@Composable
+fun rememberSystemNotificationSounds(context: Context): List<NotificationSound> {
+    return remember {
+        val sounds = mutableListOf<NotificationSound>()
+
+        // Agregar el tono predeterminado del sistema
+        val defaultUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        sounds.add(NotificationSound(
+            uri = defaultUri.toString(),
+            title = "Predeterminado del sistema"
+        ))
+
+        // Obtener todos los tonos de notificación disponibles
+        val ringtoneManager = RingtoneManager(context)
+        ringtoneManager.setType(RingtoneManager.TYPE_NOTIFICATION)
+        val cursor = ringtoneManager.cursor
+
+        while (cursor.moveToNext()) {
+            val title = cursor.getString(RingtoneManager.TITLE_COLUMN_INDEX)
+            val uri = ringtoneManager.getRingtoneUri(cursor.position)
+            sounds.add(NotificationSound(
+                uri = uri.toString(),
+                title = title
+            ))
+        }
+        cursor.close()
+
+        sounds
     }
 }

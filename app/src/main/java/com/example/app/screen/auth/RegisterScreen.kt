@@ -49,8 +49,6 @@ fun RegisterScreen(
     var correo by remember { mutableStateOf("") }
     var contrasenia by remember { mutableStateOf("") }
     var confirmarContrasenia by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
     // Estados para notificaciones
     var showErrorNotification by remember { mutableStateOf(false) }

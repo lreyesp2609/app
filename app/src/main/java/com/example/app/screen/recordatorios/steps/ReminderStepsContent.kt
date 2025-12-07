@@ -2,7 +2,9 @@ package com.example.app.screen.recordatorios.steps
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.app.viewmodel.NotificationViewModel
 import com.example.app.viewmodel.ReminderViewModel
 
 @Composable
@@ -22,7 +24,7 @@ fun ReminderStepsContent(
     triggerType: String,
     enableVibration: Boolean,
     enableSound: Boolean,
-    selectedSoundType: String,
+    selectedSoundUri: String,  // ← CAMBIO: selectedSoundType → selectedSoundUri
     onTitleChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onReminderTypeChange: (String) -> Unit,
@@ -32,7 +34,7 @@ fun ReminderStepsContent(
     onTriggerTypeChange: (String) -> Unit,
     onEnableVibrationChange: (Boolean) -> Unit,
     onEnableSoundChange: (Boolean) -> Unit,
-    onSelectedSoundTypeChange: (String) -> Unit,
+    onSelectedSoundUriChange: (String) -> Unit,  // ← CAMBIO: onSelectedSoundTypeChange → onSelectedSoundUriChange
     onNextStep: () -> Unit,
     onPreviousStep: () -> Unit,
     onRecenterClick: () -> Unit,
@@ -40,8 +42,10 @@ fun ReminderStepsContent(
     onZoomOutClick: () -> Unit,
     viewModel: ReminderViewModel,
     context: Context,
-    onSaveSuccess: () -> Unit
+    onSaveSuccess: () -> Unit,
+    notificationViewModel: NotificationViewModel
 ) {
+
     when (currentStep) {
         1 -> Step1SelectLocation(
             navController = navController,
@@ -75,16 +79,19 @@ fun ReminderStepsContent(
             onProximityRadiusChange = onProximityRadiusChange,
             onTriggerTypeChange = onTriggerTypeChange,
             onNextClick = onNextStep,
-            onBackClick = onPreviousStep
+            onBackClick = onPreviousStep,
+            notificationViewModel = notificationViewModel,
+            latitude = latitude,
+            longitude = longitude
         )
 
         4 -> Step4Notifications(
             enableVibration = enableVibration,
             enableSound = enableSound,
-            selectedSoundType = selectedSoundType,
+            selectedSoundUri = selectedSoundUri,  // ← CAMBIO: selectedSoundType → selectedSoundUri
             onEnableVibrationChange = onEnableVibrationChange,
             onEnableSoundChange = onEnableSoundChange,
-            onSelectedSoundTypeChange = onSelectedSoundTypeChange,
+            onSelectedSoundUriChange = onSelectedSoundUriChange,  // ← CAMBIO: onSelectedSoundTypeChange → onSelectedSoundUriChange
             onBackClick = onPreviousStep,
             viewModel = viewModel,
             context = context,
@@ -99,7 +106,8 @@ fun ReminderStepsContent(
             selectedAddress = selectedAddress,
             latitude = latitude,
             longitude = longitude,
-            onSaveSuccess = onSaveSuccess
+            onSaveSuccess = onSaveSuccess,
+            notificationViewModel = notificationViewModel,
         )
     }
 }
