@@ -12,6 +12,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
@@ -32,6 +34,8 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.ShareLocation
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -41,6 +45,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,6 +65,9 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.app.models.UbicacionUsuarioResponse
 import com.example.app.screen.components.AppButton
+import com.example.app.ui.theme.AppColors
+import com.example.app.ui.theme.SecurityColors
+import com.example.app.viewmodel.NotificationViewModel
 import com.example.app.viewmodel.UbicacionesViewModel
 import kotlinx.coroutines.delay
 
@@ -67,9 +75,11 @@ import kotlinx.coroutines.delay
 fun AlternateRoutesScreen(
     token: String,
     modifier: Modifier = Modifier,
-    navController: NavController
+    navController: NavController,
+    notificationViewModel: NotificationViewModel
 ) {
     val viewModel = remember { UbicacionesViewModel(token) }
+    val isDarkTheme = isSystemInDarkTheme()
 
     var showContent by remember { mutableStateOf(false) }
 
@@ -122,21 +132,71 @@ fun AlternateRoutesScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    AppButton(
-                        text = "Agregar destino",
-                        icon = Icons.Default.AddLocationAlt,
-                        onClick = { navController.navigate("mapa") },
+                    // 🆕 Botones de acción principales
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 24.dp)
-                            .height(56.dp)
-                    )
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Botón agregar destino
+                        Button(
+                            onClick = { navController.navigate("mapa") },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.AddLocationAlt,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Nuevo destino",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+
+                        // 🆕 Botón zonas peligrosas
+                        OutlinedButton(
+                            onClick = { navController.navigate("zonas_peligrosas") },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(
+                                2.dp,
+                                SecurityColors.getDangerColor(isDarkTheme)
+                            ),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = SecurityColors.getDangerColor(isDarkTheme)
+                            )
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Zonas",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Contenido principal
+            // Contenido principal (igual que antes)
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(800, delayMillis = 300)) +
@@ -167,7 +227,6 @@ fun AlternateRoutesScreen(
                     }
 
                     ubicaciones.isEmpty() -> {
-                        // Estado vacío mejorado CON SCROLL
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
@@ -330,8 +389,11 @@ fun AlternateRoutesScreen(
                                         onEstadisticas = {
                                             navController.navigate("estadisticas/${ubicaciones[index].id}")
                                         },
-                                        onEditar = {
-                                            println("Editar ${ubicaciones[index].nombre}")
+                                        onEliminar = {
+                                            viewModel.eliminarUbicacion(
+                                                ubicaciones[index].id,
+                                                notificationViewModel
+                                            )
                                         }
                                     )
                                 }
@@ -390,9 +452,10 @@ fun UbicacionCard(
     ubicacion: UbicacionUsuarioResponse,
     onGenerarRuta: () -> Unit,
     onEstadisticas: () -> Unit,
-    onEditar: () -> Unit
+    onEliminar: () -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -456,7 +519,7 @@ fun UbicacionCard(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Botón PRINCIPAL
+            // Botón PRINCIPAL - Generar ruta
             Button(
                 onClick = {
                     isPressed = true
@@ -503,11 +566,15 @@ fun UbicacionCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
+                // Botón Estadísticas
                 OutlinedButton(
                     onClick = onEstadisticas,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                    ),
                     contentPadding = PaddingValues(vertical = 10.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.onSurface
@@ -526,29 +593,80 @@ fun UbicacionCard(
                     )
                 }
 
+                // 🆕 Botón Eliminar (reemplaza Editar)
                 OutlinedButton(
-                    onClick = onEditar,
+                    onClick = { showDeleteDialog = true },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                    border = BorderStroke(
+                        1.dp,
+                        AppColors.Danger.copy(alpha = 0.4f)
+                    ),
                     contentPadding = PaddingValues(vertical = 10.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.onSurface
+                        contentColor = AppColors.Danger
                     )
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Editar",
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar",
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Editar",
+                        text = "Eliminar",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
                 }
             }
         }
+    }
+
+    // Diálogo de confirmación para eliminar
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = AppColors.Danger,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = {
+                Text(
+                    "¿Eliminar destino?",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    "Se eliminará \"${ubicacion.nombre}\" y todo su historial de viajes. Esta acción no se puede deshacer.",
+                    lineHeight = 20.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        onEliminar()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AppColors.Danger
+                    )
+                ) {
+                    Text("Eliminar", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(20.dp)
+        )
     }
 }

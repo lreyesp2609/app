@@ -1,9 +1,12 @@
 package com.example.app.screen.rutas.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -80,9 +84,15 @@ fun RouteAlternativesDialogWithSecurity(
 
                 // Indicador si ya se generaron rutas evitando zonas
                 if (rutasGeneradasEvitandoZonas) {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .background(
+                                SecurityColors.getSafeBackground(isDarkTheme),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Icon(
                             Icons.Default.Shield,
@@ -90,12 +100,12 @@ fun RouteAlternativesDialogWithSecurity(
                             tint = SecurityColors.getSafeColor(isDarkTheme),
                             modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             "Rutas evitando zonas peligrosas",
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             color = SecurityColors.getSafeColor(isDarkTheme),
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
@@ -106,42 +116,45 @@ fun RouteAlternativesDialogWithSecurity(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 🚨 Advertencia general si ninguna es segura
+                // 🚨 Advertencia general - Ahora como banner sin Card
                 validacionSeguridad?.advertenciaGeneral?.let { advertencia ->
                     if (!rutasGeneradasEvitandoZonas) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = SecurityColors.getDangerBackground(isDarkTheme)
-                            ),
-                            shape = RoundedCornerShape(12.dp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    SecurityColors.getDangerBackground(isDarkTheme),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .border(
+                                    1.dp,
+                                    SecurityColors.getDangerColor(isDarkTheme).copy(alpha = 0.3f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = SecurityColors.getDangerColor(isDarkTheme),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    advertencia,
-                                    fontSize = 13.sp,
-                                    color = SecurityColors.getDangerColor(isDarkTheme),
-                                    lineHeight = 18.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = SecurityColors.getDangerColor(isDarkTheme),
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                advertencia,
+                                fontSize = 13.sp,
+                                color = SecurityColors.getDangerColor(isDarkTheme),
+                                lineHeight = 18.sp,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
                     }
                 }
 
-                // 🆕 BOTÓN DE REGENERAR
+                // 🆕 BOTÓN DE REGENERAR - Estilo más moderno
                 if (!rutasGeneradasEvitandoZonas &&
                     validacionSeguridad?.totalZonasUsuario != null &&
                     validacionSeguridad.totalZonasUsuario > 0) {
@@ -150,7 +163,7 @@ fun RouteAlternativesDialogWithSecurity(
                         onClick = onRegenerarEvitandoZonas,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp),
+                            .height(54.dp),
                         enabled = !isRegenerating,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = SecurityColors.getSafeColor(isDarkTheme),
@@ -159,20 +172,22 @@ fun RouteAlternativesDialogWithSecurity(
                         ),
                         shape = RoundedCornerShape(12.dp),
                         elevation = ButtonDefaults.buttonElevation(
-                            defaultElevation = 4.dp,
-                            pressedElevation = 8.dp
+                            defaultElevation = 3.dp,
+                            pressedElevation = 6.dp,
+                            disabledElevation = 0.dp
                         )
                     ) {
                         if (isRegenerating) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(18.dp),
                                 color = Color.White,
-                                strokeWidth = 2.dp
+                                strokeWidth = 2.5.dp
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(
                                 "Generando rutas seguras...",
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
                             )
                         } else {
                             Icon(
@@ -180,7 +195,7 @@ fun RouteAlternativesDialogWithSecurity(
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(
                                 "Regenerar evitando ${validacionSeguridad.totalZonasUsuario} zona(s) peligrosa(s)",
                                 fontSize = 14.sp,
@@ -191,12 +206,13 @@ fun RouteAlternativesDialogWithSecurity(
                     }
                 }
 
-                // Lista de rutas
+                // 📍 Lista de rutas - Sin Cards anidadas
                 alternatives.forEach { route ->
                     RouteChipCard(
                         route = route,
                         isSelected = selectedRoute == route,
-                        onClick = { selectedRoute = route }
+                        onClick = { selectedRoute = route },
+                        isDarkTheme = isDarkTheme
                     )
                 }
             }
@@ -210,22 +226,28 @@ fun RouteAlternativesDialogWithSecurity(
                 enabled = selectedRoute != null,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                ),
+                shape = RoundedCornerShape(10.dp)
             ) {
                 Text("Confirmar", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(10.dp)
+            ) {
                 Text(
                     "Cancelar",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
                 )
             }
         },
         containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(24.dp)
     )
 }
 
@@ -233,102 +255,114 @@ fun RouteAlternativesDialogWithSecurity(
 fun RouteChipCard(
     route: RouteAlternative,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isDarkTheme: Boolean
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
-
-    // 🎨 Determinar colores según nivel de peligrosidad
+    // 🎨 Colores simplificados y más claros
     val backgroundColor = when {
         isSelected -> MaterialTheme.colorScheme.primaryContainer
         route.esSegura == false -> SecurityColors.getDangerBackground(isDarkTheme)
         route.esSegura == true -> SecurityColors.getSafeBackground(isDarkTheme)
-        route.isRecommended -> MaterialTheme.colorScheme.tertiaryContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant
-    }
-
-    val contentColor = when {
-        isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     }
 
     val borderColor = when {
         isSelected -> MaterialTheme.colorScheme.primary
         route.esSegura == false -> SecurityColors.getDangerColor(isDarkTheme)
         route.esSegura == true -> SecurityColors.getSafeColor(isDarkTheme)
-        else -> Color.Transparent
+        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
     }
 
-    Card(
+    val borderWidth = if (isSelected) 2.5.dp else 1.dp
+
+    // 🔲 Contenedor principal SIN Card - solo Box con bordes
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 8.dp else 2.dp
-        ),
-        border = BorderStroke(
-            width = if (isSelected) 2.dp else 1.dp,
-            color = borderColor
-        )
+            .background(backgroundColor, RoundedCornerShape(14.dp))
+            .border(borderWidth, borderColor, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(16.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column {
+            // 📌 Header: Nombre + Badges
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Icono + Nombre
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(
-                        imageVector = getPreferenceIcon(route.type),
-                        contentDescription = null,
-                        tint = if (isSelected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                        },
-                        modifier = Modifier.size(24.dp)
-                    )
+                    // Círculo con icono
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = getPreferenceIcon(route.type),
+                            contentDescription = null,
+                            tint = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                            },
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
 
                     Text(
                         text = route.displayName,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = contentColor
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    // Badge de ML
+                // Badges compactos
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Badge ML
                     if (route.isRecommended) {
-                        Badge(
-                            containerColor = MaterialTheme.colorScheme.primary
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.primary,
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 "🤖 ML",
                                 fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.onPrimary,
+                                color = Color.White,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    // Badge de seguridad (con colores progresivos)
+                    // Badge Seguridad
                     route.esSegura?.let { esSegura ->
-                        Badge(
-                            containerColor = if (esSegura) {
-                                SecurityColors.getSafeColor(isDarkTheme)
-                            } else {
-                                SecurityColors.getDangerColor(isDarkTheme)
-                            }
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    if (esSegura) SecurityColors.getSafeColor(isDarkTheme)
+                                    else SecurityColors.getDangerColor(isDarkTheme),
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                if (esSegura) "✓ SEGURA" else "⚠ RIESGO",
-                                fontSize = 10.sp,
+                                if (esSegura) "✓" else "⚠",
+                                fontSize = 11.sp,
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold
                             )
@@ -339,76 +373,88 @@ fun RouteChipCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // 📊 Info: Distancia y Tiempo
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 InfoChip(
                     icon = Icons.Default.Straighten,
-                    text = "${(route.distance / 1000).roundToInt()} km",
-                    contentColor = contentColor
+                    text = "${(route.distance / 1000).roundToInt()} km"
                 )
                 InfoChip(
                     icon = Icons.Default.Schedule,
-                    text = "${(route.duration / 60).toInt()} min",
-                    contentColor = contentColor
+                    text = "${(route.duration / 60).toInt()} min"
                 )
             }
 
-            // Mensaje de seguridad (con color según peligrosidad)
+            // 💬 Mensaje de seguridad
             route.mensajeSeguridad?.let { mensaje ->
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            if (route.esSegura == false)
+                                SecurityColors.getDangerColor(isDarkTheme).copy(alpha = 0.08f)
+                            else
+                                SecurityColors.getWarningColor(isDarkTheme).copy(alpha = 0.08f),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = if (route.esSegura == false) {
+                        imageVector = if (route.esSegura == false)
                             Icons.Default.Warning
-                        } else {
-                            Icons.Default.Info
-                        },
+                        else
+                            Icons.Default.Info,
                         contentDescription = null,
-                        tint = if (route.esSegura == false) {
+                        tint = if (route.esSegura == false)
                             SecurityColors.getDangerColor(isDarkTheme)
-                        } else {
-                            SecurityColors.getWarningColor(isDarkTheme)
-                        },
-                        modifier = Modifier.size(14.dp)
+                        else
+                            SecurityColors.getWarningColor(isDarkTheme),
+                        modifier = Modifier.size(16.dp)
                     )
                     Text(
                         mensaje,
                         fontSize = 12.sp,
-                        color = if (route.esSegura == false) {
+                        color = if (route.esSegura == false)
                             SecurityColors.getDangerColor(isDarkTheme)
-                        } else {
-                            SecurityColors.getWarningColor(isDarkTheme)
-                        },
-                        fontStyle = FontStyle.Italic,
-                        fontWeight = FontWeight.Medium
+                        else
+                            SecurityColors.getWarningColor(isDarkTheme),
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 16.sp
                     )
                 }
             }
 
-            // Zonas detectadas
+            // 🗺️ Zonas detectadas
             route.zonasDetectadas?.let { zonas ->
                 if (zonas.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     Row(
+                        modifier = Modifier
+                            .background(
+                                SecurityColors.getDangerColor(isDarkTheme).copy(alpha = 0.08f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(
                             Icons.Default.LocationOn,
                             contentDescription = null,
                             tint = SecurityColors.getDangerColor(isDarkTheme),
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
                             "${zonas.size} zona(s) de riesgo detectada(s)",
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             color = SecurityColors.getDangerColor(isDarkTheme),
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
@@ -420,24 +466,23 @@ fun RouteChipCard(
 @Composable
 fun InfoChip(
     icon: ImageVector,
-    text: String,
-    contentColor: Color = MaterialTheme.colorScheme.onSurface
+    text: String
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(16.dp)
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+            modifier = Modifier.size(18.dp)
         )
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = contentColor
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

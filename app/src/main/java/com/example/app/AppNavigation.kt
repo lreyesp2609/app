@@ -41,6 +41,7 @@ import com.example.app.screen.recordatorios.components.ReminderMapScreen
 import com.example.app.screen.rutas.AlternateRoutesScreen
 import com.example.app.screen.rutas.components.EstadisticasScreen
 import com.example.app.screen.rutas.components.MapScreen
+import com.example.app.screen.rutas.components.MisZonasPeligrosasScreen
 import com.example.app.screen.rutas.components.RutaMapa
 import com.example.app.services.LocationTrackingService
 import com.example.app.utils.GlobalNotification
@@ -55,10 +56,11 @@ import com.example.app.websocket.WebSocketLocationManager
 import com.example.app.websocket.WebSocketManager
 
 @Composable
-fun AppNavigation(authViewModel: AuthViewModel) {
+fun AppNavigation(authViewModel: AuthViewModel, mapViewModel: MapViewModel) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val notificationViewModel: NotificationViewModel = viewModel()
+
 
     val isLoggedIn = authViewModel.isLoggedIn
     val isLoading = authViewModel.isLoading
@@ -183,7 +185,8 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                 HomeScreen(
                     authViewModel = authViewModel,
                     navController = navController,
-                    skipPermissions = skipPermissions
+                    skipPermissions = skipPermissions,
+                    notificationViewModel = notificationViewModel
                 )
             }
 
@@ -191,7 +194,8 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                 val token = authViewModel.accessToken ?: ""
                 AlternateRoutesScreen(
                     navController = navController,
-                    token = token
+                    token = token,
+                    notificationViewModel = notificationViewModel
                 )
             }
             composable("mapa") {
@@ -327,7 +331,8 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                     authViewModel = authViewModel,
                     navController = navController,
                     initialTab = initialTab,
-                    skipPermissions = false
+                    skipPermissions = false,
+                    notificationViewModel = notificationViewModel
                 )
             }
             composable("create_group") {
@@ -388,6 +393,14 @@ fun AppNavigation(authViewModel: AuthViewModel) {
                     grupoId = grupoId,
                     grupoNombre = grupoNombre,
                     navController = navController
+                )
+            }
+
+            composable("zonas_peligrosas") {
+                MisZonasPeligrosasScreen(
+                    navController = navController,
+                    notificationViewModel = notificationViewModel,
+                    mapViewModel = mapViewModel
                 )
             }
         }

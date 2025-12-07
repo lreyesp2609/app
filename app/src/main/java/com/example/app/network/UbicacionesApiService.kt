@@ -24,4 +24,9 @@ interface UbicacionesApiService {
         @Path("id") id: Int
     ): Response<UbicacionUsuarioResponse>
 
+    @DELETE("ubicaciones/{id}")
+    suspend fun eliminarUbicacion(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<UbicacionUsuarioResponse>
 }

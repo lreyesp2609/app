@@ -57,4 +57,18 @@ class UbicacionesRepository {
         }
     }
 
+    suspend fun eliminarUbicacion(token: String, id: Int): Result<UbicacionUsuarioResponse> {
+        return try {
+            val response = api.eliminarUbicacion("Bearer $token", id)
+
+            if (response.isSuccessful) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("HTTP_ERROR_${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("NETWORK_ERROR"))
+        }
+    }
+
 }

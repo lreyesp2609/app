@@ -51,7 +51,9 @@ fun OpenStreetMap(
     zonaPreviewLon: Double? = null,
     zonaPreviewRadio: Int? = null,
     // 🔥 ZONAS YA GUARDADAS
-    zonasGuardadas: List<ZonaGuardada> = emptyList()
+    zonasGuardadas: List<ZonaGuardada> = emptyList(),
+    // 🆕 CALLBACK PARA DETECTAR TAP EN ZONA
+    onZonaClick: ((ZonaGuardada) -> Unit)? = null
 ) {
     val mapView = rememberMapView(context, zoom)
 
@@ -117,7 +119,7 @@ fun OpenStreetMap(
                     }
                     map.overlays.add(circle)
 
-                    // Marcador con nivel de peligro
+                    // 🆕 Marcador con nivel de peligro Y CLICK LISTENER
                     val markerColor = when (zona.nivel) {
                         1 -> "#FF4CAF50" // Verde
                         2 -> "#FFFFEB3B" // Amarillo
@@ -138,6 +140,13 @@ fun OpenStreetMap(
                         }
                         title = zona.nombre
                         snippet = "Nivel: ${zona.nivel}/5 • Radio: ${zona.radio}m"
+
+                        // 🔥 DETECTAR TAP EN ZONA
+                        setOnMarkerClickListener { clickedMarker, mapView ->
+                            Log.d("OpenStreetMap", "👆 Tap en zona: ${zona.nombre}")
+                            onZonaClick?.invoke(zona)
+                            true // Consumir el evento
+                        }
                     }
                     map.overlays.add(marker)
 
@@ -320,7 +329,7 @@ class CenteredPinOverlay(private val context: Context) : Overlay() {
 private fun crearCirculoPersonalizado(
     lat: Double,
     lon: Double,
-    radioMetros: Int  // ✅ Cambiado a Int como en SimpleMapOSM
+    radioMetros: Int
 ): List<GeoPoint> {
     val puntos = mutableListOf<GeoPoint>()
     val numPuntos = 32

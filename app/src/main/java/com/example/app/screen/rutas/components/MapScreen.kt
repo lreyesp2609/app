@@ -1,5 +1,6 @@
 package com.example.app.screen.rutas.components
 
+import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -131,6 +132,33 @@ fun MapScreen(
     var mostrarZonasPeligrosas by remember { mutableStateOf(true) }
     var cargandoZonas by remember { mutableStateOf(false) }
 
+    var showMapHelp by remember { mutableStateOf(false) }
+    var showGestureHint by remember { mutableStateOf(false) }
+
+
+    // Verificar si debe mostrar el tutorial
+    LaunchedEffect(Unit) {
+        val sharedPrefs = context.getSharedPreferences("map_prefs", Context.MODE_PRIVATE)
+        showMapHelp = !sharedPrefs.getBoolean("map_help_seen", false)
+    }
+
+    // Mostrar hint de gesto si no ha marcado zonas
+    LaunchedEffect(locationObtained, zonasCreadas.size) {
+        if (locationObtained && zonasCreadas.isEmpty()) {
+            delay(3000) // Esperar 3 segundos
+            showGestureHint = true
+        } else {
+            showGestureHint = false
+        }
+    }
+
+    // Función para marcar el tutorial como visto
+    fun dismissMapHelp() {
+        val sharedPrefs = context.getSharedPreferences("map_prefs", Context.MODE_PRIVATE)
+        sharedPrefs.edit().putBoolean("map_help_seen", true).apply()
+        showMapHelp = false
+    }
+
     // Cargar desde caché
     LaunchedEffect(Unit) {
         val cachedLocation = locationManager.getLastKnownLocation()
@@ -230,6 +258,7 @@ fun MapScreen(
                         zonasGuardadas = if (mostrarZonasPeligrosas) zonasCreadas else emptyList()
                     )
 
+
                     AppBackButton(
                         navController = navController,
                         modifier = Modifier
@@ -261,7 +290,8 @@ fun MapScreen(
                     Column(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
-                            .padding(end = 16.dp),
+                            .padding(end = 16.dp)
+                            .offset(y = 40.dp), // 🆕 Baja todos los botones 40dp
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         MapControlButton(
@@ -283,9 +313,7 @@ fun MapScreen(
                             }
                         )
 
-                        // 🆕 BOTÓN TOGGLE ZONAS PELIGROSAS (solo agregar esto)
                         if (zonasCreadas.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
                             MapControlButton(
                                 icon = if (mostrarZonasPeligrosas) {
                                     Icons.Default.Visibility
@@ -322,6 +350,12 @@ fun MapScreen(
                                 ),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            if (showMapHelp) {
+                                MapHelpBannerIntegrated(
+                                    onDismiss = { dismissMapHelp() }
+                                )
+                            }
+
                             CompactLocationCard(
                                 title = "Tu ubicación",
                                 location = currentAddress,

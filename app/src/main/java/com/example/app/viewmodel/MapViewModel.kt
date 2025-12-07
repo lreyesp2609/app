@@ -810,6 +810,44 @@ class MapViewModel(
         return puntos
     }
 
+    fun eliminarZonaPeligrosa(
+        zonaId: Int,
+        token: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d("MapViewModel", "🗑️ Eliminando zona ID: $zonaId")
+
+                val response = RetrofitClient.rutasApiService.eliminarZonaPeligrosa(
+                    token = "Bearer $token",
+                    zonaId = zonaId
+                )
+
+                if (response.isSuccessful) {
+                    Log.d("MapViewModel", "✅ Zona eliminada correctamente")
+
+                    // Actualizar lista local de zonas
+                    _zonasPeligrosas.value = _zonasPeligrosas.value.filter {
+                        it.id != zonaId
+                    }
+
+                    onSuccess()
+                } else {
+                    val errorMsg = "Error ${response.code()}: ${response.message()}"
+                    Log.e("MapViewModel", "❌ $errorMsg")
+                    onError(errorMsg)
+                }
+
+            } catch (e: Exception) {
+                val errorMsg = e.message ?: "Error desconocido"
+                Log.e("MapViewModel", "❌ Error eliminando zona: $errorMsg", e)
+                onError(errorMsg)
+            }
+        }
+    }
+
     // 🆕 Reset del estado de regeneración
     fun resetRegeneracionZonas() {
         _rutasGeneradasEvitandoZonas.value = false

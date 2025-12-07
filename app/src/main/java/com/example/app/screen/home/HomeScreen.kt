@@ -82,6 +82,7 @@ import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.services.LocationReminderService
 import com.example.app.utils.LocationManager
+import com.example.app.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -89,7 +90,8 @@ fun HomeScreen(
     authViewModel: AuthViewModel,
     navController: NavController,
     initialTab: Int = 0,
-    skipPermissions: Boolean = false
+    skipPermissions: Boolean = false,
+    notificationViewModel: NotificationViewModel
 ) {
     val context = LocalContext.current
     val userState = authViewModel.user
@@ -573,7 +575,8 @@ fun HomeScreen(
                             )
                             1 -> AlternateRoutesScreen(
                                 navController = navController,
-                                token = accessToken
+                                token = accessToken,
+                                notificationViewModel = notificationViewModel
                             )
                             2 -> RemindersScreen(
                                 navController = navController,

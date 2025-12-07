@@ -123,6 +123,7 @@ data class ZonaGuardada(
     val lon: Double,
     val radio: Int,
     val nombre: String,
-    val nivel: Int
+    val nivel: Int,
+    val id: Int? = null
 )
 

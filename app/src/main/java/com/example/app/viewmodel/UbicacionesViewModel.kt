@@ -97,5 +97,39 @@ class UbicacionesViewModel(private val token: String) : ViewModel() {
             )
         }
     }
+    fun eliminarUbicacion(
+        id: Int,
+        notificationViewModel: NotificationViewModel
+    ) {
+        viewModelScope.launch {
+            isLoading = true
+
+            repository.eliminarUbicacion(token, id).fold(
+                onSuccess = {
+                    // Quitar de la lista
+                    ubicaciones = ubicaciones.filter { it.id != id }
+
+                    isLoading = false
+                    notificationViewModel.showSuccess("Ubicación eliminada correctamente")
+                },
+                onFailure = { exception ->
+                    isLoading = false
+
+                    val error = when {
+                        exception.message?.contains("NETWORK_ERROR") == true ->
+                            "Error de conexión. Verifica tu internet"
+
+                        exception.message?.contains("HTTP_ERROR_404") == true ->
+                            "La ubicación no existe o ya fue eliminada"
+
+                        else ->
+                            "No se pudo eliminar la ubicación"
+                    }
+
+                    notificationViewModel.showError(error)
+                }
+            )
+        }
+    }
 
 }
