@@ -21,6 +21,7 @@ import com.example.app.models.NotificationSound
 import com.example.app.models.Reminder
 import com.example.app.models.ReminderEntity
 import com.example.app.models.toReminder
+import com.example.app.models.toReminderRequest
 import com.example.app.models.toReminderResponse
 import com.example.app.network.RetrofitClient
 import com.example.app.repository.ReminderRepository
@@ -119,7 +120,7 @@ class ReminderViewModel(
                     try {
                         Log.d("ReminderViewModel", "🌐 Enviando recordatorio a la API...")
 
-                        val reminderRequest = reminder.toReminderResponse()
+                        val reminderRequest = reminder.toReminderRequest()
 
                         val response = RetrofitClient.reminderService.createReminder(
                             "Bearer $token",
@@ -392,6 +393,158 @@ class ReminderViewModel(
         }
     }
 
+    fun updateReminder(
+        reminderId: Int,
+        reminder: Reminder,
+        context: Context,
+        onComplete: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                isLoading = true
+                _error.value = null
+                val reminderRequest = reminder.toReminderRequest()
+
+                Log.d("ReminderViewModel", "🔄 ACTUALIZANDO recordatorio ID: $reminderId")
+
+
+                val sessionManager = SessionManager.getInstance(context)
+                val token = sessionManager.getAccessToken()
+                val userId = sessionManager.getUser()?.id ?: 1
+
+
+                Log.d("ReminderViewModel", "🔵 ReminderRequest que se enviará:")
+                Log.d("ReminderViewModel", "   reminder_type = ${reminderRequest.reminder_type}")
+                Log.d("ReminderViewModel", "   title = ${reminderRequest.title}")
+                Log.d("ReminderViewModel", "   days = ${reminderRequest.days}")
+                Log.d("ReminderViewModel", "   JSON = ${com.google.gson.Gson().toJson(reminderRequest)}")
+
+
+                // 1️⃣ ACTUALIZAR EN LA API
+                if (token != null) {
+                    try {
+                        val reminderRequest = reminder.toReminderRequest()
+
+                        val response = RetrofitClient.reminderService.updateReminder(
+                            "Bearer $token",
+                            reminderId,
+                            reminderRequest
+                        )
+
+                        if (response.isSuccessful && response.body() != null) {
+                            Log.d("ReminderViewModel", "✅ Recordatorio actualizado en API")
+
+                            // 2️⃣ CANCELAR ALARMAS ANTIGUAS
+                            cancelReminderAlarms(context, reminderId)
+
+                            // 3️⃣ ACTUALIZAR LOCALMENTE
+                            val daysString = reminder.days?.joinToString(",")
+
+                            val reminderEntity = ReminderEntity(
+                                id = reminderId,
+                                title = reminder.title,
+                                description = reminder.description,
+                                reminder_type = reminder.reminder_type,
+                                trigger_type = reminder.trigger_type,
+                                sound_uri = reminder.sound_uri,
+                                vibration = reminder.vibration,
+                                sound = reminder.sound,
+                                days = daysString,
+                                time = reminder.time,
+                                location = reminder.location,
+                                latitude = reminder.latitude,
+                                longitude = reminder.longitude,
+                                radius = reminder.radius?.toFloat(),
+                                user_id = userId,
+                                is_active = true,
+                                is_deleted = false
+                            )
+
+                            repository.updateReminder(reminderEntity)
+
+                            // 4️⃣ REPROGRAMAR ALARMAS NUEVAS
+                            when (reminder.reminder_type) {
+                                "datetime" -> {
+                                    programarAlarmasFechaHora(context, reminder, reminderEntity, reminderId)
+                                }
+                                "location" -> {
+                                    if (PermissionUtils.hasLocationPermissions(context)) {
+                                        LocationReminderService.start(context)
+                                    }
+                                }
+                                "both" -> {
+                                    programarAlarmasFechaHora(context, reminder, reminderEntity, reminderId)
+                                    if (PermissionUtils.hasLocationPermissions(context)) {
+                                        LocationReminderService.start(context)
+                                    }
+                                }
+                            }
+
+                            // 5️⃣ RECARGAR LISTA
+                            fetchReminders(token)
+
+                            onComplete(true)
+
+                        } else {
+                            val errorBody = response.errorBody()?.string()
+                            val errorMessage = try {
+                                val jsonError = org.json.JSONObject(errorBody ?: "{}")
+                                jsonError.optString("detail", "Error al actualizar")
+                            } catch (e: Exception) {
+                                "Error ${response.code()}"
+                            }
+
+                            _error.value = errorMessage
+                            onComplete(false)
+                        }
+
+                    } catch (e: Exception) {
+                        Log.e("ReminderViewModel", "❌ Error de red: ${e.message}")
+                        _error.value = "Error de red: ${e.message}"
+                        onComplete(false)
+                    }
+                } else {
+                    _error.value = "No hay sesión activa"
+                    onComplete(false)
+                }
+
+            } catch (e: Exception) {
+                _error.value = "Error al actualizar: ${e.message}"
+                Log.e("ReminderViewModel", "❌ Error: ${e.message}", e)
+                onComplete(false)
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    // 🆕 Función para obtener un recordatorio por ID desde la base de datos
+    fun getReminderById(reminderId: Int, onResult: (ReminderEntity?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val reminderEntity = repository.getReminderById(reminderId)
+                onResult(reminderEntity)
+            } catch (e: Exception) {
+                Log.e("ReminderViewModel", "❌ Error obteniendo recordatorio: ${e.message}")
+                onResult(null)
+            }
+        }
+    }
+
+    // 🔥 Función auxiliar para cancelar alarmas
+    private fun cancelReminderAlarms(context: Context, reminderId: Int) {
+        try {
+            // Cancelar hasta 7 alarmas (una por día de la semana)
+            for (i in 0..6) {
+                val uniqueId = reminderId * 100 + i
+                cancelAlarm(context, uniqueId)
+            }
+            Log.d("ReminderViewModel", "🚫 Alarmas canceladas para ID: $reminderId")
+        } catch (e: Exception) {
+            Log.e("ReminderViewModel", "Error cancelando alarmas: ${e.message}")
+        }
+    }
+
     fun cancelAllReminders(context: Context) {
         viewModelScope.launch {
             try {
@@ -495,3 +648,4 @@ fun rememberSystemNotificationSounds(context: Context): List<NotificationSound> 
         sounds
     }
 }
+

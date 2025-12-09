@@ -7,14 +7,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
@@ -38,9 +37,11 @@ fun Step1SelectLocation(
     onBackClick: () -> Unit,
     onRecenterClick: () -> Unit,
     onZoomInClick: () -> Unit,
-    onZoomOutClick: () -> Unit
+    onZoomOutClick: () -> Unit,
+    isEditMode: Boolean = false
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
+        // Header superior
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -72,6 +73,7 @@ fun Step1SelectLocation(
             }
         }
 
+        // Controles del mapa (centro derecha)
         Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
@@ -83,19 +85,38 @@ fun Step1SelectLocation(
             MapControlButton(icon = Icons.Default.MyLocation, onClick = onRecenterClick)
         }
 
+        // 🔥 BOTONES EN LA PARTE INFERIOR
         val canContinue = selectedAddress.isNotEmpty()
-        AppButton(
-            text = "Siguiente",
-            icon = Icons.Default.ArrowForward,
-            onClick = onNextClick,
+
+        Column(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .imePadding()
+                .align(Alignment.BottomCenter)  // 🔥 Alinear al fondo
+                .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(16.dp),
-            enabled = canContinue,
-            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-            disabledContentColor = MaterialTheme.colorScheme.onPrimary
-        )
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Botón principal
+            AppButton(
+                text = if (canContinue) "Siguiente" else "Selecciona una ubicación",
+                icon = Icons.Default.ArrowForward,
+                onClick = onNextClick,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = canContinue,
+                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                disabledContentColor = MaterialTheme.colorScheme.onPrimary
+            )
+
+            // 🆕 Botón para mantener ubicación (solo en modo edición)
+            if (isEditMode && selectedAddress.isNotEmpty()) {
+                AppButton(
+                    text = "Mantener ubicación actual",
+                    icon = Icons.Default.Check,
+                    onClick = onNextClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    outlined = true
+                )
+            }
+        }
     }
 }

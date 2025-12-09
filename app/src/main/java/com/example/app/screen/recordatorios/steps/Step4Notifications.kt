@@ -1,6 +1,7 @@
 package com.example.app.screen.recordatorios.steps
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -84,7 +85,9 @@ fun Step4Notifications(
     latitude: Double,
     longitude: Double,
     onSaveSuccess: () -> Unit,
-    notificationViewModel: NotificationViewModel // 🆕 Agregar este parámetro
+    notificationViewModel: NotificationViewModel,
+    isEditMode: Boolean = false,
+    editReminderId: Int? = null
 ) {
     val scrollState = rememberScrollState()
     var showSoundPicker by remember { mutableStateOf(false) }
@@ -334,7 +337,7 @@ fun Step4Notifications(
                 outlined = true
             )
             AppButton(
-                text = "Guardar",
+                text = if (isEditMode) "Actualizar" else "Guardar", // 🔥 Cambiar texto según modo
                 icon = Icons.Default.Check,
                 onClick = {
                     // 🔥 VALIDACIONES CON NOTIFICACIONES
@@ -343,37 +346,47 @@ fun Step4Notifications(
                             notificationViewModel.showError("Espera, guardando recordatorio...")
                             return@AppButton
                         }
+
                         title.isBlank() -> {
                             notificationViewModel.showError("El título no puede estar vacío")
                             return@AppButton
                         }
+
                         reminderType == "datetime" && selectedDays.isEmpty() -> {
                             notificationViewModel.showError("Debes seleccionar al menos un día")
                             return@AppButton
                         }
+
                         reminderType == "datetime" && selectedTime == null -> {
                             notificationViewModel.showError("Debes seleccionar una hora")
                             return@AppButton
                         }
+
                         reminderType == "location" && selectedAddress.isBlank() -> {
                             notificationViewModel.showError("Debes seleccionar una ubicación")
                             return@AppButton
                         }
+
                         reminderType == "both" && (selectedDays.isEmpty() || selectedTime == null) -> {
                             notificationViewModel.showError("Debes completar días y hora")
                             return@AppButton
                         }
+
                         reminderType == "both" && selectedAddress.isBlank() -> {
                             notificationViewModel.showError("Debes seleccionar una ubicación")
                             return@AppButton
                         }
+
                         else -> {
-                            // ✅ Validaciones pasadas, crear recordatorio
+                            // ✅ Validaciones pasadas, crear o actualizar recordatorio
                             val timeStr = selectedTime?.let {
-                                "${it.first.toString().padStart(2,'0')}:${it.second.toString().padStart(2,'0')}:00"
+                                "${it.first.toString().padStart(2, '0')}:${
+                                    it.second.toString().padStart(2, '0')
+                                }:00"
                             }
 
-                            val daysList = if (selectedDays.isEmpty()) null else selectedDays.toList()
+                            val daysList =
+                                if (selectedDays.isEmpty()) null else selectedDays.toList()
 
                             val reminder = Reminder(
                                 title = title,
@@ -391,14 +404,40 @@ fun Step4Notifications(
                                 radius = proximityRadius.toDouble()
                             )
 
-                            viewModel.createReminder(reminder, context) { success ->
-                                if (success) {
-                                    notificationViewModel.showSuccess("¡Recordatorio creado exitosamente!")
-                                    onSaveSuccess()
-                                } else {
-                                    // 🔥 Mostrar el error específico que viene del ViewModel
-                                    val errorMessage = viewModel.error.value ?: "Error al crear el recordatorio"
-                                    notificationViewModel.showError(errorMessage)
+                            Log.d("Step4", "🔵 Reminder ANTES de actualizar:")
+                            Log.d("Step4", "   reminder_type = ${reminder.reminder_type}")
+                            Log.d("Step4", "   title = ${reminder.title}")
+                            Log.d("Step4", "   days = ${reminder.days}")
+                            Log.d("Step4", "   time = ${reminder.time}")
+
+                            // 🔥 DECIDIR SI CREAR O ACTUALIZAR
+                            if (isEditMode && editReminderId != null) {
+                                // MODO EDICIÓN
+                                viewModel.updateReminder(
+                                    editReminderId,
+                                    reminder,
+                                    context
+                                ) { success ->
+                                    if (success) {
+                                        notificationViewModel.showSuccess("¡Recordatorio actualizado!")
+                                        onSaveSuccess()
+                                    } else {
+                                        val errorMessage =
+                                            viewModel.error.value ?: "Error al actualizar"
+                                        notificationViewModel.showError(errorMessage)
+                                    }
+                                }
+                            } else {
+                                // MODO CREACIÓN
+                                viewModel.createReminder(reminder, context) { success ->
+                                    if (success) {
+                                        notificationViewModel.showSuccess("¡Recordatorio creado!")
+                                        onSaveSuccess()
+                                    } else {
+                                        val errorMessage = viewModel.error.value
+                                            ?: "Error al crear el recordatorio"
+                                        notificationViewModel.showError(errorMessage)
+                                    }
                                 }
                             }
                         }

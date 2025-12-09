@@ -254,7 +254,9 @@ fun RemindersScreen(
                                 ReminderCard(
                                     reminder = reminder,
                                     onClick = { /* TODO: Navegar a detalle */ },
-                                    onEdit = { /* TODO: Editar */ },
+                                    onEdit = {
+                                        navController.navigate("edit_reminder/${reminder.id}")
+                                    },
                                     onDelete = {
                                         reminderToDelete = reminder
                                         showDeleteDialog = true

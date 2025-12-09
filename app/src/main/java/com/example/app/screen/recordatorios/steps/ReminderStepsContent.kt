@@ -43,7 +43,9 @@ fun ReminderStepsContent(
     viewModel: ReminderViewModel,
     context: Context,
     onSaveSuccess: () -> Unit,
-    notificationViewModel: NotificationViewModel
+    notificationViewModel: NotificationViewModel,
+    isEditMode: Boolean = false,
+    editReminderId: Int? = null,
 ) {
 
     when (currentStep) {
@@ -54,7 +56,8 @@ fun ReminderStepsContent(
             onBackClick = onPreviousStep,
             onRecenterClick = onRecenterClick,
             onZoomInClick = onZoomInClick,
-            onZoomOutClick = onZoomOutClick
+            onZoomOutClick = onZoomOutClick,
+            isEditMode = isEditMode
         )
 
         2 -> Step2BasicInfo(
@@ -88,14 +91,13 @@ fun ReminderStepsContent(
         4 -> Step4Notifications(
             enableVibration = enableVibration,
             enableSound = enableSound,
-            selectedSoundUri = selectedSoundUri,  // ← CAMBIO: selectedSoundType → selectedSoundUri
+            selectedSoundUri = selectedSoundUri,
             onEnableVibrationChange = onEnableVibrationChange,
             onEnableSoundChange = onEnableSoundChange,
-            onSelectedSoundUriChange = onSelectedSoundUriChange,  // ← CAMBIO: onSelectedSoundTypeChange → onSelectedSoundUriChange
+            onSelectedSoundUriChange = onSelectedSoundUriChange,
             onBackClick = onPreviousStep,
             viewModel = viewModel,
             context = context,
-            // Datos para guardar
             title = title,
             description = description,
             reminderType = reminderType,
@@ -108,6 +110,8 @@ fun ReminderStepsContent(
             longitude = longitude,
             onSaveSuccess = onSaveSuccess,
             notificationViewModel = notificationViewModel,
+            isEditMode = isEditMode, // 🆕
+            editReminderId = editReminderId // 🆕
         )
     }
 }

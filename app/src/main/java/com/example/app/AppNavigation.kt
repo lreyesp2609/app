@@ -26,6 +26,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.app.network.AppDatabase
+import com.example.app.repository.ReminderRepository
 import com.example.app.repository.RutasRepository
 import com.example.app.screen.auth.LoginScreen
 import com.example.app.screen.auth.RegisterScreen
@@ -36,6 +38,7 @@ import com.example.app.screen.grupos.components.CreateGroupScreen
 import com.example.app.screen.grupos.components.GrupoDetalleScreen
 import com.example.app.screen.grupos.components.ParticipantesScreen
 import com.example.app.screen.home.HomeScreen
+import com.example.app.screen.recordatorios.components.EditReminderScreen
 import com.example.app.screen.recordatorios.components.ReminderMapScreen
 import com.example.app.screen.rutas.AlternateRoutesScreen
 import com.example.app.screen.rutas.components.EstadisticasScreen
@@ -48,6 +51,8 @@ import com.example.app.viewmodel.AuthViewModel
 import com.example.app.viewmodel.MapViewModel
 import com.example.app.viewmodel.MapViewModelFactory
 import com.example.app.viewmodel.NotificationViewModel
+import com.example.app.viewmodel.ReminderViewModel
+import com.example.app.viewmodel.ReminderViewModelFactory
 import com.example.app.viewmodel.UbicacionesViewModel
 import com.example.app.viewmodel.UbicacionesViewModelFactory
 import com.example.app.websocket.NotificationWebSocketManager
@@ -59,8 +64,11 @@ fun AppNavigation(authViewModel: AuthViewModel, mapViewModel: MapViewModel) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val notificationViewModel: NotificationViewModel = viewModel()
-
-
+    val database = AppDatabase.getDatabase(context)
+    val repository = ReminderRepository(database.reminderDao())
+    val reminderViewModel: ReminderViewModel = viewModel(
+        factory = ReminderViewModelFactory(repository)
+    )
     val isLoggedIn = authViewModel.isLoggedIn
     val isLoading = authViewModel.isLoading
     val accessToken = authViewModel.accessToken
@@ -381,6 +389,22 @@ fun AppNavigation(authViewModel: AuthViewModel, mapViewModel: MapViewModel) {
                     navController = navController,
                     notificationViewModel = notificationViewModel,
                     mapViewModel = mapViewModel
+                )
+            }
+
+            composable(
+                route = "edit_reminder/{reminderId}",
+                arguments = listOf(
+                    navArgument("reminderId") { type = NavType.IntType }
+                )
+            ) { backStackEntry ->
+                val reminderId = backStackEntry.arguments?.getInt("reminderId") ?: return@composable
+
+                EditReminderScreen(
+                    reminderId = reminderId,
+                    navController = navController,
+                    viewModel = reminderViewModel,
+                    notificationViewModel = notificationViewModel
                 )
             }
         }

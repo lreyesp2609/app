@@ -232,12 +232,28 @@ fun Step3ReminderType(
                         selectedAddress = selectedAddress,
                         proximityRadius = proximityRadius,
                         triggerType = triggerType,
-                        latitude = latitude,      // 🆕 Pasar coordenadas
-                        longitude = longitude,    // 🆕 Pasar coordenadas
+                        latitude = latitude,
+                        longitude = longitude,
                         onProximityRadiusChange = onProximityRadiusChange,
                         onTriggerTypeChange = onTriggerTypeChange
                     )
                 }
+
+                // 🔥 AGREGAR ESTE CASO
+                "datetime" -> {
+                    DaysAndTimeSelector(
+                        selectedDays = selectedDays,
+                        selectedTime = selectedTime,
+                        showDaysError = showDaysError,
+                        showTimeError = showTimeError,
+                        onSelectedDaysChange = {
+                            onSelectedDaysChange(it)
+                            showDaysError = false
+                        },
+                        onTimePickerClick = { showTimePicker = true }
+                    )
+                }
+
                 "both" -> {
                     DaysAndTimeSelector(
                         selectedDays = selectedDays,
@@ -257,8 +273,8 @@ fun Step3ReminderType(
                         selectedAddress = selectedAddress,
                         proximityRadius = proximityRadius,
                         triggerType = triggerType,
-                        latitude = latitude,      // 🆕 Pasar coordenadas
-                        longitude = longitude,    // 🆕 Pasar coordenadas
+                        latitude = latitude,
+                        longitude = longitude,
                         onProximityRadiusChange = onProximityRadiusChange,
                         onTriggerTypeChange = onTriggerTypeChange
                     )

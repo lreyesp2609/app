@@ -134,3 +134,47 @@ fun ReminderEntity.toReminder(): Reminder {
         is_deleted = is_deleted
     )
 }
+
+// 🆕 Modelo específico para requests de la API (crear/editar)
+data class ReminderRequest(
+    val id: Int? = null,
+    val user_id: Int? = null,
+    val title: String,
+    val description: String? = null,
+    val reminder_type: String,
+    val trigger_type: String,
+    val vibration: Boolean = false,
+    val sound: Boolean = false,
+    val sound_uri: String? = null,
+    val days: List<String>? = null,  // 🔥 Lista, no String
+    val time: String?,
+    val location: String?,
+    val latitude: Double?,
+    val longitude: Double?,
+    val radius: Double?,
+    val is_active: Boolean = true,
+    val is_deleted: Boolean = false
+)
+
+// 🆕 Función de conversión para enviar a la API
+fun Reminder.toReminderRequest(): ReminderRequest {
+    return ReminderRequest(
+        id = id,
+        user_id = user_id,
+        title = title,
+        description = description,
+        reminder_type = reminder_type,
+        trigger_type = trigger_type,
+        vibration = vibration,
+        sound = sound,
+        sound_uri = sound_uri,
+        days = days,  // 🔥 Enviar como lista
+        time = time,
+        location = location,
+        latitude = latitude,
+        longitude = longitude,
+        radius = radius,
+        is_active = is_active,
+        is_deleted = is_deleted
+    )
+}
