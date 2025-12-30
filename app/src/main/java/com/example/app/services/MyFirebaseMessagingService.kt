@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -77,28 +78,39 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
+        Log.d(TAG, "📨 ========================================")
         Log.d(TAG, "📨 MENSAJE FCM RECIBIDO")
+        Log.d(TAG, "📨 ========================================")
 
-        val type = message.data["type"] ?: "nuevo_mensaje"
-        val grupoId = message.data["grupo_id"]?.toIntOrNull()
-
-        // 🔥 MARCAR COMO ENTREGADO INMEDIATAMENTE (incluso en segundo plano)
-        if (grupoId != null) {
-            marcarMensajesComoEntregados(grupoId)
+        // 🔥 IMPRIMIR TODOS LOS DATOS PARA DEBUG
+        Log.d(TAG, "   Data payload:")
+        message.data.forEach { (key, value) ->
+            Log.d(TAG, "     $key: $value")
         }
 
-        val titulo = message.data["titulo"] ?: message.notification?.title ?: "Nuevo mensaje"
-        val cuerpo = message.data["cuerpo"] ?: message.notification?.body ?: ""
-        val grupoNombre = message.data["grupo_nombre"]
-        val remitenteNombre = message.data["remitente_nombre"]
-        val timestamp = message.data["timestamp"]
+        message.notification?.let {
+            Log.d(TAG, "   Notification payload:")
+            Log.d(TAG, "     title: ${it.title}")
+            Log.d(TAG, "     body: ${it.body}")
+        }
 
-        Log.d(TAG, "   Type: $type")
-        Log.d(TAG, "   GrupoId: $grupoId")
-        Log.d(TAG, "   Remitente: $remitenteNombre")
+        val type = message.data["type"] ?: "desconocido"
+        Log.d(TAG, "   Type detectado: $type")
 
         when (type) {
             "nuevo_mensaje" -> {
+                // Tu código actual para mensajes de chat
+                val grupoId = message.data["grupo_id"]?.toIntOrNull()
+                if (grupoId != null) {
+                    marcarMensajesComoEntregados(grupoId)
+                }
+
+                val titulo = message.data["titulo"] ?: message.notification?.title ?: "Nuevo mensaje"
+                val cuerpo = message.data["cuerpo"] ?: message.notification?.body ?: ""
+                val grupoNombre = message.data["grupo_nombre"]
+                val remitenteNombre = message.data["remitente_nombre"]
+                val timestamp = message.data["timestamp"]
+
                 if (grupoId != null && remitenteNombre != null) {
                     if (!isUserInChat(grupoId)) {
                         addMessageToHistory(grupoId, remitenteNombre, cuerpo, timestamp)
@@ -106,7 +118,44 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                     }
                 }
             }
+
+            "generar_rutas", "predictibilidad", "patron_detectado" -> {
+                Log.d(TAG, "🚗 Notificación de rutas alternas detectada")
+
+                val titulo = message.data["titulo"]
+                    ?: message.notification?.title
+                    ?: "🚗 Ruta frecuente detectada"
+
+                val cuerpo = message.data["cuerpo"]
+                    ?: message.notification?.body
+                    ?: "Toca para ver rutas alternas"
+
+                // 🔥 Intentar obtener el ID de múltiples formas
+                val ubicacionDestinoId = message.data["ubicacion_destino_id"]?.toIntOrNull()
+                    ?: message.data["destino_id"]?.toIntOrNull()
+                    ?: message.data["UBICACION_DESTINO_ID"]?.toIntOrNull()
+
+                val predictibilidad = message.data["predictibilidad"]
+
+                Log.d(TAG, "   Destino ID: $ubicacionDestinoId")
+                Log.d(TAG, "   Predictibilidad: $predictibilidad")
+
+                if (ubicacionDestinoId != null) {
+                    showPredictibilidadNotification(titulo, cuerpo, predictibilidad, ubicacionDestinoId)
+                } else {
+                    Log.e(TAG, "❌ No se puede mostrar notificación: destino_id es null")
+                    Log.e(TAG, "   Data keys disponibles: ${message.data.keys.joinToString()}")
+                }
+            }
+
             else -> {
+                Log.d(TAG, "⚠️ Tipo desconocido, mostrando notificación simple")
+                val titulo = message.data["titulo"] ?: message.notification?.title ?: "RecuerdaGo"
+                val cuerpo = message.data["cuerpo"] ?: message.notification?.body ?: ""
+                val grupoId = message.data["grupo_id"]?.toIntOrNull()
+                val grupoNombre = message.data["grupo_nombre"]
+                val remitenteNombre = message.data["remitente_nombre"]
+
                 showSimpleNotification(titulo, cuerpo, grupoId, grupoNombre, remitenteNombre)
             }
         }
@@ -321,6 +370,83 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         notificationManager.notify(grupoId ?: 0, notification)
         Log.d(TAG, "🔔 Notificación simple mostrada")
+    }
+
+    private fun showPredictibilidadNotification(
+        titulo: String,
+        cuerpo: String,
+        predictibilidad: String?,
+        ubicacionDestinoId: Int?
+    ) {
+        Log.d(TAG, "🎯 ========================================")
+        Log.d(TAG, "🎯 MOSTRANDO NOTIFICACIÓN DE RUTAS ALTERNAS")
+        Log.d(TAG, "🎯 ========================================")
+        Log.d(TAG, "   Título: $titulo")
+        Log.d(TAG, "   Cuerpo: $cuerpo")
+        Log.d(TAG, "   Destino ID: $ubicacionDestinoId")
+
+        if (ubicacionDestinoId == null) {
+            Log.e(TAG, "❌ ubicacionDestinoId es null, no se puede crear notificación")
+            return
+        }
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        // 🔥 CAMBIO CRÍTICO: Intent más simple pero efectivo
+        val intent = Intent(this, MainActivity::class.java).apply {
+            // ✅ Usar FLAG_ACTIVITY_NEW_TASK para abrir desde cualquier estado
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+
+            // ✅ Datos de navegación
+            putExtra("NAVIGATE_TO_ROUTES", true)
+            putExtra("UBICACION_DESTINO_ID", ubicacionDestinoId)
+            putExtra("FROM_NOTIFICATION", true)
+
+            // 🔥 CRÍTICO: Usar setData con URI único en lugar de action
+            // Esto fuerza a Android a tratarlo como un intent diferente
+            data = Uri.parse("recuerdago://rutas/$ubicacionDestinoId?time=${System.currentTimeMillis()}")
+        }
+
+        // ✅ Request code único
+        val requestCode = ubicacionDestinoId + (System.currentTimeMillis() % 10000).toInt()
+
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // 🎯 Crear notificación
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(titulo)
+            .setContentText(cuerpo)
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText(cuerpo)
+                .setBigContentTitle(titulo))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .setVibrate(longArrayOf(0, 300, 200, 300))
+            .setLights(0xFF2196F3.toInt(), 1000, 500)
+            .setColor(0xFF2196F3.toInt())
+            .setWhen(System.currentTimeMillis())
+            .setShowWhen(true)
+            .build()
+
+        val notificationId = ubicacionDestinoId
+        val notificationTag = "rutas_alternas_$notificationId"
+
+        notificationManager.notify(notificationTag, notificationId, notification)
+
+        Log.d(TAG, "✅ Notificación mostrada")
+        Log.d(TAG, "   Notification ID: $notificationId")
+        Log.d(TAG, "   Request code: $requestCode")
+        Log.d(TAG, "   Data URI: ${intent.data}")
     }
 
     private fun sendTokenToBackend(token: String) {

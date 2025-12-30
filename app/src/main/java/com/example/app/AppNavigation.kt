@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -60,8 +61,11 @@ import com.example.app.websocket.WebSocketLocationManager
 import com.example.app.websocket.WebSocketManager
 
 @Composable
-fun AppNavigation(authViewModel: AuthViewModel, mapViewModel: MapViewModel) {
-    val navController = rememberNavController()
+fun AppNavigation(
+    authViewModel: AuthViewModel,
+    mapViewModel: MapViewModel,
+    navController: NavHostController
+    ) {
     val context = LocalContext.current
     val notificationViewModel: NotificationViewModel = viewModel()
     val database = AppDatabase.getDatabase(context)

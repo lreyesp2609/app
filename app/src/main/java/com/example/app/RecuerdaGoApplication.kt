@@ -2,6 +2,7 @@ package com.example.app
 
 import android.app.Application
 import android.util.Log
+import com.example.app.network.RetrofitClient
 import com.example.app.websocket.WebSocketLocationManager
 import com.example.app.websocket.WebSocketManager
 import com.example.app.utils.SessionManager
@@ -11,7 +12,7 @@ import com.google.gson.Gson
 class RecuerdaGoApplication : Application() {
 
     companion object {
-        private const val TAG = "🔌WS_SessionManager"
+        private const val TAG = "RecuerdaGoApp"
     }
 
     override fun onCreate() {
@@ -22,6 +23,12 @@ class RecuerdaGoApplication : Application() {
             Log.e(TAG, "🚀🚀🚀 APLICACIÓN INICIADA 🚀🚀🚀")
             Log.e(TAG, "════════════════════════════════════════")
         }
+
+        // 🔥 Inicializar RetrofitClient con contexto
+        RetrofitClient.init(this)
+
+        Log.d(TAG, "✅ RetrofitClient inicializado con AuthInterceptor")
+        Log.d(TAG, "✅ ========================================")
 
         val sessionManager = SessionManager.getInstance(this)
 

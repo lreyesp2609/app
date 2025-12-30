@@ -1,30 +1,50 @@
 package com.example.app.network
 
-import com.example.app.BuildConfig
-import com.example.app.utils.DaysTypeAdapter
-import com.google.gson.GsonBuilder
-import com.google.gson.reflect.TypeToken
+import android.content.Context
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import okhttp3.logging.HttpLoggingInterceptor.Level
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
+import com.example.app.BuildConfig
+import com.example.app.utils.DaysTypeAdapter
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
+
+    // 🆕 Necesita contexto para el AuthInterceptor
+    private lateinit var applicationContext: Context
+
+    /**
+     * Debe llamarse desde Application.onCreate()
+     */
+    fun init(context: Context) {
+        applicationContext = context.applicationContext
+    }
+
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = Level.BODY
     }
 
-    private val okHttpClient = OkHttpClient.Builder()
-        .addInterceptor(loggingInterceptor)
-        // ✅ Aumentar timeouts para evitar fallos prematuros
-        .connectTimeout(60, TimeUnit.SECONDS)  // Era 30s
-        .readTimeout(60, TimeUnit.SECONDS)     // Era 30s
-        .writeTimeout(60, TimeUnit.SECONDS)    // Era 30s
-        // ✅ Agregar reintentos automáticos
-        .retryOnConnectionFailure(true)
-        .build()
+    // 🆕 AuthInterceptor para refresh automático
+    private val authInterceptor by lazy {
+        AuthInterceptor(applicationContext)
+    }
+
+    private val okHttpClient by lazy {
+        OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .addInterceptor(authInterceptor)  // 🔥 AGREGADO
+            // Timeouts aumentados
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            // Reintentos automáticos
+            .retryOnConnectionFailure(true)
+            .build()
+    }
 
     private val gson = GsonBuilder()
         .registerTypeAdapter(
@@ -67,5 +87,9 @@ object RetrofitClient {
 
     val mensajesService: MensajesApiService by lazy {
         retrofit.create(MensajesApiService::class.java)
+    }
+
+    val trackingApiService: TrackingApiService by lazy {
+        retrofit.create(TrackingApiService::class.java)
     }
 }
