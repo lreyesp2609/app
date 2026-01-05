@@ -27,7 +27,7 @@ import com.example.app.network.RetrofitClient
 import com.example.app.repository.ReminderRepository
 import com.example.app.screen.recordatorios.components.ReminderReceiver
 import com.example.app.screen.recordatorios.components.scheduleReminder
-import com.example.app.services.LocationReminderService
+import com.example.app.services.UnifiedLocationService
 import com.example.app.utils.PermissionUtils
 import com.example.app.utils.SessionManager
 import kotlinx.coroutines.Job
@@ -221,7 +221,7 @@ class ReminderViewModel(
                         Log.d("ReminderViewModel", "📍 Tipo: LOCATION - Verificando permisos...")
 
                         if (PermissionUtils.hasLocationPermissions(context)) {
-                            LocationReminderService.start(context)
+                            UnifiedLocationService.start(context)
                             Log.d("ReminderViewModel", "✅ Servicio de ubicación iniciado")
                         } else {
                             Log.w("ReminderViewModel", "⚠️ Sin permisos de ubicación - servicio NO iniciado")
@@ -234,7 +234,7 @@ class ReminderViewModel(
                         programarAlarmasFechaHora(context, reminder, reminderEntity, localId)
 
                         if (PermissionUtils.hasLocationPermissions(context)) {
-                            LocationReminderService.start(context)
+                            UnifiedLocationService.start(context)
                             Log.d("ReminderViewModel", "✅ Servicio de ubicación iniciado para tipo BOTH")
                         } else {
                             Log.w("ReminderViewModel", "⚠️ Sin permisos de ubicación - solo alarmas programadas")
@@ -469,13 +469,13 @@ class ReminderViewModel(
                                 }
                                 "location" -> {
                                     if (PermissionUtils.hasLocationPermissions(context)) {
-                                        LocationReminderService.start(context)
+                                        UnifiedLocationService.start(context)
                                     }
                                 }
                                 "both" -> {
                                     programarAlarmasFechaHora(context, reminder, reminderEntity, reminderId)
                                     if (PermissionUtils.hasLocationPermissions(context)) {
-                                        LocationReminderService.start(context)
+                                        UnifiedLocationService.start(context)
                                     }
                                 }
                             }
@@ -565,7 +565,7 @@ class ReminderViewModel(
                 }
 
                 // Detener servicio de ubicación
-                LocationReminderService.stop(context)
+                UnifiedLocationService.stop(context)
 
                 // Limpiar base de datos local
                 repository.clearAllReminders()

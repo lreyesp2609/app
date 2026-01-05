@@ -299,7 +299,7 @@ fun RegisterScreen(
                                     notificationViewModel.showSuccess("¡Cuenta creada! Iniciando sesión...")
 
                                     authViewModel.login(correo, contrasenia) {
-                                        navController.navigate("home?skipPermissions=true") {
+                                        navController.navigate("home") {
                                             popUpTo("login") { inclusive = true }
                                             popUpTo("register") { inclusive = true }
                                         }

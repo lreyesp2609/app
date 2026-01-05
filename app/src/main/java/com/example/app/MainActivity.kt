@@ -1,7 +1,6 @@
 package com.example.app
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -22,12 +21,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import com.example.app.services.PassiveTrackingService
+import com.example.app.services.UnifiedLocationService
 import com.example.app.ui.theme.AppTheme
 import com.example.app.utils.NotificationHelper
 import com.example.app.utils.SessionManager
@@ -49,34 +47,40 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
     }
 
-    // 🆕 Launcher para permisos
-    private val locationPermissionLauncher = registerForActivityResult(
+    // 🆕 Launcher SOLO para permisos foreground (fine + coarse)
+    private val foregroundLocationLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
         val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
-        val backgroundGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            permissions[Manifest.permission.ACCESS_BACKGROUND_LOCATION] ?: false
-        } else {
-            true
-        }
 
-        Log.d(TAG, "📍 Permisos de ubicación:")
+        Log.d(TAG, "📍 Permisos foreground:")
         Log.d(TAG, "   FINE_LOCATION: $fineGranted")
         Log.d(TAG, "   COARSE_LOCATION: $coarseGranted")
-        Log.d(TAG, "   BACKGROUND_LOCATION: $backgroundGranted")
 
-        // Si tiene al menos un permiso de ubicación, iniciar servicio
         if (fineGranted || coarseGranted) {
-            Log.d(TAG, "✅ Permisos de ubicación concedidos")
+            Log.d(TAG, "✅ Permisos foreground concedidos")
             iniciarTrackingPasivo()
+
+            // 🔥 OPCIONAL: Si necesitas background, pedirlo DESPUÉS (descomenta si lo necesitas)
+            // solicitarPermisoBackground()
         } else {
-            Log.e(TAG, "❌ Permisos de ubicación denegados")
+            Log.e(TAG, "❌ Permisos foreground denegados")
             Toast.makeText(
                 this,
-                "Los permisos de ubicación son necesarios para el tracking",
+                "Los permisos de ubicación son necesarios",
                 Toast.LENGTH_LONG
             ).show()
+        }
+    }
+
+    // 🆕 Launcher separado para background location (solo si lo necesitas)
+    private val backgroundLocationLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        Log.d(TAG, "📍 Permiso BACKGROUND_LOCATION: $granted")
+        if (!granted) {
+            Log.w(TAG, "⚠️ Background location denegado (pero el servicio funcionará igual)")
         }
     }
 
@@ -153,7 +157,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // 🔥 SIMPLIFICADO: Verificar y solicitar todos los permisos de una vez
+    // 🔥 CORREGIDO: Solo verificar y pedir foreground location
     private fun verificarYSolicitarPermisos() {
         val hasFineLocation = ContextCompat.checkSelfPermission(
             this,
@@ -165,46 +169,48 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
-        val hasBackgroundLocation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_BACKGROUND_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        } else {
-            true
-        }
-
-        Log.d(TAG, "🔍 Estado actual de permisos:")
+        Log.d(TAG, "🔍 Estado permisos foreground:")
         Log.d(TAG, "   FINE_LOCATION: $hasFineLocation")
         Log.d(TAG, "   COARSE_LOCATION: $hasCoarseLocation")
-        Log.d(TAG, "   BACKGROUND_LOCATION: $hasBackgroundLocation")
 
-        // Si ya tiene todos los permisos, iniciar servicio
-        if ((hasFineLocation || hasCoarseLocation) && hasBackgroundLocation) {
-            Log.d(TAG, "✅ Todos los permisos ya concedidos")
+        // Si ya tiene al menos uno, iniciar servicio
+        if (hasFineLocation || hasCoarseLocation) {
+            Log.d(TAG, "✅ Permisos foreground ya concedidos")
             iniciarTrackingPasivo()
             return
         }
 
-        // Si falta algún permiso, solicitarlos todos juntos
-        Log.d(TAG, "📱 Solicitando permisos de ubicación...")
-        solicitarTodosLosPermisos()
+        // Si no tiene permisos, solicitarlos
+        Log.d(TAG, "📱 Solicitando permisos foreground...")
+        solicitarPermisosForeground()
     }
 
-    // 🔥 NUEVO: Solicitar TODOS los permisos en una sola llamada
-    private fun solicitarTodosLosPermisos() {
-        val permisos = mutableListOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
+    // 🔥 NUEVO: Solo pedir foreground location
+    private fun solicitarPermisosForeground() {
+        foregroundLocationLauncher.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
         )
+    }
 
-        // Agregar permiso de background si es Android 10+
+    // 🔥 OPCIONAL: Solo llamar esto si REALMENTE necesitas background
+    // (Por ejemplo, si el usuario activa tracking 24/7)
+    private fun solicitarPermisoBackground() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            permisos.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-        }
+            val hasBackground = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
 
-        Log.d(TAG, "📋 Permisos a solicitar: ${permisos.joinToString()}")
-        locationPermissionLauncher.launch(permisos.toTypedArray())
+            if (!hasBackground) {
+                Log.d(TAG, "📱 Solicitando permiso BACKGROUND_LOCATION...")
+                backgroundLocationLauncher.launch(
+                    Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                )
+            }
+        }
     }
 
     private fun procesarIntentParaNavegacion(intent: Intent?) {
@@ -279,7 +285,7 @@ class MainActivity : ComponentActivity() {
         }
 
         try {
-            val intent = Intent(this, PassiveTrackingService::class.java)
+            val intent = Intent(this, UnifiedLocationService::class.java)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(intent)
@@ -294,12 +300,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun detenerTrackingPasivo() {
-        val intent = Intent(this, PassiveTrackingService::class.java)
-        intent.action = PassiveTrackingService.ACTION_STOP_TRACKING
-        startService(intent)
-        Log.d(TAG, "🛑 Servicio de tracking pasivo detenido")
-    }
 
     override fun onDestroy() {
         super.onDestroy()

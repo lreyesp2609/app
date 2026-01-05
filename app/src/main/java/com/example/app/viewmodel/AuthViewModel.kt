@@ -25,8 +25,7 @@ import com.example.app.repository.AuthRepository
 import com.example.app.repository.ReminderRepository
 import com.example.app.screen.recordatorios.components.ReminderReceiver
 import com.example.app.screen.recordatorios.components.scheduleReminder
-import com.example.app.services.LocationReminderService
-import com.example.app.services.PassiveTrackingService
+import com.example.app.services.UnifiedLocationService
 import com.example.app.utils.PermissionUtils
 import com.example.app.utils.SessionManager
 import com.google.firebase.messaging.FirebaseMessaging
@@ -226,7 +225,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
      */
     private fun startTrackingService() {
         try {
-            val intent = Intent(context, PassiveTrackingService::class.java)
+            val intent = Intent(context, UnifiedLocationService::class.java)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -234,7 +233,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                 context.startService(intent)
             }
 
-            Log.d(TAG, "📍 PassiveTrackingService iniciado")
+            Log.d(TAG, "📍 UnifiedLocationService iniciado")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error iniciando servicio: ${e.message}")
             e.printStackTrace()
@@ -306,7 +305,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                                 "location", "both" -> {
                                     // ✅ VERIFICAR PERMISOS ANTES DE INICIAR
                                     if (PermissionUtils.hasLocationPermissions(context)) {
-                                        LocationReminderService.start(context)
+                                        UnifiedLocationService.start(context)
                                         Log.d(TAG, "✅ Servicio de ubicación iniciado")
                                     } else {
                                         Log.w(TAG, "⚠️ No se puede iniciar servicio: sin permisos de ubicación")
@@ -467,7 +466,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         }
 
         // Detener servicio de ubicación
-        LocationReminderService.stop(context)
+        UnifiedLocationService.stop(context)
 
         // Limpiar base de datos
         repository.clearAllReminders()

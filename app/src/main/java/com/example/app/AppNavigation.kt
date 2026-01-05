@@ -183,21 +183,10 @@ fun AppNavigation(
                 )
             }
 
-            composable(
-                route = "home?skipPermissions={skipPermissions}",
-                arguments = listOf(
-                    navArgument("skipPermissions") {
-                        type = NavType.BoolType
-                        defaultValue = false
-                    }
-                )
-            ) { backStackEntry ->
-                val skipPermissions = backStackEntry.arguments?.getBoolean("skipPermissions") ?: false
-
+            composable(route = "home") { backStackEntry ->
                 HomeScreen(
                     authViewModel = authViewModel,
                     navController = navController,
-                    skipPermissions = skipPermissions,
                     notificationViewModel = notificationViewModel
                 )
             }
@@ -325,7 +314,6 @@ fun AppNavigation(
                     authViewModel = authViewModel,
                     navController = navController,
                     initialTab = initialTab,
-                    skipPermissions = false,
                     notificationViewModel = notificationViewModel
                 )
             }

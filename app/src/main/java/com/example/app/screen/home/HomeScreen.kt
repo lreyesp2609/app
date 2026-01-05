@@ -80,7 +80,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import com.example.app.screen.grupos.CollaborativeGroupsScreen
 import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
-import com.example.app.services.LocationReminderService
+import com.example.app.services.UnifiedLocationService
 import com.example.app.utils.LocationManager
 import com.example.app.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
@@ -90,7 +90,6 @@ fun HomeScreen(
     authViewModel: AuthViewModel,
     navController: NavController,
     initialTab: Int = 0,
-    skipPermissions: Boolean = false,
     notificationViewModel: NotificationViewModel
 ) {
     val context = LocalContext.current
@@ -122,10 +121,11 @@ fun HomeScreen(
     var permissionsReady by remember { mutableStateOf(false) }
     var batteryOptimizationRequested by remember { mutableStateOf(false) }
 
-    // 🔥 NUEVO: Guardar el estado ANTES de abrir el diálogo
+    // 🔥 AGREGAR ESTAS FLAGS DE CONTROL
+    var notificationPermissionRequested by remember { mutableStateOf(false) }
+    var locationPermissionStarted by remember { mutableStateOf(false) }
+
     var wasIgnoringBatteryOptimization by remember { mutableStateOf(false) }
-
-
     var locationReady by remember { mutableStateOf(false) }
 
     // 🔥 MODIFICADO: Launcher con verificación de estado
@@ -187,19 +187,17 @@ fun HomeScreen(
     }
 
     LaunchedEffect("permissions_delay") {
-        if (skipPermissions) {
-            Log.d("HomeScreen", "⏭️ Saltando permisos - usuario recién registrado")
-            return@LaunchedEffect
-        }
-
         delay(2000)
         permissionsReady = true
     }
 
-    LaunchedEffect(permissionsReady) {
-        if (!permissionsReady || skipPermissions) {
+    LaunchedEffect(permissionsReady, notificationPermissionRequested) {
+        if (!permissionsReady || notificationPermissionRequested) {
             return@LaunchedEffect
         }
+
+        // Marcar como solicitado INMEDIATAMENTE
+        notificationPermissionRequested = true
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val permission = android.Manifest.permission.POST_NOTIFICATIONS
@@ -212,7 +210,7 @@ fun HomeScreen(
                     shouldRequestLocation = true
                 }
                 else -> {
-                    Log.d("HomeScreen", "🔔 Solicitando permiso de notificaciones")
+                    Log.d("HomeScreen", "🔔 Solicitando permiso de notificaciones (UNA VEZ)")
                     notificationPermissionLauncher.launch(permission)
                 }
             }
@@ -224,6 +222,17 @@ fun HomeScreen(
 
         NotificationHelper.createNotificationChannel(context)
     }
+
+    // 🔥 MODIFICADO: Controlar ubicación también
+    LaunchedEffect(shouldRequestLocation, locationPermissionStarted) {
+        if (!shouldRequestLocation || showGpsButton || locationPermissionStarted) {
+            return@LaunchedEffect
+        }
+
+        locationPermissionStarted = true
+        Log.d("HomeScreen", "📍 Iniciando solicitud de ubicación (UNA VEZ)")
+    }
+
 
     // 🔥 MODIFICADO: Guardar estado ANTES y abrir diálogo
     LaunchedEffect(locationServiceStarted) {
@@ -272,7 +281,7 @@ fun HomeScreen(
     }
 
     // 📍 Componente invisible que maneja la ubicación
-    if (shouldRequestLocation && !showGpsButton) {
+    if (shouldRequestLocation && !showGpsButton && locationPermissionStarted) {
         GetCurrentLocation(
             hasPermission = false,
             retryCounter = retryLocationCounter,
@@ -283,7 +292,7 @@ fun HomeScreen(
                 locationReady = true
 
                 if (!locationServiceStarted) {
-                    LocationReminderService.start(context)
+                    UnifiedLocationService.start(context)
                     locationServiceStarted = true
                     Log.d("HomeScreen", "✅ Servicio de ubicación iniciado")
                 }
