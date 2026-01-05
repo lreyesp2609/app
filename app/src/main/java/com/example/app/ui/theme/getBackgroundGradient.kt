@@ -254,14 +254,3 @@ object SecurityColors {
         }
     }
 }
-
-// 📍 Colores para el mapa y rutas
-object MapColors {
-    val UserLocation = Color(0xFF10B981)        // Verde para ubicación del usuario
-    val SelectedLocation = Color(0xFFEF4444)    // Rojo para ubicación seleccionada
-    val SafeRoute = Color(0xFF10B981)           // Verde para ruta segura
-    val WarningRoute = Color(0xFFF59E0B)        // Ámbar para ruta con advertencia
-    val DangerRoute = Color(0xFFEF4444)         // Rojo para ruta peligrosa
-    val DangerZone = Color(0xFFDC2626)          // Rojo oscuro para zonas peligrosas
-    val DangerZoneOverlay = Color(0xFFDC2626).copy(alpha = 0.2f)
-}

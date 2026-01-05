@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -71,10 +72,12 @@ import com.example.app.viewmodel.IntegrantesViewModelFactory
 fun GrupoDetalleScreen(
     grupoId: Int,
     grupoNombre: String,
+    codigoInvitacion: String,
     navController: NavController
 ) {
     val context = LocalContext.current
     val grupoRepository = GrupoRepository(RetrofitClient.grupoService)
+    var showInviteDialog by remember { mutableStateOf(false) }
 
     val grupoViewModel: GrupoViewModel = viewModel(
         factory = GrupoViewModelFactory(grupoRepository)
@@ -98,6 +101,14 @@ fun GrupoDetalleScreen(
 
     // ✅ Agregar estado para el diálogo de confirmación
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showInviteDialog) {
+        InvitacionDialog(
+            grupoNombre = grupoNombre,
+            codigoInvitacion = codigoInvitacion, // ✅ Ahora usa el código real
+            onDismiss = { showInviteDialog = false }
+        )
+    }
 
     LaunchedEffect(grupoId) {
         viewModel.cargarIntegrantes(grupoId)
@@ -242,18 +253,18 @@ fun GrupoDetalleScreen(
             )
 
             GrupoOpcion(
-                icon = Icons.Default.Image,
-                titulo = "Archivos, enlaces y docs",
-                subtitulo = "Ver contenido multimedia",
-                onClick = { /* TODO: Ver multimedia */ }
+                icon = Icons.Default.PersonAdd,
+                titulo = "Invitar personas",
+                subtitulo = "Comparte el código o link del grupo",
+                onClick = { showInviteDialog = true }
             )
 
-            GrupoOpcion(
+            /* GrupoOpcion(
                 icon = Icons.Default.Notifications,
                 titulo = "Notificaciones",
                 subtitulo = "Configurar alertas del grupo",
                 onClick = { /* TODO: Configurar notificaciones */ }
-            )
+            ) */
 
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 8.dp),

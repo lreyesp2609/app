@@ -1,14 +1,17 @@
 package com.example.app.viewmodel
 
+import android.Manifest
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -23,6 +26,7 @@ import com.example.app.repository.ReminderRepository
 import com.example.app.screen.recordatorios.components.ReminderReceiver
 import com.example.app.screen.recordatorios.components.scheduleReminder
 import com.example.app.services.LocationReminderService
+import com.example.app.services.PassiveTrackingService
 import com.example.app.utils.PermissionUtils
 import com.example.app.utils.SessionManager
 import com.google.firebase.messaging.FirebaseMessaging
@@ -37,7 +41,8 @@ class AuthViewModel(private val context: Context) : ViewModel() {
     private val sessionManager = SessionManager.getInstance(context)
 
     companion object {
-        private const val TAG = "WS_SessionManager"
+        private const val TAG = "AuthViewModel"
+        private const val PREF_PENDING_TRACKING = "pending_tracking_start"  // 🔥 NUEVO
     }
 
     // Estados de la UI
@@ -81,12 +86,19 @@ class AuthViewModel(private val context: Context) : ViewModel() {
 
                         if (user == null) {
                             getCurrentUser {
-                                // ✅ Cambiado: usar context en lugar de applicationContext
                                 restoreUserReminders(context, response.accessToken)
+
+                                // 🔥 NUEVO: Iniciar tracking al restaurar sesión
+                                iniciarTrackingPasivoDespuesDeLogin()
+
+                                isLoading = false
                             }
                         } else {
-                            // ✅ Cambiado: usar context en lugar de applicationContext
                             restoreUserReminders(context, response.accessToken)
+
+                            // 🔥 NUEVO: Iniciar tracking al restaurar sesión
+                            iniciarTrackingPasivoDespuesDeLogin()
+
                             isLoading = false
                         }
                     },
@@ -105,10 +117,12 @@ class AuthViewModel(private val context: Context) : ViewModel() {
     }
 
     // 🔹 Función de login (actualizada)
+    // Dentro de la función login(), después de guardar tokens:
+
     fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             isLoading = true
-            errorMessage = null // Limpiar errores anteriores
+            errorMessage = null
 
             repository.login(email, password, Build.MODEL, getAppVersion(context), obtenerIp())
                 .fold(
@@ -120,11 +134,15 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                         sessionManager.saveLoginState(true)
 
                         getCurrentUser {
-                            // ✅ NUEVO: Restaurar recordatorios después del login
                             restoreUserReminders(context, loginResponse.accessToken)
                             enviarTokenFCMPendiente()
+
+                            // 🔥 NUEVO: Iniciar tracking pasivo después del login
+                            iniciarTrackingPasivoDespuesDeLogin()
+
                             onResult(true)
-                        }                    },
+                        }
+                    },
                     onFailure = { exception ->
                         isLoggedIn = false
                         sessionManager.saveLoginState(false)
@@ -157,6 +175,89 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                 )
         }
     }
+
+    // 🆕 NUEVA FUNCIÓN: Iniciar tracking después del login
+    private fun iniciarTrackingPasivoDespuesDeLogin() {
+        Log.d(TAG, "🚀 ════════════════════════════════════════")
+        Log.d(TAG, "🚀 INICIANDO TRACKING PASIVO POST-LOGIN")
+        Log.d(TAG, "🚀 ════════════════════════════════════════")
+
+        if (hasLocationPermissions()) {
+            startTrackingService()
+            Log.d(TAG, "✅ Servicio iniciado correctamente")
+        } else {
+            Log.w(TAG, "⚠️ No hay permisos de ubicación")
+            Log.w(TAG, "⚠️ Marcando para iniciar después de conceder permisos")
+
+            // 🔥 Marcar como pendiente
+            val prefs = context.getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean(PREF_PENDING_TRACKING, true).apply()
+        }
+    }
+
+    /**
+     * 🔥 NUEVA FUNCIÓN: Reinicia el tracking si estaba pendiente
+     * Llamar desde HomeScreen cuando se concedan permisos
+     */
+    fun reiniciarTrackingSiPendiente() {
+        val prefs = context.getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
+        val pending = prefs.getBoolean(PREF_PENDING_TRACKING, false)
+
+        if (pending && hasLocationPermissions()) {
+            Log.d(TAG, "🔄 ════════════════════════════════════════")
+            Log.d(TAG, "🔄 REINICIANDO TRACKING DESPUÉS DE PERMISOS")
+            Log.d(TAG, "🔄 ════════════════════════════════════════")
+
+            startTrackingService()
+
+            // Limpiar flag
+            prefs.edit().putBoolean(PREF_PENDING_TRACKING, false).apply()
+
+            Log.d(TAG, "✅ Tracking reiniciado exitosamente")
+        } else if (!pending) {
+            Log.d(TAG, "ℹ️ No hay tracking pendiente")
+        } else if (!hasLocationPermissions()) {
+            Log.w(TAG, "⚠️ Aún faltan permisos de ubicación")
+        }
+    }
+
+    /**
+     * 🔥 NUEVA FUNCIÓN: Inicia el servicio de tracking
+     */
+    private fun startTrackingService() {
+        try {
+            val intent = Intent(context, PassiveTrackingService::class.java)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+
+            Log.d(TAG, "📍 PassiveTrackingService iniciado")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error iniciando servicio: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * 🔥 NUEVA FUNCIÓN: Verifica permisos
+     */
+    private fun hasLocationPermissions(): Boolean {
+        val fineLocation = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val coarseLocation = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        return fineLocation && coarseLocation
+    }
+
     private fun restoreUserReminders(context: Context, token: String) {
         viewModelScope.launch {
             try {

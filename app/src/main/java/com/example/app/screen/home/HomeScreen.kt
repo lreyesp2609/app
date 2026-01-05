@@ -280,7 +280,7 @@ fun HomeScreen(
                 Log.d("HomeScreen", "📍 Ubicación obtenida: $lat, $lon")
 
                 locationManager.updateLocation(lat, lon)
-                locationReady = true // 🔥 MARCAR COMO LISTA
+                locationReady = true
 
                 if (!locationServiceStarted) {
                     LocationReminderService.start(context)
@@ -307,6 +307,14 @@ fun HomeScreen(
                 locationPermissionChecked = true
             }
         )
+    }
+
+    // 🔥 AGREGAR ESTO AQUÍ:
+    LaunchedEffect(locationPermissionChecked, locationReady) {
+        if (locationPermissionChecked && locationReady) {
+            Log.d("HomeScreen", "🔄 Permisos de ubicación confirmados, verificando tracking pendiente...")
+            authViewModel.reiniciarTrackingSiPendiente()
+        }
     }
 
     val logoScale by animateFloatAsState(
@@ -584,7 +592,8 @@ fun HomeScreen(
                             )
                             3 -> CollaborativeGroupsScreen(
                                 navController = navController,
-                                token = accessToken
+                                token = accessToken,
+                                notificationViewModel = notificationViewModel
                             )
                             4 -> SettingsScreen(
                                 userState = userState,

@@ -48,6 +48,7 @@ import kotlinx.coroutines.launch
 fun ChatGrupoScreen(
     grupoId: Int,
     grupoNombre: String,
+    codigoInvitacion: String,
     navController: NavController
 ) {
     val context = LocalContext.current
@@ -99,7 +100,7 @@ fun ChatGrupoScreen(
                 isConnected = isConnected,
                 onBackClick = { navController.popBackStack() },
                 onGrupoClick = {
-                    navController.navigate("grupo_detalle/$grupoId/$grupoNombre")
+                    navController.navigate("grupo_detalle/$grupoId/$grupoNombre/$codigoInvitacion")
                 }
             )
         },

@@ -1,13 +1,16 @@
 package com.example.app.screen.grupos
 
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,6 +59,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.GroupOff
 import androidx.compose.material.icons.filled.Info
@@ -67,6 +71,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.app.network.RetrofitClient
@@ -77,12 +82,15 @@ import com.example.app.screen.components.showSuccessSnackbar
 import com.example.app.viewmodel.GrupoViewModelFactory
 import com.example.app.screen.components.AppSnackbarHost
 import com.example.app.screen.components.showErrorSnackbar
+import com.example.app.viewmodel.NotificationViewModel
 import com.example.app.websocket.NotificationWebSocketManager
+import kotlinx.coroutines.launch
 
 @Composable
 fun CollaborativeGroupsScreen(
     token: String,
     navController: NavController,
+    notificationViewModel: NotificationViewModel, // 🔥 Ahora es REQUERIDO, no opcional
     viewModel: GrupoViewModel = viewModel(
         factory = GrupoViewModelFactory(
             GrupoRepository(RetrofitClient.grupoService)
@@ -94,13 +102,18 @@ fun CollaborativeGroupsScreen(
     var showStats by remember { mutableStateOf(false) }
     var showJoinDialog by remember { mutableStateOf(false) }
 
-    val (snackbarHostState, scope) = rememberAppSnackbarState()
-
     val unreadCounts by NotificationWebSocketManager.unreadCounts.collectAsState()
 
+    // 🔥 Observar si viene de crear grupo
     val grupoCreado = navController.currentBackStackEntry
         ?.savedStateHandle
         ?.getStateFlow("grupo_creado", false)
+        ?.collectAsState()
+
+    // 🔥 Observar el mensaje del grupo creado
+    val grupoMensaje = navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow("grupo_mensaje", "")
         ?.collectAsState()
 
     val volviendoDelChat = navController.currentBackStackEntry
@@ -115,10 +128,17 @@ fun CollaborativeGroupsScreen(
         delay(400)
         showStats = true
 
-        if (grupoCreado?.value == true) {
-            navController.currentBackStackEntry
-                ?.savedStateHandle
-                ?.set("grupo_creado", false)
+        // 🔥 Mostrar notificación si se creó un grupo
+        if (grupoCreado?.value == true && !grupoMensaje?.value.isNullOrBlank()) {
+            notificationViewModel.showSuccess(
+                message = grupoMensaje?.value ?: "Grupo creado exitosamente"
+            )
+
+            // Limpiar los flags
+            navController.currentBackStackEntry?.savedStateHandle?.apply {
+                set("grupo_creado", false)
+                set("grupo_mensaje", "")
+            }
         }
 
         if (volviendoDelChat?.value == true) {
@@ -128,18 +148,17 @@ fun CollaborativeGroupsScreen(
         }
     }
 
+    // 🔥 Manejar estados del ViewModel (para unirse a grupo)
     LaunchedEffect(grupoState) {
         when (val state = grupoState) {
             is GrupoState.JoinSuccess -> {
-                snackbarHostState.showSuccessSnackbar(
-                    message = state.message
-                )
+                notificationViewModel.showSuccess(state.message)
             }
+
             is GrupoState.Error -> {
-                snackbarHostState.showErrorSnackbar(
-                    message = state.message
-                )
+                notificationViewModel.showError(state.message)
             }
+
             else -> Unit
         }
     }
@@ -253,14 +272,15 @@ fun CollaborativeGroupsScreen(
                                     key = { index -> state.grupos[index].id }
                                 ) { index ->
                                     val grupo = state.grupos[index]
-                                    val mensajesNoLeidos = unreadCounts[grupo.id] ?: grupo.mensajesNoLeidos
+                                    val mensajesNoLeidos =
+                                        unreadCounts[grupo.id] ?: grupo.mensajesNoLeidos
 
                                     GrupoCard(
                                         grupo = grupo,
                                         mensajesNoLeidos = mensajesNoLeidos,
                                         onClick = {
                                             navController.navigate(
-                                                "chat_grupo/${grupo.id}/${grupo.nombre}"
+                                                "chat_grupo/${grupo.id}/${Uri.encode(grupo.nombre)}/${grupo.codigoInvitacion}" // ✅ Agregar código
                                             )
                                         }
                                     )
@@ -281,33 +301,36 @@ fun CollaborativeGroupsScreen(
                 }
             }
         }
-
-        AppSnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
-        )
     }
 
     if (showJoinDialog) {
         JoinGroupDialog(
             onDismiss = { showJoinDialog = false },
             onJoin = { codigo ->
-                viewModel.unirseAGrupo(token, codigo)
-                showJoinDialog = false
+                when {
+                    codigo.isBlank() -> {
+                        notificationViewModel.showError("Ingresa un código")
+                    }
+
+                    codigo.length != 8 -> {
+                        notificationViewModel.showError("El código debe tener 8 caracteres")
+                    }
+
+                    else -> {
+                        viewModel.unirseAGrupo(token, codigo)
+                        showJoinDialog = false
+                    }
+                }
             }
         )
     }
 }
-
 @Composable
 fun JoinGroupDialog(
     onDismiss: () -> Unit,
     onJoin: (String) -> Unit
 ) {
     var codigoInvitacion by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -348,7 +371,6 @@ fun JoinGroupDialog(
                     value = codigoInvitacion,
                     onValueChange = {
                         codigoInvitacion = it.uppercase().take(8)
-                        errorMessage = null
                     },
                     label = "Código de invitación",
                     placeholder = "Ej: C6FB334B",
@@ -360,22 +382,8 @@ fun JoinGroupDialog(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    borderColor = if (errorMessage != null)
-                        MaterialTheme.colorScheme.error
-                    else
-                        MaterialTheme.colorScheme.primary
+                    borderColor = MaterialTheme.colorScheme.primary
                 )
-
-                if (errorMessage != null) {
-                    Text(
-                        text = errorMessage!!,
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, top = 4.dp)
-                    )
-                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -401,19 +409,7 @@ fun JoinGroupDialog(
         confirmButton = {
             AppButton(
                 text = "Unirse",
-                onClick = {
-                    when {
-                        codigoInvitacion.isBlank() -> {
-                            errorMessage = "Ingresa un código"
-                        }
-                        codigoInvitacion.length != 8 -> {
-                            errorMessage = "El código debe tener 8 caracteres"
-                        }
-                        else -> {
-                            onJoin(codigoInvitacion)
-                        }
-                    }
-                },
+                onClick = { onJoin(codigoInvitacion) },
                 enabled = codigoInvitacion.length == 8,
                 modifier = Modifier.width(120.dp)
             )
@@ -436,9 +432,54 @@ fun GrupoCard(
     mensajesNoLeidos: Int = 0,
     onClick: () -> Unit = {}
 ) {
+    var isLongPressing by remember { mutableStateOf(false) }
+    var showCopiedMessage by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+
+    // Animación de escala cuando se mantiene presionado
+    val scale by animateFloatAsState(
+        targetValue = if (isLongPressing) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "scale"
+    )
+
+    LaunchedEffect(showCopiedMessage) {
+        if (showCopiedMessage) {
+            delay(2000)
+            showCopiedMessage = false
+        }
+    }
+
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = {
+                        isLongPressing = true
+
+                        // Copiar al portapapeles
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(grupo.codigoInvitacion))
+
+                        // Mostrar mensaje
+                        showCopiedMessage = true
+
+                        // Feedback háptico (opcional, requiere permisos)
+                        // context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+
+                        kotlinx.coroutines.GlobalScope.launch {
+                            delay(150)
+                            isLongPressing = false
+                        }
+                    }
+                )
+            },
         elevation = CardDefaults.cardElevation(
             defaultElevation = 2.dp,
             pressedElevation = 4.dp
@@ -448,105 +489,160 @@ fun GrupoCard(
             containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Box {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Group,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(8.dp)
-                            )
-                        }
-
-                        // Badge de notificaciones
-                        if (mensajesNoLeidos > 0) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box {
                             Surface(
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = 4.dp, y = (-4).dp)
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(40.dp)
                             ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.fillMaxSize()
+                                Icon(
+                                    imageVector = Icons.Default.Group,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
+
+                            // Badge de notificaciones
+                            if (mensajesNoLeidos > 0) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = 4.dp, y = (-4).dp)
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Text(
+                                            text = if (mensajesNoLeidos > 99) "99+" else mensajesNoLeidos.toString(),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onError
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column {
+                            Text(
+                                text = grupo.nombre,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 ) {
                                     Text(
-                                        text = if (mensajesNoLeidos > 99) "99+" else mensajesNoLeidos.toString(),
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onError
+                                        text = "Código: ${grupo.codigoInvitacion}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
+
+                                    // Animación de carga al copiar
+                                    androidx.compose.animation.AnimatedVisibility(
+                                        visible = isLongPressing,
+                                        enter = fadeIn() + androidx.compose.animation.scaleIn(),
+                                        exit = fadeOut() + androidx.compose.animation.scaleOut()
+                                    ) {
+                                        Row {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(12.dp),
+                                                strokeWidth = 2.dp,
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column {
-                        Text(
-                            text = grupo.nombre,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            modifier = Modifier.padding(top = 4.dp)
-                        ) {
-                            Text(
-                                text = "Código: ${grupo.codigoInvitacion}",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
-                    }
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
 
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp)
-                )
+                if (!grupo.descripcion.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = grupo.descripcion,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 18.sp
+                    )
+                }
             }
 
-            if (!grupo.descripcion.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = grupo.descripcion,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp
-                )
+            // Mensaje flotante de "Código copiado"
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showCopiedMessage,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                exit = fadeOut() + androidx.compose.animation.slideOutVertically(targetOffsetY = { -it / 2 }),
+                modifier = Modifier.align(Alignment.TopEnd)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.inverseSurface,
+                    modifier = Modifier.padding(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.inverseOnSurface,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Código copiado",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.inverseOnSurface,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
         }
     }

@@ -24,23 +24,27 @@ object RetrofitClient {
         applicationContext = context.applicationContext
     }
 
-    private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = Level.BODY
-    }
-
     // 🆕 AuthInterceptor para refresh automático
     private val authInterceptor by lazy {
         AuthInterceptor(applicationContext)
     }
 
+    private val loggingInterceptor = HttpLoggingInterceptor().apply {
+        level = Level.BODY
+    }
+
     private val okHttpClient by lazy {
         OkHttpClient.Builder()
-            .addInterceptor(loggingInterceptor)
-            .addInterceptor(authInterceptor)  // 🔥 AGREGADO
+            // 🔥 ORDEN CRÍTICO: AuthInterceptor PRIMERO, Logging DESPUÉS
+            // Esto permite que Auth cierre/modifique responses antes del logging
+            .addInterceptor(authInterceptor)       // ✅ 1º - Maneja 401 y refresh
+            .addInterceptor(loggingInterceptor)    // ✅ 2º - Loggea después
+
             // Timeouts aumentados
             .connectTimeout(60, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
+
             // Reintentos automáticos
             .retryOnConnectionFailure(true)
             .build()

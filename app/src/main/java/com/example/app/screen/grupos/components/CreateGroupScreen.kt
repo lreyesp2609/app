@@ -57,53 +57,54 @@ import com.example.app.screen.components.showSuccessSnackbar
 import com.example.app.viewmodel.GrupoState
 import com.example.app.viewmodel.GrupoViewModel
 import com.example.app.viewmodel.GrupoViewModelFactory
+import com.example.app.viewmodel.NotificationViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateGroupScreen(
     token: String,
     modifier: Modifier = Modifier,
-    navController: NavController
+    navController: NavController,
+    notificationViewModel: NotificationViewModel // 🔥 SIN valor por defecto
 ) {
-    // ViewModel
     val viewModel: GrupoViewModel = viewModel(
         factory = GrupoViewModelFactory(GrupoRepository(RetrofitClient.grupoService))
     )
 
-    // Estados
     val grupoState by viewModel.grupoState.collectAsState()
     var groupName by remember { mutableStateOf("") }
     var groupDescription by remember { mutableStateOf("") }
     var showContent by remember { mutableStateOf(false) }
 
-    // ✅ Usar el Snackbar global
-    val (snackbarHostState, scope) = rememberAppSnackbarState()
     val scrollState = rememberScrollState()
 
-    // Animación de entrada
     LaunchedEffect(Unit) {
         delay(200)
         showContent = true
     }
 
-    // Observar el estado del grupo - OPTIMIZADO
+    // 🔥 NAVEGACIÓN INMEDIATA - Notificación se muestra en destino
     LaunchedEffect(grupoState) {
         when (val state = grupoState) {
             is GrupoState.Success -> {
-                // ✅ Usar función de extensión
-                snackbarHostState.showSuccessSnackbar(state.message)
-                delay(500)
-
+                // ✅ Guardar mensaje para mostrarlo en la pantalla anterior
                 navController.previousBackStackEntry
-                    ?.savedStateHandle
-                    ?.set("grupo_creado", true)
+                    ?.savedStateHandle?.apply {
+                        set("grupo_creado", true)
+                        set("grupo_mensaje", state.message)
+                    }
 
+                // Navegar inmediatamente
                 navController.popBackStack()
+
+                // Reset después de navegar
+                viewModel.resetState()
             }
             is GrupoState.Error -> {
-                // ✅ Usar función de extensión
-                snackbarHostState.showErrorSnackbar(state.message)
+                // ⚠️ Los errores SÍ se muestran aquí porque el usuario sigue en la pantalla
+                notificationViewModel.showError(state.message)
                 viewModel.resetState()
             }
             else -> {}
@@ -111,9 +112,6 @@ fun CreateGroupScreen(
     }
 
     Scaffold(
-        snackbarHost = {
-            AppSnackbarHost(hostState = snackbarHostState)
-        },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         @Suppress("UNUSED_EXPRESSION")
@@ -128,7 +126,7 @@ fun CreateGroupScreen(
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header con botón de retroceso
+            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -177,7 +175,6 @@ fun CreateGroupScreen(
                 Column(
                     modifier = Modifier.padding(20.dp)
                 ) {
-                    // Campo: Nombre del grupo
                     Text(
                         text = "Nombre del grupo",
                         fontSize = 14.sp,
@@ -202,7 +199,6 @@ fun CreateGroupScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Campo: Descripción
                     Text(
                         text = "Descripción (opcional)",
                         fontSize = 14.sp,
@@ -234,11 +230,21 @@ fun CreateGroupScreen(
                 text = if (grupoState is GrupoState.Loading) "Creando..." else "Crear Grupo",
                 icon = Icons.Default.Check,
                 onClick = {
-                    val grupoCreate = GrupoCreate(
-                        nombre = groupName.trim(),
-                        descripcion = groupDescription.trim().ifBlank { null }
-                    )
-                    viewModel.createGrupo(token, grupoCreate)
+                    when {
+                        groupName.isBlank() -> {
+                            notificationViewModel.showError("El nombre del grupo no puede estar vacío")
+                        }
+                        grupoState is GrupoState.Loading -> {
+                            notificationViewModel.showWarning("Espera, creando grupo...")
+                        }
+                        else -> {
+                            val grupoCreate = GrupoCreate(
+                                nombre = groupName.trim(),
+                                descripcion = groupDescription.trim().ifBlank { null }
+                            )
+                            viewModel.createGrupo(token, grupoCreate)
+                        }
+                    }
                 },
                 enabled = groupName.isNotBlank() && grupoState !is GrupoState.Loading,
                 isLoading = grupoState is GrupoState.Loading,

@@ -1,6 +1,7 @@
 package com.example.app.network
 
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import com.example.app.repository.AuthRepository
 import com.example.app.utils.SessionManager
@@ -24,53 +25,60 @@ class AuthInterceptor(private val context: Context) : Interceptor {
 
     companion object {
         private const val TAG = "AuthInterceptor"
-        private const val MAX_REFRESH_RETRIES = 1
     }
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
 
         // 1️⃣ Ejecutar request original
-        val response = chain.proceed(originalRequest)
+        var response = chain.proceed(originalRequest)
 
-        // 2️⃣ Si es 401, intentar refrescar token
-        if (response.code == 401 && !isRefreshRequest(originalRequest.url.toString())) {
+        // 2️⃣ Si es 401 Y NO es el endpoint de refresh/login, intentar refrescar token
+        if (response.code == 401 && !isAuthEndpoint(originalRequest.url.toString())) {
             Log.w(TAG, "⚠️ ========================================")
             Log.w(TAG, "⚠️ 401 DETECTADO - Token expirado")
             Log.w(TAG, "⚠️ URL: ${originalRequest.url}")
             Log.w(TAG, "⚠️ ========================================")
 
-            response.close() // Cerrar respuesta original
+            // 🔥 NO CERRAR response.close() - Dejar que OkHttp lo maneje
 
-            // Intentar refresh
-            val refreshResult = intentarRefreshToken()
+            // Intentar refresh (sincronizado para evitar múltiples refreshes simultáneos)
+            synchronized(this) {
+                val refreshResult = intentarRefreshToken()
 
-            if (refreshResult.isSuccess) {
-                val nuevoAccessToken = refreshResult.getOrNull()
+                if (refreshResult.isSuccess) {
+                    val nuevoAccessToken = refreshResult.getOrNull()
 
-                if (nuevoAccessToken != null) {
-                    Log.d(TAG, "✅ ========================================")
-                    Log.d(TAG, "✅ TOKEN REFRESCADO EXITOSAMENTE")
-                    Log.d(TAG, "✅ Reintentando request original...")
-                    Log.d(TAG, "✅ ========================================")
+                    if (nuevoAccessToken != null) {
+                        Log.d(TAG, "✅ ========================================")
+                        Log.d(TAG, "✅ TOKEN REFRESCADO EXITOSAMENTE")
+                        Log.d(TAG, "✅ Reintentando request original...")
+                        Log.d(TAG, "✅ ========================================")
 
-                    // Crear nueva request con token actualizado
-                    val newRequest = originalRequest.newBuilder()
-                        .header("Authorization", "Bearer $nuevoAccessToken")
-                        .build()
+                        // 🔥 Ahora SÍ cerramos la respuesta 401 porque vamos a crear una nueva
+                        response.close()
 
-                    // Reintentar request original
-                    return chain.proceed(newRequest)
+                        // Crear nueva request con token actualizado
+                        val newRequest = originalRequest.newBuilder()
+                            .header("Authorization", "Bearer $nuevoAccessToken")
+                            .build()
+
+                        // Reintentar request original con nuevo token
+                        response = chain.proceed(newRequest)
+                    }
+                } else {
+                    Log.e(TAG, "❌ ========================================")
+                    Log.e(TAG, "❌ ERROR AL REFRESCAR TOKEN")
+                    Log.e(TAG, "❌ ${refreshResult.exceptionOrNull()?.message}")
+                    Log.e(TAG, "❌ Forzando logout...")
+                    Log.e(TAG, "❌ ========================================")
+
+                    // Si el refresh falló, limpiar sesión
+                    forzarLogout(refreshResult.exceptionOrNull()?.message)
+
+                    // Retornar la respuesta 401 sin modificar
+                    // (OkHttp se encargará de cerrarla)
                 }
-            } else {
-                Log.e(TAG, "❌ ========================================")
-                Log.e(TAG, "❌ ERROR AL REFRESCAR TOKEN")
-                Log.e(TAG, "❌ ${refreshResult.exceptionOrNull()?.message}")
-                Log.e(TAG, "❌ Forzando logout...")
-                Log.e(TAG, "❌ ========================================")
-
-                // Si el refresh falló, limpiar sesión
-                forzarLogout(refreshResult.exceptionOrNull()?.message)
             }
         }
 
@@ -100,7 +108,7 @@ class AuthInterceptor(private val context: Context) : Interceptor {
                     val loginResponse = result.getOrNull()
 
                     if (loginResponse != null) {
-                        // ✅ Guardar nuevos tokens usando camelCase
+                        // ✅ Guardar nuevos tokens
                         sessionManager.saveTokens(
                             access = loginResponse.accessToken,
                             refresh = loginResponse.refreshToken
@@ -124,13 +132,11 @@ class AuthInterceptor(private val context: Context) : Interceptor {
                         error.contains("AUTH_ERROR:REFRESH_INVALIDO") ||
                                 error.contains("AUTH_ERROR:REFRESH_EXPIRADO") ||
                                 error.contains("AUTH_ERROR:SESION_NO_ENCONTRADA") -> {
-                            // Estos errores requieren logout
                             Log.e(TAG, "🚪 Error de autenticación - requiere logout")
                             Result.failure(Exception("FORCE_LOGOUT:$error"))
                         }
                         error.contains("NETWORK_ERROR") ||
                                 error.contains("SERVER_ERROR") -> {
-                            // Estos errores NO requieren logout (pueden ser temporales)
                             Log.w(TAG, "⚠️ Error temporal, no forzar logout")
                             Result.failure(Exception("TEMPORARY_ERROR:$error"))
                         }
@@ -149,10 +155,12 @@ class AuthInterceptor(private val context: Context) : Interceptor {
     }
 
     /**
-     * Verifica si el request es hacia el endpoint de refresh
+     * Verifica si el request es hacia endpoints de autenticación
+     * (para evitar loops infinitos)
      */
-    private fun isRefreshRequest(url: String): Boolean {
-        return url.contains("/login/refresh")
+    private fun isAuthEndpoint(url: String): Boolean {
+        return url.contains("/login/refresh") ||
+                url.contains("/login/") && !url.contains("/login/logout")
     }
 
     /**
@@ -174,9 +182,14 @@ class AuthInterceptor(private val context: Context) : Interceptor {
                 Log.d(TAG, "ℹ️  El usuario deberá iniciar sesión nuevamente")
                 Log.d(TAG, "✅ ========================================")
 
-                // TODO: Opcional - Enviar broadcast para navegar a login
-                // val intent = Intent("com.example.app.FORCE_LOGOUT")
-                // context.sendBroadcast(intent)
+                // ✅ Enviar broadcast para navegar a login
+                try {
+                    val intent = Intent("com.example.app.FORCE_LOGOUT")
+                    context.sendBroadcast(intent)
+                    Log.d(TAG, "📡 Broadcast de logout enviado")
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ No se pudo enviar broadcast: ${e.message}")
+                }
 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error al forzar logout: ${e.message}")

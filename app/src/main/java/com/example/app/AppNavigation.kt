@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -267,7 +268,8 @@ fun AppNavigation(
                 val token = authViewModel.accessToken ?: ""
                 CollaborativeGroupsScreen(
                     navController = navController,
-                    token = token
+                    token = token,
+                    notificationViewModel = notificationViewModel
                 )
             }
 
@@ -327,45 +329,54 @@ fun AppNavigation(
                     notificationViewModel = notificationViewModel
                 )
             }
+
             composable("create_group") {
                 val token = authViewModel.accessToken ?: ""
+
                 CreateGroupScreen(
                     token = token,
-                    navController = navController
+                    navController = navController,
+                    notificationViewModel = notificationViewModel // 🔥 Usar la instancia del scope superior
                 )
             }
+
             composable(
-                route = "chat_grupo/{grupoId}/{grupoNombre}",
+                route = "chat_grupo/{grupoId}/{grupoNombre}/{codigoInvitacion}", // 🆕 Agregar
                 arguments = listOf(
                     navArgument("grupoId") { type = NavType.IntType },
-                    navArgument("grupoNombre") { type = NavType.StringType }
+                    navArgument("grupoNombre") { type = NavType.StringType },
+                    navArgument("codigoInvitacion") { type = NavType.StringType } // 🆕
                 )
             ) { backStackEntry ->
                 val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
                 val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
+                val codigoInvitacion = backStackEntry.arguments?.getString("codigoInvitacion") ?: "" // 🆕
 
-                // ✅ El LocationTrackingService se inicia desde GrupoMapScreen
-                // Aquí solo mostramos el chat
                 ChatGrupoScreen(
                     grupoId = grupoId,
                     grupoNombre = grupoNombre,
-                    navController = navController,
+                    codigoInvitacion = codigoInvitacion, // 🆕
+                    navController = navController
                 )
             }
+
             // En tu NavHost, agrega esta ruta:
             composable(
-                route = "grupo_detalle/{grupoId}/{grupoNombre}",
+                route = "grupo_detalle/{grupoId}/{grupoNombre}/{codigoInvitacion}", // 🆕 Agregar parámetro
                 arguments = listOf(
                     navArgument("grupoId") { type = NavType.IntType },
-                    navArgument("grupoNombre") { type = NavType.StringType }
+                    navArgument("grupoNombre") { type = NavType.StringType },
+                    navArgument("codigoInvitacion") { type = NavType.StringType } // 🆕
                 )
             ) { backStackEntry ->
                 val grupoId = backStackEntry.arguments?.getInt("grupoId") ?: 0
                 val grupoNombre = backStackEntry.arguments?.getString("grupoNombre") ?: ""
+                val codigoInvitacion = backStackEntry.arguments?.getString("codigoInvitacion") ?: "" // 🆕
 
                 GrupoDetalleScreen(
                     grupoId = grupoId,
                     grupoNombre = grupoNombre,
+                    codigoInvitacion = codigoInvitacion, // 🆕 Pasar el código
                     navController = navController
                 )
             }
