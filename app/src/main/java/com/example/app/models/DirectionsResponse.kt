@@ -102,6 +102,7 @@ fun Long.toLocalISOString(): String {
 }
 
 
+// En tu data class RouteAlternative
 data class RouteAlternative(
     val type: String,
     val displayName: String,
@@ -109,12 +110,20 @@ data class RouteAlternative(
     val distance: Double,
     val duration: Double,
     val isRecommended: Boolean,
-    //Campos de seguridad
-    val esSegura: Boolean? = null,
+    val esSegura: Boolean? = null,  // ← Puede ser null
     val nivelRiesgo: Int? = null,
     val zonasDetectadas: List<ZonaDetectada>? = null,
     val mensajeSeguridad: String? = null
-)
+) {
+    // 🔥 AGREGAR ESTA FUNCIÓN DE DEBUG
+    fun logInfo(tag: String) {
+        Log.d(tag, "RouteAlternative:")
+        Log.d(tag, "  tipo: $type")
+        Log.d(tag, "  esSegura: $esSegura")
+        Log.d(tag, "  nivelRiesgo: $nivelRiesgo")
+        Log.d(tag, "  zonas: ${zonasDetectadas?.size ?: 0}")
+    }
+}
 
 
 // 🔥 DATA CLASS PARA LAS ZONAS GUARDADAS

@@ -209,20 +209,43 @@ class MapViewModel(
 
                     _validacionSeguridad.value = validacion
 
-                    Log.d("MapViewModel", "🔐 Validación de seguridad completada:")
-                    Log.d("MapViewModel", "  - Todas seguras: ${validacion.todasSeguras}")
-                    Log.d("MapViewModel", "  - ML recomienda: ${validacion.tipoMlRecomendado}")
+                    // 🔥 AGREGAR ESTOS LOGS ANTES DE mapIndexed
+                    Log.d("MapViewModel", "🔍 ════════════════════════════════════════")
+                    Log.d("MapViewModel", "🔍 VALIDACIÓN RECIBIDA DEL BACKEND")
+                    Log.d("MapViewModel", "🔍 ════════════════════════════════════════")
+                    Log.d("MapViewModel", "📊 Total zonas usuario: ${validacion.totalZonasUsuario}")
+                    Log.d("MapViewModel", "📊 Todas seguras: ${validacion.todasSeguras}")
+                    Log.d("MapViewModel", "📊 Mejor ruta segura: ${validacion.mejorRutaSegura}")
+
+                    validacion.rutasValidadas.forEachIndexed { index, ruta ->
+                        Log.d("MapViewModel", "")
+                        Log.d("MapViewModel", "🚗 Ruta ${index + 1}: ${ruta.tipo}")
+                        Log.d("MapViewModel", "   esSegura: ${ruta.esSegura}")
+                        Log.d("MapViewModel", "   nivelRiesgo: ${ruta.nivelRiesgo}")
+                        Log.d("MapViewModel", "   zonasDetectadas: ${ruta.zonasDetectadas.size}")
+
+                        ruta.zonasDetectadas.forEach { zona ->
+                            Log.d("MapViewModel", "     • ${zona.nombre} (nivel ${zona.nivelPeligro})")
+                        }
+                    }
+                    Log.d("MapViewModel", "🔍 ════════════════════════════════════════")
 
                     // 3. Combinar rutas con información de seguridad
                     val routesConSeguridad = routes.mapIndexed { index, route ->
                         val validacionRuta = validacion.rutasValidadas[index]
-                        route.copy(
+
+                        val routeConSeguridad = route.copy(
                             isRecommended = route.type == validacion.tipoMlRecomendado,
                             esSegura = validacionRuta.esSegura,
                             nivelRiesgo = validacionRuta.nivelRiesgo,
                             zonasDetectadas = validacionRuta.zonasDetectadas,
                             mensajeSeguridad = validacionRuta.mensaje
                         )
+
+                        // 🔥 LOG DE CADA RUTA
+                        routeConSeguridad.logInfo("MapViewModel")
+
+                        routeConSeguridad
                     }
 
                     _alternativeRoutes.value = routesConSeguridad

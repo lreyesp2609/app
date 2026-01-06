@@ -349,24 +349,29 @@ fun RouteChipCard(
                         }
                     }
 
-                    // Badge Seguridad
-                    route.esSegura?.let { esSegura ->
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (esSegura) SecurityColors.getSafeColor(isDarkTheme)
-                                    else SecurityColors.getDangerColor(isDarkTheme),
-                                    RoundedCornerShape(6.dp)
-                                )
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                if (esSegura) "✓" else "⚠",
-                                fontSize = 11.sp,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                    // 🔥 Badge Seguridad SIEMPRE SE MUESTRA
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                when {
+                                    route.esSegura == true -> SecurityColors.getSafeColor(isDarkTheme)
+                                    route.esSegura == false -> SecurityColors.getDangerColor(isDarkTheme)
+                                    else -> SecurityColors.getWarningColor(isDarkTheme) // ← Para null
+                                },
+                                RoundedCornerShape(6.dp)
                             )
-                        }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            when {
+                                route.esSegura == true -> "✓"
+                                route.esSegura == false -> "⚠"
+                                else -> "?" // ← Para null
+                            },
+                            fontSize = 11.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
