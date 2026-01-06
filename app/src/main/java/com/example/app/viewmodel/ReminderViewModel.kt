@@ -4,9 +4,11 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.Composable
@@ -374,21 +376,53 @@ class ReminderViewModel(
     }
     // Preview de sonidos
     fun playPreviewSound(context: Context, soundUri: String) {
+        // Detener reproducción anterior
         playbackJob?.cancel()
         currentRingtone?.stop()
 
         playbackJob = viewModelScope.launch {
             try {
-                Log.d("ReminderViewModel", "Reproduciendo sonido con URI: $soundUri")
-                currentRingtone = RingtoneManager.getRingtone(context, Uri.parse(soundUri))
-                currentRingtone?.play()
+                Log.d("ReminderViewModel", "🔊 Reproduciendo sonido con URI: $soundUri")
 
-                delay(2000)
+                val uri = Uri.parse(soundUri)
+                currentRingtone = RingtoneManager.getRingtone(context, uri)
+
+                // ✅ Verificar que el ringtone se creó correctamente
+                if (currentRingtone == null) {
+                    Log.e("ReminderViewModel", "❌ No se pudo crear el Ringtone")
+                    return@launch
+                }
+
+                // ✅ Configurar atributos de audio (IMPORTANTE para Android 10+)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    currentRingtone?.audioAttributes = AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                }
+
+                // ✅ Reproducir
+                currentRingtone?.play()
+                Log.d("ReminderViewModel", "▶️ Ringtone.play() ejecutado")
+
+                // ✅ Esperar a que termine naturalmente o detener después de 3 segundos
+                var elapsedTime = 0
+                while (currentRingtone?.isPlaying == true && elapsedTime < 3000) {
+                    delay(100)
+                    elapsedTime += 100
+                }
+
+                // Detener si aún está reproduciendo
                 if (currentRingtone?.isPlaying == true) {
                     currentRingtone?.stop()
+                    Log.d("ReminderViewModel", "⏹️ Reproducción detenida después de 3s")
+                } else {
+                    Log.d("ReminderViewModel", "✅ Reproducción completada naturalmente")
                 }
+
             } catch (e: Exception) {
-                Log.e("ReminderViewModel", "Error al reproducir sonido: ${e.message}")
+                Log.e("ReminderViewModel", "❌ Error al reproducir sonido: ${e.message}")
+                e.printStackTrace()
             }
         }
     }
