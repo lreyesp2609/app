@@ -96,15 +96,12 @@ fun MapScreen(
     var recenterTrigger by remember { mutableStateOf(0) }
     var job by remember { mutableStateOf<Job?>(null) }
 
-    var mapCenterLat by remember { mutableStateOf(currentLat) }
-    var mapCenterLon by remember { mutableStateOf(currentLon) }
+    var mapCenterLat by remember { mutableStateOf(0.0) }
+    var mapCenterLon by remember { mutableStateOf(0.0) }
     var locationName by rememberSaveable { mutableStateOf("") }
 
     var zoomInTrigger by remember { mutableStateOf(0) }
     var zoomOutTrigger by remember { mutableStateOf(0) }
-
-    val userLat = remember { mutableStateOf(defaultLat) }
-    val userLon = remember { mutableStateOf(defaultLon) }
 
     var showLocationCards by remember { mutableStateOf(true) }
 
@@ -135,6 +132,14 @@ fun MapScreen(
     var showMapHelp by remember { mutableStateOf(false) }
     var showGestureHint by remember { mutableStateOf(false) }
 
+
+    LaunchedEffect(currentLat, currentLon) {
+        if (currentLat != 0.0 && currentLon != 0.0 && mapCenterLat == 0.0 && mapCenterLon == 0.0) {
+            Log.d("MapScreen", "🎯 Inicializando mapCenter con ubicación actual: $currentLat, $currentLon")
+            mapCenterLat = currentLat
+            mapCenterLon = currentLon
+        }
+    }
 
     // Verificar si debe mostrar el tutorial
     LaunchedEffect(Unit) {
@@ -222,6 +227,7 @@ fun MapScreen(
         when {
             locationObtained -> {
                 Box(modifier = Modifier.fillMaxSize()) {
+
                     OpenStreetMap(
                         latitude = currentLat,
                         longitude = currentLon,
@@ -230,6 +236,8 @@ fun MapScreen(
                         zoomInTrigger = zoomInTrigger,
                         zoomOutTrigger = zoomOutTrigger,
                         modifier = Modifier.fillMaxSize(),
+                        centerLat = mapCenterLat,
+                        centerLon = mapCenterLon,
                         onLocationSelected = { lat, lon ->
                             mapCenterLat = lat
                             mapCenterLon = lon
@@ -307,9 +315,12 @@ fun MapScreen(
                         MapControlButton(
                             icon = Icons.Default.MyLocation,
                             onClick = {
-                                mapCenterLat = userLat.value
-                                mapCenterLon = userLon.value
+                                // ✅ Usar currentLat/currentLon en lugar de userLat/userLon
+                                mapCenterLat = currentLat
+                                mapCenterLon = currentLon
                                 recenterTrigger++
+
+                                Log.d("MapScreen", "🎯 Botón Mi Ubicación presionado: $currentLat, $currentLon")
                             }
                         )
 
@@ -331,6 +342,9 @@ fun MapScreen(
                             )
                         }
                     }
+
+
+                    // En tu MapScreen, reemplaza la sección de AnimatedVisibility con esto:
 
                     AnimatedVisibility(
                         visible = showLocationCards,
@@ -356,14 +370,31 @@ fun MapScreen(
                                 )
                             }
 
-                            CompactLocationCard(
-                                title = "Tu ubicación",
-                                location = currentAddress,
-                                icon = Icons.Default.MyLocation,
-                                iconColor = Color(0xFF10B981)
+                            // 🆕 REEMPLAZAR CompactLocationCard con SearchLocationCard
+                            SearchLocationCard(
+                                currentAddress = currentAddress,
+                                userLat = currentLat,  // 🔥 Pasar ubicación del usuario
+                                userLon = currentLon,  // 🔥 Pasar ubicación del usuario
+                                onSearchResult = { lat, lon, address ->
+                                    // ✅ ACTUALIZAR las coordenadas de referencia
+                                    mapCenterLat = lat
+                                    mapCenterLon = lon
+                                    selectedAddress = address
+
+                                    // ✅ IMPORTANTE: Actualizar userLat y userLon para que el botón
+                                    // "Mi ubicación" siga funcionando correctamente
+                                    // (No sobrescribir, solo si quieres que la búsqueda sea el nuevo centro)
+
+                                    // ✅ FORZAR recentrado del mapa (esto mueve el mapa físicamente)
+                                    recenterTrigger++
+
+                                    // Mostrar notificación
+                                    notificationViewModel.showSuccess("📍 Ubicación encontrada")
+                                }
                             )
 
-                            if (selectedAddress.isNotEmpty()) {
+                            // Mantener la card de ubicación seleccionada
+                            if (selectedAddress.isNotEmpty() && selectedAddress != currentAddress) {
                                 CompactLocationCard(
                                     title = "Ubicación seleccionada",
                                     location = selectedAddress,

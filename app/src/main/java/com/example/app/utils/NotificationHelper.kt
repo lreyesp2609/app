@@ -147,6 +147,108 @@ object NotificationHelper {
     /**
      * Despertar el dispositivo cuando llega una notificación
      */
+
+    fun createAlertChannel(context: Context): String {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = "zona_peligro_alerts"
+
+            val notificationManager = context.getSystemService(NotificationManager::class.java)
+
+            // Eliminar canal existente para recrearlo
+            notificationManager.deleteNotificationChannel(channelId)
+
+            // 🔥 SISTEMA DE FALLBACK: Probar múltiples fuentes de sonido
+            val soundUri = obtenerSonidoAlerta(context)
+
+            val channel = NotificationChannel(
+                channelId,
+                "Alertas de Zona Peligrosa",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Alertas críticas cuando entras a zonas peligrosas"
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 500, 250, 500, 250, 500)
+                enableLights(true)
+                lightColor = android.graphics.Color.RED
+                setShowBadge(true)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+
+                // Usar el sonido obtenido con fallback
+                setSound(
+                    soundUri,
+                    AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .build()
+                )
+
+                // Bypass Do Not Disturb (si el usuario da permiso)
+                try {
+                    setBypassDnd(true)
+                } catch (e: Exception) {
+                    Log.w("NotificationHelper", "⚠️ No se pudo activar bypass DND: ${e.message}")
+                }
+            }
+
+            notificationManager.createNotificationChannel(channel)
+            Log.d("NotificationHelper", "✅ Canal de alertas creado con sonido: $soundUri")
+
+            return channelId
+        }
+        return "default"
+    }
+
+    /**
+     * 🔥 Obtiene URI de sonido con sistema de fallback
+     * Prioridad:
+     * 1. TYPE_ALARM (más fuerte, para emergencias)
+     * 2. TYPE_RINGTONE (medio, tono de llamada)
+     * 3. TYPE_NOTIFICATION (suave, última opción)
+     */
+    private fun obtenerSonidoAlerta(context: Context): Uri {
+        // 1️⃣ Intentar TYPE_ALARM
+        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        if (alarmUri != null && esSonidoValido(context, alarmUri)) {
+            Log.d("NotificationHelper", "✅ Usando TYPE_ALARM")
+            return alarmUri
+        }
+
+        Log.w("NotificationHelper", "⚠️ TYPE_ALARM no disponible, usando fallback...")
+
+        // 2️⃣ Fallback: TYPE_RINGTONE
+        val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+        if (ringtoneUri != null && esSonidoValido(context, ringtoneUri)) {
+            Log.d("NotificationHelper", "✅ Usando TYPE_RINGTONE como fallback")
+            return ringtoneUri
+        }
+
+        // 3️⃣ Último recurso: TYPE_NOTIFICATION
+        val notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        if (notificationUri != null && esSonidoValido(context, notificationUri)) {
+            Log.d("NotificationHelper", "✅ Usando TYPE_NOTIFICATION como último recurso")
+            return notificationUri
+        }
+
+        // 4️⃣ Si TODO falla, usar sonido del sistema
+        Log.e("NotificationHelper", "❌ No hay sonidos disponibles, usando Settings.System.DEFAULT_NOTIFICATION_URI")
+        return android.provider.Settings.System.DEFAULT_NOTIFICATION_URI
+    }
+
+    /**
+     * Verifica si un URI de sonido es válido y reproducible
+     */
+    private fun esSonidoValido(context: Context, uri: Uri): Boolean {
+        return try {
+            val ringtone = RingtoneManager.getRingtone(context, uri)
+            val valido = ringtone != null
+            ringtone?.stop() // Detener si se reprodujo
+            valido
+        } catch (e: Exception) {
+            Log.w("NotificationHelper", "⚠️ URI inválido: $uri - ${e.message}")
+            false
+        }
+    }
+
     fun wakeUpDevice(context: Context) {
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
         val wakeLock = powerManager.newWakeLock(

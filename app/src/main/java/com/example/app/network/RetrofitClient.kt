@@ -96,4 +96,8 @@ object RetrofitClient {
     val trackingApiService: TrackingApiService by lazy {
         retrofit.create(TrackingApiService::class.java)
     }
+
+    val seguridadApiService: SeguridadApiService by lazy {
+        retrofit.create(SeguridadApiService::class.java)
+    }
 }

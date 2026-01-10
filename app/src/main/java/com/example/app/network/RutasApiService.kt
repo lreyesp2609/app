@@ -52,15 +52,5 @@ interface RutasApiService {
         @Path("zona_id") zonaId: Int
     ): Response<Unit>
 
-    @PATCH("seguridad/zona/{zona_id}/toggle")
-    suspend fun toggleZonaActiva(
-        @Header("Authorization") token: String,
-        @Path("zona_id") zonaId: Int
-    ): Response<Map<String, Any>>
-
-    @GET("seguridad/estadisticas")
-    suspend fun obtenerEstadisticasSeguridad(
-        @Header("Authorization") token: String
-    ): EstadisticasSeguridad
 
 }

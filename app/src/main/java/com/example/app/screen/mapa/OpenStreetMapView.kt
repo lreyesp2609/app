@@ -53,7 +53,10 @@ fun OpenStreetMap(
     // 🔥 ZONAS YA GUARDADAS
     zonasGuardadas: List<ZonaGuardada> = emptyList(),
     // 🆕 CALLBACK PARA DETECTAR TAP EN ZONA
-    onZonaClick: ((ZonaGuardada) -> Unit)? = null
+    onZonaClick: ((ZonaGuardada) -> Unit)? = null,
+    // 🆕 COORDENADAS DEL CENTRO DEL MAPA (para búsqueda)
+    centerLat: Double = latitude,
+    centerLon: Double = longitude
 ) {
     val mapView = rememberMapView(context, zoom)
 
@@ -107,7 +110,7 @@ fun OpenStreetMap(
                     val puntosCirculo = crearCirculoPersonalizado(
                         lat = zona.lat,
                         lon = zona.lon,
-                        radioMetros = zona.radio.toInt()  // ✅ Convertir Double a Int
+                        radioMetros = zona.radio.toInt()
                     )
 
                     // Círculo de la zona
@@ -145,7 +148,7 @@ fun OpenStreetMap(
                         setOnMarkerClickListener { clickedMarker, mapView ->
                             Log.d("OpenStreetMap", "👆 Tap en zona: ${zona.nombre}")
                             onZonaClick?.invoke(zona)
-                            true // Consumir el evento
+                            true
                         }
                     }
                     map.overlays.add(marker)
@@ -164,7 +167,6 @@ fun OpenStreetMap(
 
                     Log.d("OpenStreetMap", "👁️ Preview zona en ($zonaPreviewLat, $zonaPreviewLon) - Radio: ${zonaPreviewRadio}m")
 
-                    // 🔥 USAR FUNCIÓN PERSONALIZADA
                     val puntosPreview = crearCirculoPersonalizado(
                         lat = zonaPreviewLat,
                         lon = zonaPreviewLon,
@@ -255,10 +257,11 @@ fun OpenStreetMap(
         }
     )
 
-    // Recentrar mapa (con trigger manual)
+    // 🔥 FIX: Recentrar mapa usando centerLat/centerLon en lugar de latitude/longitude
     LaunchedEffect(recenterTrigger) {
         if (recenterTrigger > 0) {
-            mapView.controller.animateTo(GeoPoint(latitude, longitude))
+            Log.d("OpenStreetMap", "🎯 Recentrando a: $centerLat, $centerLon")
+            mapView.controller.animateTo(GeoPoint(centerLat, centerLon))
         }
     }
 
@@ -296,7 +299,6 @@ fun OpenStreetMap(
         onDispose { mapView.removeMapListener(listener) }
     }
 }
-
 @Composable
 fun rememberMapView(context: Context, zoom: Double = 16.0): MapView {
     return remember {

@@ -25,6 +25,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.location.Location
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.os.Handler
 import com.example.app.network.RetrofitClient
 import com.example.app.utils.SessionManager
@@ -32,8 +34,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.util.*
-
+import com.example.app.network.VerificarUbicacionRequest
+import com.example.app.network.VerificarUbicacionResponse
+import com.example.app.network.ZonaPeligrosaDetectada
 
 class UnifiedLocationService : Service() {
 
@@ -54,6 +59,15 @@ class UnifiedLocationService : Service() {
     private val puntosGPSAcumulados = mutableListOf<PuntoGPSBatch>()
     private val handler = Handler(Looper.getMainLooper())
     private val INTERVALO_BATCH = 120_000L // 2 minutos
+
+
+    // ════════════════════════════════════════
+    // 🆕 NUEVO: Variables para Zonas Peligrosas
+    // ════════════════════════════════════════
+    private val zonasActivasUsuario = mutableSetOf<Int>() // Zonas donde está AHORA
+    private val ultimaVerificacionZona = mutableMapOf<Int, Long>() // Evitar spam
+    private val INTERVALO_MIN_ALERTA = 300_000L   // 5 minutos entre alertas de la misma zona
+
 
     companion object {
         private const val NOTIFICATION_ID = 12345
@@ -162,13 +176,232 @@ class UnifiedLocationService : Service() {
                 result.lastLocation?.let { location ->
                     Log.d(TAG, "📍 Ubicación: ${location.latitude}, ${location.longitude}")
 
-                    // 1️⃣ Verificar recordatorios (geofencing)
+                    // 1️⃣ Verificar recordatorios (tu código existente)
                     handleReminderGeofencing(location.latitude, location.longitude)
 
-                    // 2️⃣ Guardar para batch tracking
+                    // 2️⃣ 🆕 NUEVO: Verificar zonas peligrosas del usuario
+                    verificarZonasPeligrosas(location.latitude, location.longitude)
+
+                    // 3️⃣ Guardar para batch tracking
                     guardarPuntoParaBatch(location)
                 }
             }
+        }
+    }
+
+    private fun verificarZonasPeligrosas(lat: Double, lon: Double) {
+        serviceScope.launch {
+            try {
+                val token = sessionManager.getAccessToken() ?: run {
+                    Log.e(TAG, "❌ No hay token de acceso")
+                    return@launch
+                }
+
+                Log.d(TAG, "🔍 Verificando zonas peligrosas en ($lat, $lon)")
+
+                val request = VerificarUbicacionRequest(lat, lon)
+                val response = RetrofitClient.seguridadApiService.verificarUbicacionActual(
+                    token = "Bearer $token",
+                    request = request
+                )
+
+                Log.d(TAG, "📥 Respuesta recibida:")
+                Log.d(TAG, "   hay_peligro: ${response.hay_peligro}")
+                Log.d(TAG, "   zonas_detectadas: ${response.zonas_detectadas.size}")
+                Log.d(TAG, "   mensaje_alerta: ${response.mensaje_alerta}")
+
+                if (response.hay_peligro) {
+                    Log.w(TAG, "🚨 ¡PELIGRO DETECTADO! Procesando alerta...")
+                    manejarAlertaZonaPeligrosa(response)
+                } else {
+                    if (zonasActivasUsuario.isNotEmpty()) {
+                        Log.d(TAG, "✅ Usuario salió de zonas peligrosas")
+                        zonasActivasUsuario.clear()
+                    }
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error verificando zonas peligrosas: ${e.message}")
+                e.printStackTrace() // 🔥 Esto mostrará el stacktrace completo
+            }
+        }
+    }
+
+    private fun manejarAlertaZonaPeligrosa(response: VerificarUbicacionResponse) {
+        Log.d(TAG, "🎯 manejarAlertaZonaPeligrosa EJECUTADO")
+        Log.d(TAG, "   Zonas detectadas: ${response.zonas_detectadas.size}")
+
+        val ahora = System.currentTimeMillis()
+
+        response.zonas_detectadas.forEach { zona ->
+            Log.d(TAG, "   Procesando zona: ${zona.nombre} (ID: ${zona.zona_id})")
+
+            val yaEstabaAdentro = zonasActivasUsuario.contains(zona.zona_id)
+            Log.d(TAG, "     ¿Ya estaba adentro? $yaEstabaAdentro")
+
+            if (!yaEstabaAdentro) {
+                // 🚨 ENTRADA A ZONA PELIGROSA (NUEVA)
+                Log.w(TAG, "🚨 ENTRADA NUEVA A ZONA: ${zona.nombre}")
+                zonasActivasUsuario.add(zona.zona_id)
+
+                // Verificar cooldown
+                val ultimaAlerta = ultimaVerificacionZona[zona.zona_id] ?: 0L
+                val tiempoTranscurrido = ahora - ultimaAlerta
+
+                Log.d(TAG, "     Última alerta hace: ${tiempoTranscurrido / 1000}s")
+                Log.d(TAG, "     Cooldown necesario: ${INTERVALO_MIN_ALERTA / 1000}s")
+
+                if (tiempoTranscurrido >= INTERVALO_MIN_ALERTA) {
+                    Log.w(TAG, "✅ Mostrando alerta (cooldown pasado)")
+                    mostrarAlertaZonaPeligrosa(zona, response.mensaje_alerta)
+                    ultimaVerificacionZona[zona.zona_id] = ahora
+                } else {
+                    Log.w(TAG, "⏳ Cooldown activo, faltan ${(INTERVALO_MIN_ALERTA - tiempoTranscurrido) / 1000}s")
+                }
+            } else {
+                // 🔄 USUARIO SIGUE DENTRO
+                Log.d(TAG, "🔄 Usuario continúa dentro de: ${zona.nombre}")
+            }
+        }
+
+        // Limpiar zonas de las que salió
+        val zonasActuales = response.zonas_detectadas.map { it.zona_id }.toSet()
+        val zonasEliminadas = zonasActivasUsuario - zonasActuales
+
+        if (zonasEliminadas.isNotEmpty()) {
+            Log.d(TAG, "🚪 Usuario salió de zonas: $zonasEliminadas")
+            zonasActivasUsuario.retainAll(zonasActuales)
+        }
+    }
+
+    private fun mostrarAlertaZonaPeligrosa(zona: ZonaPeligrosaDetectada, mensajeAlerta: String?) {
+        Log.w(TAG, "🔔 mostrarAlertaZonaPeligrosa() EJECUTADO")
+        Log.w(TAG, "   Zona: ${zona.nombre}")
+        Log.w(TAG, "   Nivel: ${zona.nivel_peligro}")
+
+        // 🔊 REPRODUCIR SONIDO MANUALMENTE (ANTES de crear la notificación)
+        reproducirSonidoAlarma()
+
+        // Despertar dispositivo
+        NotificationHelper.wakeUpDevice(applicationContext)
+
+        val titulo = when (zona.nivel_peligro) {
+            5 -> "🚨 ZONA MUY PELIGROSA"
+            4 -> "⚠️ ZONA PELIGROSA"
+            3 -> "⚠️ ZONA DE RIESGO"
+            else -> "ℹ️ Zona Marcada"
+        }
+
+        val descripcion = mensajeAlerta ?: zona.nombre
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("OPEN_ZONA_PELIGRO", zona.zona_id)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, zona.zona_id, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val channelId = NotificationHelper.createAlertChannel(applicationContext)
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle(titulo)
+            .setContentText(descripcion)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(
+                "$descripcion\n\nDistancia: ${zona.distancia_al_centro.toInt()}m\n" +
+                        "Nivel de peligro: ${zona.nivel_peligro}/5"
+            ))
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .setFullScreenIntent(pendingIntent, true)
+            .setVibrate(longArrayOf(0, 500, 250, 500, 250, 500))
+            .build()
+
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        val notificationId = 10000 + zona.zona_id
+        notificationManager.notify(notificationId, notification)
+
+        Log.w(TAG, "✅ Notificación #$notificationId mostrada")
+        Log.w(TAG, "🚨 ALERTA: ${zona.nombre} (Nivel ${zona.nivel_peligro})")
+    }
+
+    // 🆕 NUEVO MÉTODO: Reproducir sonido manualmente
+    private var currentRingtone: Ringtone? = null
+
+    private fun reproducirSonidoAlarma() {
+        try {
+            // Detener sonido anterior si existe
+            currentRingtone?.let {
+                if (it.isPlaying) {
+                    it.stop()
+                    Log.d(TAG, "🔇 Sonido anterior detenido")
+                }
+            }
+
+            // Obtener URI de alarma
+            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            Log.d(TAG, "🔊 Intentando reproducir: $soundUri")
+
+            // Crear y reproducir ringtone
+            val ringtone = RingtoneManager.getRingtone(applicationContext, soundUri)
+
+            if (ringtone != null) {
+                // Configurar para reproducir a máximo volumen
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    ringtone.volume = 1.0f
+                }
+
+                ringtone.play()
+                currentRingtone = ringtone
+
+                Log.d(TAG, "✅ Sonido reproducido (durará 5 segundos)")
+
+                // Detener después de 5 segundos
+                Handler(Looper.getMainLooper()).postDelayed({
+                    try {
+                        if (ringtone.isPlaying) {
+                            ringtone.stop()
+                            Log.d(TAG, "🔇 Sonido detenido automáticamente")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error deteniendo sonido: ${e.message}")
+                    }
+                }, 5000)
+
+            } else {
+                Log.e(TAG, "❌ Ringtone es NULL, intentando fallback...")
+                reproducirSonidoFallback()
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error reproduciendo sonido: ${e.message}")
+            e.printStackTrace()
+            reproducirSonidoFallback()
+        }
+    }
+
+    // Fallback por si TYPE_ALARM no funciona
+    private fun reproducirSonidoFallback() {
+        try {
+            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            val ringtone = RingtoneManager.getRingtone(applicationContext, soundUri)
+
+            if (ringtone != null) {
+                ringtone.play()
+                currentRingtone = ringtone
+                Log.d(TAG, "✅ Sonido fallback (RINGTONE) reproducido")
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    ringtone.stop()
+                }, 5000)
+            } else {
+                Log.e(TAG, "❌ Fallback también falló")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error en fallback: ${e.message}")
         }
     }
 
@@ -292,14 +525,35 @@ class UnifiedLocationService : Service() {
     // ════════════════════════════════════════
 
     private fun guardarPuntoParaBatch(location: Location) {
+        // ✅ FIX CRÍTICO: location.time YA está en UTC (milisegundos desde epoch)
+        // Solo necesitas formatear correctamente
+        val timestampUTC = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // API 26+: Usar java.time (recomendado)
+            Instant.ofEpochMilli(location.time)
+                .toString()  // Ya retorna formato ISO 8601 en UTC
+        } else {
+            // API < 26: SimpleDateFormat DEBE tener timezone UTC
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC") // ⚠️ SIN ESTO NO FUNCIONA
+            }.format(Date(location.time))
+        }
+
         val punto = PuntoGPSBatch(
             lat = location.latitude,
             lon = location.longitude,
-            timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-                .format(Date(location.time)),
+            timestamp = timestampUTC, // ✅ Ahora es UTC real
             precision = if (location.hasAccuracy()) location.accuracy else null,
             velocidad = if (location.hasSpeed()) location.speed else null
         )
+
+        // Log para debug (temporal)
+        Log.d(TAG, """
+        📍 Punto GPS capturado:
+           - Timestamp UTC: $timestampUTC
+           - Hora del dispositivo: ${Date()}
+           - location.time: ${Date(location.time)}
+           - Timezone del dispositivo: ${TimeZone.getDefault().id}
+    """.trimIndent())
 
         synchronized(puntosGPSAcumulados) {
             puntosGPSAcumulados.add(punto)
@@ -391,4 +645,24 @@ data class LotePuntosGPSResponse(
     val success: Boolean,
     val puntos_guardados: Int,
     val message: String
+)
+
+data class VerificarUbicacionRequest(
+    val lat: Double,
+    val lon: Double
+)
+
+data class VerificarUbicacionResponse(
+    val hay_peligro: Boolean,
+    val zonas_detectadas: List<ZonaPeligrosaDetectada>,
+    val mensaje_alerta: String?
+)
+
+data class ZonaPeligrosaDetectada(
+    val zona_id: Int,
+    val nombre: String,
+    val nivel_peligro: Int,
+    val tipo: String?,
+    val distancia_al_centro: Float,
+    val dentro_de_zona: Boolean
 )
