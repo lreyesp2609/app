@@ -10,6 +10,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -58,6 +59,7 @@ import com.example.app.screen.components.AppBackButton
 import com.example.app.screen.components.AppButton
 import com.example.app.screen.components.AppTextField
 import com.example.app.screen.mapa.MapControlButton
+import com.example.app.ui.theme.SecurityColors
 import com.example.app.utils.DialogoCrearZonaPeligrosa
 import com.example.app.utils.LocationManager
 import com.example.app.utils.SessionManager
@@ -119,7 +121,6 @@ fun MapScreen(
     // Estados del MapViewModel para seguridad
     val alternativeRoutes by mapViewModel.alternativeRoutes
     val showRouteSelector by mapViewModel.showRouteSelector
-    val mostrarAdvertenciaSeguridad by mapViewModel.mostrarAdvertenciaSeguridad
     val validacionSeguridad by mapViewModel.validacionSeguridad
 
     // 🆕 NUEVOS ESTADOS PARA REGENERACIÓN
@@ -132,7 +133,6 @@ fun MapScreen(
     var showMapHelp by remember { mutableStateOf(false) }
     var showGestureHint by remember { mutableStateOf(false) }
 
-
     LaunchedEffect(currentLat, currentLon) {
         if (currentLat != 0.0 && currentLon != 0.0 && mapCenterLat == 0.0 && mapCenterLon == 0.0) {
             Log.d("MapScreen", "🎯 Inicializando mapCenter con ubicación actual: $currentLat, $currentLon")
@@ -141,30 +141,26 @@ fun MapScreen(
         }
     }
 
-    // Verificar si debe mostrar el tutorial
     LaunchedEffect(Unit) {
         val sharedPrefs = context.getSharedPreferences("map_prefs", Context.MODE_PRIVATE)
         showMapHelp = !sharedPrefs.getBoolean("map_help_seen", false)
     }
 
-    // Mostrar hint de gesto si no ha marcado zonas
     LaunchedEffect(locationObtained, zonasCreadas.size) {
         if (locationObtained && zonasCreadas.isEmpty()) {
-            delay(3000) // Esperar 3 segundos
+            delay(3000)
             showGestureHint = true
         } else {
             showGestureHint = false
         }
     }
 
-    // Función para marcar el tutorial como visto
     fun dismissMapHelp() {
         val sharedPrefs = context.getSharedPreferences("map_prefs", Context.MODE_PRIVATE)
         sharedPrefs.edit().putBoolean("map_help_seen", true).apply()
         showMapHelp = false
     }
 
-    // Cargar desde caché
     LaunchedEffect(Unit) {
         val cachedLocation = locationManager.getLastKnownLocation()
         if (cachedLocation != null) {
@@ -190,9 +186,7 @@ fun MapScreen(
                 try {
                     val response = RetrofitClient.rutasApiService.obtenerMisZonasPeligrosas("Bearer $token")
 
-                    // 🔥 CORRECCIÓN: Usar los nombres correctos de las propiedades
                     zonasCreadas = response.mapNotNull { zona ->
-                        // Validar que tenga las coordenadas necesarias
                         val coordenadas = zona.poligono?.firstOrNull()
                         if (coordenadas != null) {
                             ZonaGuardada(
@@ -266,7 +260,6 @@ fun MapScreen(
                         zonasGuardadas = if (mostrarZonasPeligrosas) zonasCreadas else emptyList()
                     )
 
-
                     AppBackButton(
                         navController = navController,
                         modifier = Modifier
@@ -299,7 +292,7 @@ fun MapScreen(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .padding(end = 16.dp)
-                            .offset(y = 40.dp), // 🆕 Baja todos los botones 40dp
+                            .offset(y = 40.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         MapControlButton(
@@ -315,11 +308,9 @@ fun MapScreen(
                         MapControlButton(
                             icon = Icons.Default.MyLocation,
                             onClick = {
-                                // ✅ Usar currentLat/currentLon en lugar de userLat/userLon
                                 mapCenterLat = currentLat
                                 mapCenterLon = currentLon
                                 recenterTrigger++
-
                                 Log.d("MapScreen", "🎯 Botón Mi Ubicación presionado: $currentLat, $currentLon")
                             }
                         )
@@ -342,9 +333,6 @@ fun MapScreen(
                             )
                         }
                     }
-
-
-                    // En tu MapScreen, reemplaza la sección de AnimatedVisibility con esto:
 
                     AnimatedVisibility(
                         visible = showLocationCards,
@@ -370,30 +358,19 @@ fun MapScreen(
                                 )
                             }
 
-                            // 🆕 REEMPLAZAR CompactLocationCard con SearchLocationCard
                             SearchLocationCard(
                                 currentAddress = currentAddress,
-                                userLat = currentLat,  // 🔥 Pasar ubicación del usuario
-                                userLon = currentLon,  // 🔥 Pasar ubicación del usuario
+                                userLat = currentLat,
+                                userLon = currentLon,
                                 onSearchResult = { lat, lon, address ->
-                                    // ✅ ACTUALIZAR las coordenadas de referencia
                                     mapCenterLat = lat
                                     mapCenterLon = lon
                                     selectedAddress = address
-
-                                    // ✅ IMPORTANTE: Actualizar userLat y userLon para que el botón
-                                    // "Mi ubicación" siga funcionando correctamente
-                                    // (No sobrescribir, solo si quieres que la búsqueda sea el nuevo centro)
-
-                                    // ✅ FORZAR recentrado del mapa (esto mueve el mapa físicamente)
                                     recenterTrigger++
-
-                                    // Mostrar notificación
                                     notificationViewModel.showSuccess("📍 Ubicación encontrada")
                                 }
                             )
 
-                            // Mantener la card de ubicación seleccionada
                             if (selectedAddress.isNotEmpty() && selectedAddress != currentAddress) {
                                 CompactLocationCard(
                                     title = "Ubicación seleccionada",
@@ -480,7 +457,7 @@ fun MapScreen(
 
                                 Log.d("MapScreen", "✅ Nueva ubicación obtenida y guardada en caché")
                             } catch (e: Exception) {
-                                notificationViewModel.showError("Error creando zona peligrosa: ${e.message}")
+                                notificationViewModel.showError("Error obteniendo ubicación: ${e.message}")
                             }
                         }
                     },
@@ -492,7 +469,10 @@ fun MapScreen(
             }
         }
 
-        // DIÁLOGO PARA CREAR ZONA PELIGROSA
+        /*
+        // ═══════════════════════════════════════════════════════════════════
+        // 🚀 ÚNICO DIÁLOGO DE SELECCIÓN DE RUTAS (sin duplicados)
+        // ═══════════════════════════════════════════════════════════════════
         if (showRouteSelector) {
             RouteSelectorDialog(
                 alternativeRoutes = alternativeRoutes,
@@ -500,9 +480,8 @@ fun MapScreen(
                 isRegenerating = isRegeneratingRoutes,
                 rutasGeneradasEvitandoZonas = rutasGeneradasEvitandoZonas,
                 onRouteSelected = { route ->
-                    // Obtener ubicacionId y transporte del contexto
-                    val ubicacionId = 1 // Cambiar según tu lógica
-                    val transporteTexto = "walking" // Cambiar según modo seleccionado
+                    val ubicacionId = 1
+                    val transporteTexto = "walking"
 
                     mapViewModel.selectRouteAlternative(
                         route,
@@ -512,8 +491,7 @@ fun MapScreen(
                     )
                 },
                 onRegenerarEvitandoZonas = {
-                    // Regenerar rutas evitando zonas peligrosas
-                    val ubicacionId = 1 // Cambiar según tu lógica
+                    val ubicacionId = 1
                     val transporteTexto = "walking"
 
                     mapViewModel.regenerarRutasEvitandoZonasPeligrosas(
@@ -524,15 +502,55 @@ fun MapScreen(
                         transporteTexto = transporteTexto
                     )
                 },
+                // 🔥 CALLBACK MEJORADO: Ahora re-valida rutas después de guardar
+                onSavePublicZone = { zonaId ->
+                    scope.launch {
+                        try {
+                            val zonaAdoptada = RetrofitClient.rutasApiService.adoptarZonaSugerida(
+                                token = "Bearer $token",
+                                zonaId = zonaId
+                            )
+
+                            notificationViewModel.showSuccess("✅ Zona guardada: ${zonaAdoptada.nombre}")
+
+                            // 1️⃣ Agregar a la lista local
+                            val centro = zonaAdoptada.poligono.firstOrNull()
+                            if (centro != null) {
+                                zonasCreadas = zonasCreadas + ZonaGuardada(
+                                    lat = centro.lat,
+                                    lon = centro.lon,
+                                    radio = zonaAdoptada.radioMetros ?: 200,
+                                    nombre = zonaAdoptada.nombre,
+                                    nivel = zonaAdoptada.nivelPeligro
+                                )
+                            }
+
+                            // 2️⃣ 🔥 RE-VALIDAR RUTAS PARA ACTUALIZAR ESTADO
+                            val ubicacionId = 1  // O el ID real de la ubicación
+                            mapViewModel.revalidarRutasActuales(token, ubicacionId)
+
+                        } catch (e: Exception) {
+                            val error = when {
+                                e.message?.contains("Ya tienes una zona") == true ->
+                                    "Ya tienes una zona con ese nombre"
+                                else ->
+                                    "Error al guardar zona: ${e.message}"
+                            }
+                            notificationViewModel.showError(error)
+                        }
+                    }
+                },
                 onDismiss = {
                     mapViewModel.hideRouteSelector()
-                    // Reset estado de regeneración al cerrar
                     mapViewModel.resetRegeneracionZonas()
                 }
             )
-        }
+        }*/
+        // ═══════════════════════════════════════════════════════════════════
+        // DIÁLOGO PARA CREAR ZONA PELIGROSA
+        // ═══════════════════════════════════════════════════════════════════
 
-        // 🔥 DIÁLOGO PARA CREAR ZONA PELIGROSA
+        
         if (mostrarDialogoZona && coordenadasZonaSeleccionada != null) {
             DialogoCrearZonaPeligrosa(
                 coordenadas = coordenadasZonaSeleccionada!!,
@@ -560,7 +578,6 @@ fun MapScreen(
 
                             Log.d("MapScreen", "Zona creada: ID=${response.id}, Radio=${radio}m")
 
-                            // 🔥 AGREGAR A LA LISTA LOCAL
                             zonasCreadas = zonasCreadas + ZonaGuardada(
                                 lat = coordenadasZonaSeleccionada!!.first,
                                 lon = coordenadasZonaSeleccionada!!.second,
@@ -590,174 +607,15 @@ fun MapScreen(
             )
         }
 
-        // SELECTOR DE RUTAS (resto del código igual)
-        if (showRouteSelector) {
-            AlertDialog(
-                onDismissRequest = { mapViewModel.hideRouteSelector() },
-                title = {
-                    Text(
-                        "Selecciona tu ruta",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                text = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        validacionSeguridad?.advertenciaGeneral?.let { advertencia ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = Color(0xFFFFEBEE)
-                                )
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.Warning,
-                                        contentDescription = null,
-                                        tint = Color.Red,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        advertencia,
-                                        fontSize = 13.sp,
-                                        color = Color(0xFFD32F2F)
-                                    )
-                                }
-                            }
-                        }
-
-                        alternativeRoutes.forEach { route ->
-                            RutaCard(
-                                route = route,
-                                onClick = {
-                                    val ubicacionId = 1
-                                    val transporteTexto = "walking"
-
-                                    mapViewModel.selectRouteAlternative(
-                                        route,
-                                        token,
-                                        ubicacionId,
-                                        transporteTexto
-                                    )
-                                }
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { mapViewModel.hideRouteSelector() }) {
-                        Text("Cancelar")
-                    }
-                }
-            )
-        }
-
         if (showGpsButton) {
             GpsEnableButton(onEnableGps = { showGpsButton = false })
         }
     }
 }
 
-@Composable
-fun RutaCard(route: RouteAlternative, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (route.isRecommended) Color(0xFFE8F5E9) else Color.White
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    route.displayName,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    // Badge ML
-                    if (route.isRecommended) {
-                        Badge(
-                            containerColor = Color(0xFF4CAF50)
-                        ) {
-                            Text("🤖 ML", fontSize = 10.sp, color = Color.White)
-                        }
-                    }
-
-                    // 🆕 Badge de Seguridad
-                    route.esSegura?.let { esSegura ->
-                        Badge(
-                            containerColor = if (esSegura) Color(0xFF4CAF50) else Color(0xFFF44336)
-                        ) {
-                            Text(
-                                if (esSegura) "SEGURA" else "RIESGO",
-                                fontSize = 10.sp,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Distancia y duración
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    "📏 ${(route.distance / 1000).roundToInt()} km",
-                    fontSize = 14.sp
-                )
-                Text(
-                    "⏱ ${(route.duration / 60).toInt()} min",
-                    fontSize = 14.sp
-                )
-            }
-
-            // 🆕 Mensaje de seguridad si existe
-            route.mensajeSeguridad?.let { mensaje ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    mensaje,
-                    fontSize = 12.sp,
-                    color = Color(0xFFF44336),
-                    fontStyle = FontStyle.Italic
-                )
-            }
-
-            // 🆕 Número de zonas detectadas
-            route.zonasDetectadas?.let { zonas ->
-                if (zonas.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "${zonas.size} zona(s) de riesgo detectada(s)",
-                        fontSize = 11.sp,
-                        color = Color.Gray
-                    )
-                }
-            }
-        }
-    }
-}
+// ═══════════════════════════════════════════════════════════════════
+// COMPONENTES AUXILIARES (sin cambios)
+// ═══════════════════════════════════════════════════════════════════
 
 @Composable
 fun CompactLocationCard(

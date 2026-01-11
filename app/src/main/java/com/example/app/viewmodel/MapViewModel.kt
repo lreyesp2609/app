@@ -239,7 +239,9 @@ class MapViewModel(
                             esSegura = validacionRuta.esSegura,
                             nivelRiesgo = validacionRuta.nivelRiesgo,
                             zonasDetectadas = validacionRuta.zonasDetectadas,
-                            mensajeSeguridad = validacionRuta.mensaje
+                            mensajeSeguridad = validacionRuta.mensaje,
+                            // 🚀 NUEVO: Agregar zonas públicas detectadas
+                            zonasPublicasDetectadas = validacionRuta.zonasPublicasDetectadas
                         )
 
                         // 🔥 LOG DE CADA RUTA
@@ -778,7 +780,9 @@ class MapViewModel(
                             esSegura = validacionRuta.esSegura,
                             nivelRiesgo = validacionRuta.nivelRiesgo,
                             zonasDetectadas = validacionRuta.zonasDetectadas,
-                            mensajeSeguridad = validacionRuta.mensaje
+                            mensajeSeguridad = validacionRuta.mensaje,
+                            // 🚀 NUEVO: Agregar zonas públicas detectadas
+                            zonasPublicasDetectadas = validacionRuta.zonasPublicasDetectadas
                         )
                     }
 
@@ -833,40 +837,27 @@ class MapViewModel(
         return puntos
     }
 
-    fun eliminarZonaPeligrosa(
+    // 🔥 EN MapViewModel AGREGAR:
+
+    fun adoptarZonaPublica(
         zonaId: Int,
         token: String,
-        onSuccess: () -> Unit,
-        onError: (String) -> Unit
+        onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
             try {
-                Log.d("MapViewModel", "🗑️ Eliminando zona ID: $zonaId")
+                Log.d("MapViewModel", "💾 Adoptando zona pública ID: $zonaId")
 
-                val response = RetrofitClient.rutasApiService.eliminarZonaPeligrosa(
+                val response = RetrofitClient.rutasApiService.adoptarZonaSugerida(
                     token = "Bearer $token",
                     zonaId = zonaId
                 )
 
-                if (response.isSuccessful) {
-                    Log.d("MapViewModel", "✅ Zona eliminada correctamente")
-
-                    // Actualizar lista local de zonas
-                    _zonasPeligrosas.value = _zonasPeligrosas.value.filter {
-                        it.id != zonaId
-                    }
-
-                    onSuccess()
-                } else {
-                    val errorMsg = "Error ${response.code()}: ${response.message()}"
-                    Log.e("MapViewModel", "❌ $errorMsg")
-                    onError(errorMsg)
-                }
+                Log.d("MapViewModel", "✅ Zona adoptada: ${response.nombre}")
+                onSuccess()
 
             } catch (e: Exception) {
-                val errorMsg = e.message ?: "Error desconocido"
-                Log.e("MapViewModel", "❌ Error eliminando zona: $errorMsg", e)
-                onError(errorMsg)
+                Log.e("MapViewModel", "❌ Error adoptando zona: ${e.message}", e)
             }
         }
     }
@@ -885,6 +876,96 @@ class MapViewModel(
     fun ocultarOpcionesFinalizar() {
         _mostrarOpcionesFinalizar.value = false
         _rutaIdActiva.value = null
+    }
+
+    // 🔥 AGREGAR ESTE MÉTODO AL FINAL DE MapViewModel.kt
+    // (Justo antes del override fun onCleared())
+
+    fun revalidarRutasActuales(token: String, ubicacionId: Int = 1) {
+        viewModelScope.launch {
+            try {
+                Log.d("MapViewModel", "🔄 Re-validando rutas después de guardar zona...")
+
+                // Obtener las rutas actuales
+                val rutasActuales = _alternativeRoutes.value
+
+                if (rutasActuales.isEmpty()) {
+                    Log.w("MapViewModel", "⚠️ No hay rutas para re-validar")
+                    return@launch
+                }
+
+                // 🔥 Extraer geometría desde response.routes[0].geometry
+                val rutasParaValidar = rutasActuales.mapNotNull { route ->
+                    // Obtener la geometría del primer segmento de la ruta
+                    val geometry = route.response.routes?.firstOrNull()?.geometry
+
+                    if (geometry.isNullOrBlank()) {
+                        Log.w("MapViewModel", "⚠️ Ruta '${route.type}' sin geometría")
+                        return@mapNotNull null
+                    }
+
+                    RutaParaValidar(
+                        tipo = route.type,
+                        geometry = geometry,        // 🔥 Geometría extraída del response
+                        distance = route.distance,
+                        duration = route.duration
+                    )
+                }
+
+                if (rutasParaValidar.isEmpty()) {
+                    Log.w("MapViewModel", "⚠️ Ninguna ruta tiene geometría válida")
+                    return@launch
+                }
+
+                // Llamar al endpoint de validación
+                val request = ValidarRutasRequest(
+                    rutas = rutasParaValidar,
+                    ubicacionId = ubicacionId
+                )
+
+                Log.d("MapViewModel", "📤 Enviando ${rutasParaValidar.size} rutas para re-validar")
+
+                val response = RetrofitClient.rutasApiService.validarRutas(
+                    token = "Bearer $token",
+                    request = request
+                )
+
+                // 🔥 COMBINAR rutas con la NUEVA validación
+                val routesActualizadas = rutasActuales.mapIndexed { index, route ->
+                    val validacionRuta = response.rutasValidadas[index]
+
+                    route.copy(
+                        isRecommended = route.type == response.tipoMlRecomendado,
+                        esSegura = validacionRuta.esSegura,
+                        nivelRiesgo = validacionRuta.nivelRiesgo,
+                        zonasDetectadas = validacionRuta.zonasDetectadas,
+                        mensajeSeguridad = validacionRuta.mensaje,
+                        zonasPublicasDetectadas = validacionRuta.zonasPublicasDetectadas
+                    )
+                }
+
+                // 🔥 ACTUALIZAR ESTADOS
+                _validacionSeguridad.value = response
+                _alternativeRoutes.value = routesActualizadas
+
+                Log.d("MapViewModel", "✅ Re-validación completada:")
+                Log.d("MapViewModel", "   - Zonas usuario: ${response.totalZonasUsuario}")
+                Log.d("MapViewModel", "   - Todas seguras: ${response.todasSeguras}")
+                Log.d("MapViewModel", "   - Mejor ruta segura: ${response.mejorRutaSegura}")
+
+                // 🔥 LOG DETALLADO
+                response.rutasValidadas.forEachIndexed { index, ruta ->
+                    Log.d("MapViewModel", "")
+                    Log.d("MapViewModel", "🚗 Ruta ${index + 1}: ${ruta.tipo}")
+                    Log.d("MapViewModel", "   esSegura: ${ruta.esSegura}")
+                    Log.d("MapViewModel", "   nivelRiesgo: ${ruta.nivelRiesgo}")
+                    Log.d("MapViewModel", "   zonasDetectadas: ${ruta.zonasDetectadas.size}")
+                }
+
+            } catch (e: Exception) {
+                Log.e("MapViewModel", "❌ Error re-validando rutas: ${e.message}", e)
+            }
+        }
     }
 
 

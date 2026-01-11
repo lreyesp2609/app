@@ -58,7 +58,9 @@ data class RutaValidada(
     @SerializedName("zonas_detectadas") val zonasDetectadas: List<ZonaDetectada>,
     @SerializedName("mensaje") val mensaje: String?,
     @SerializedName("distancia") val distancia: Double?,
-    @SerializedName("duracion") val duracion: Double?
+    @SerializedName("duracion") val duracion: Double?,
+
+    @SerializedName("zonas_publicas_detectadas") val zonasPublicasDetectadas: List<ZonaPublicaDetectada>? = null
 )
 
 data class ValidarRutasResponse(
@@ -67,15 +69,16 @@ data class ValidarRutasResponse(
     @SerializedName("todas_seguras") val todasSeguras: Boolean,
     @SerializedName("mejor_ruta_segura") val mejorRutaSegura: String?,
     @SerializedName("advertencia_general") val advertenciaGeneral: String?,
-    @SerializedName("total_zonas_usuario") val totalZonasUsuario: Int
+    @SerializedName("total_zonas_usuario") val totalZonasUsuario: Int,
+
+    @SerializedName("zonas_publicas_encontradas") val zonasPublicasEncontradas: Int? = null
 )
 
-data class EstadisticasSeguridad(
-    @SerializedName("total_zonas") val totalZonas: Int,
-    @SerializedName("zonas_por_tipo") val zonasPorTipo: Map<String, Int>,
-    @SerializedName("zonas_por_nivel") val zonasPorNivel: Map<Int, Int>,
-    @SerializedName("zonas_activas") val zonasActivas: Int,
-    @SerializedName("zonas_inactivas") val zonasInactivas: Int,
-    @SerializedName("rutas_validadas_historico") val rutasValidadasHistorico: Int,
-    @SerializedName("rutas_con_advertencias") val rutasConAdvertencias: Int
+data class ZonaPublicaDetectada(
+    @SerializedName("zona_id") val zonaId: Int,
+    @SerializedName("nombre") val nombre: String,
+    @SerializedName("nivel_peligro") val nivelPeligro: Int,
+    @SerializedName("tipo") val tipo: String?,
+    @SerializedName("distancia_km") val distanciaKm: Float,
+    @SerializedName("puede_guardar") val puedeGuardar: Boolean
 )

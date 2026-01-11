@@ -113,7 +113,12 @@ data class RouteAlternative(
     val esSegura: Boolean? = null,  // ← Puede ser null
     val nivelRiesgo: Int? = null,
     val zonasDetectadas: List<ZonaDetectada>? = null,
-    val mensajeSeguridad: String? = null
+    val mensajeSeguridad: String? = null,
+
+    val publicZonesDetected: List<ZonaPublicaDetectada>? = null,
+
+    val zonasPublicasDetectadas: List<ZonaPublicaDetectada>? = null
+
 ) {
     // 🔥 AGREGAR ESTA FUNCIÓN DE DEBUG
     fun logInfo(tag: String) {

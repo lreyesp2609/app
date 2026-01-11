@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.app.models.UbicacionUsuarioResponse
+import com.example.app.network.RetrofitClient
 import com.example.app.viewmodel.decodePolyline
 import com.example.app.viewmodel.MapViewModel
 import kotlin.collections.isNotEmpty
@@ -72,6 +73,7 @@ import com.example.app.utils.LocationManager
 import com.example.app.utils.getModeDisplayName
 import com.example.app.utils.getNivelPeligroColor
 import com.example.app.viewmodel.MapViewModelFactory
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
@@ -423,8 +425,8 @@ fun RutaMapa(
                         alternatives = alternativeRoutes,
                         validacionSeguridad = validacionSeguridad,
                         transportMode = selectedTransportMode,
-                        isRegenerating = isRegenerating,  // 🆕 NUEVO
-                        rutasGeneradasEvitandoZonas = rutasGeneradasEvitandoZonas,  // 🆕 NUEVO
+                        isRegenerating = isRegenerating,
+                        rutasGeneradasEvitandoZonas = rutasGeneradasEvitandoZonas,
                         onSelectRoute = { alternative ->
                             viewModel.selectRouteAlternative(
                                 alternative = alternative,
@@ -433,7 +435,6 @@ fun RutaMapa(
                                 transporteTexto = selectedTransportMode
                             )
 
-                            // Actualizar UI
                             showRouteInfo = true
                             routeDistance = "${(alternative.distance / 1000).roundToInt()} km"
                             routeDuration = "${(alternative.duration / 60).roundToInt()} min"
@@ -441,7 +442,6 @@ fun RutaMapa(
                             transportMessage = "Ruta ${alternative.displayName} seleccionada"
                             showTransportMessage = true
                         },
-                        // 🆕 NUEVO: Callback para regenerar rutas
                         onRegenerarEvitandoZonas = {
                             selectedLocation?.let { destination ->
                                 val startPoint = Pair(userLat.value, userLon.value)
@@ -456,9 +456,37 @@ fun RutaMapa(
                                 )
                             }
                         },
+                        // 🚀 NUEVO: Agregar callback para guardar zonas públicas
+                        onSavePublicZone = { zonaId: Int ->
+                            kotlinx.coroutines.GlobalScope.launch {
+                                try {
+                                    Log.d("RutaMapa", "💾 Guardando zona pública ID: $zonaId")
+
+                                    val zonaAdoptada = RetrofitClient.rutasApiService.adoptarZonaSugerida(
+                                        token = "Bearer $token",
+                                        zonaId = zonaId
+                                    )
+
+                                    Log.d("RutaMapa", "✅ Zona adoptada: ${zonaAdoptada.nombre}")
+
+                                    // 1️⃣ Recargar zonas del usuario
+                                    viewModel.cargarZonasPeligrosas(token)
+
+                                    // 2️⃣ 🔥 RE-VALIDAR RUTAS PARA ACTUALIZAR EL CONTADOR
+                                    viewModel.revalidarRutasActuales(token, selectedLocationId)
+
+                                    // 3️⃣ Mostrar notificación (opcional, si tienes NotificationViewModel)
+                                    // notificationViewModel.showSuccess("✅ Zona guardada: ${zonaAdoptada.nombre}")
+
+                                } catch (e: Exception) {
+                                    Log.e("RutaMapa", "❌ Error guardando zona: ${e.message}", e)
+                                    // Mostrar error al usuario (opcional)
+                                }
+                            }
+                        },
                         onDismiss = {
                             viewModel.hideRouteSelector()
-                            viewModel.resetRegeneracionZonas()  // 🆕 Resetear estado
+                            viewModel.resetRegeneracionZonas()
                         }
                     )
                 }

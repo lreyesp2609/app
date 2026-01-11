@@ -2,6 +2,7 @@ package com.example.app.screen.rutas.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +31,7 @@ fun RouteSelectorDialog(
     rutasGeneradasEvitandoZonas: Boolean,
     onRouteSelected: (RouteAlternative) -> Unit,
     onRegenerarEvitandoZonas: () -> Unit,
+    onSavePublicZone: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -151,7 +153,9 @@ fun RouteSelectorDialog(
                 alternativeRoutes.forEach { route ->
                     RutaCard(
                         route = route,
-                        onClick = { onRouteSelected(route) }
+                        onClick = { onRouteSelected(route) },
+                        onSavePublicZone = onSavePublicZone,  // 🚀 AGREGAR ESTA LÍNEA
+                        isDarkTheme = isSystemInDarkTheme()
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }

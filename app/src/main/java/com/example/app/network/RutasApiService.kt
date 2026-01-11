@@ -1,8 +1,5 @@
 package com.example.app.network
 
-import com.example.app.models.EstadisticasSeguridad
-import com.example.app.models.FinalizarRutaRequest
-import com.example.app.models.FinalizarRutaResponse
 import com.example.app.models.RutaUsuario
 import com.example.app.models.ValidarRutasRequest
 import com.example.app.models.ValidarRutasResponse
@@ -52,5 +49,18 @@ interface RutasApiService {
         @Path("zona_id") zonaId: Int
     ): Response<Unit>
 
+    @GET("seguridad/zonas-sugeridas")
+    suspend fun obtenerZonasSugeridas(
+        @Header("Authorization") token: String,
+        @Query("lat") lat: Double,
+        @Query("lon") lon: Double,
+        @Query("radio_km") radioKm: Float = 10.0f
+    ): List<ZonaPeligrosaResponse>
+
+    @POST("seguridad/adoptar-zona/{zona_id}")
+    suspend fun adoptarZonaSugerida(
+        @Header("Authorization") token: String,
+        @Path("zona_id") zonaId: Int
+    ): ZonaPeligrosaResponse
 
 }

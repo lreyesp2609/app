@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Info
@@ -47,6 +48,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -69,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.app.models.ZonaGuardada
 import com.example.app.models.ZonaPeligrosaCreate
+import com.example.app.models.ZonaSugerida
 import com.example.app.network.RetrofitClient
 import com.example.app.screen.components.AppBackButton
 import com.example.app.screen.mapa.GetCurrentLocation
@@ -82,6 +85,7 @@ import com.example.app.utils.LocationManager
 import com.example.app.utils.SessionManager
 import com.example.app.viewmodel.MapViewModel
 import com.example.app.viewmodel.NotificationViewModel
+import com.example.app.viewmodel.ZonasSugeridasViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -94,6 +98,8 @@ fun MisZonasPeligrosasScreen(
     val locationManager = remember { LocationManager.getInstance() }
     val sessionManager = remember { SessionManager.getInstance(context) }
     val token = sessionManager.getAccessToken() ?: return
+
+    val zonasSugeridasVM = remember { ZonasSugeridasViewModel(token) }
 
     var currentLat by remember { mutableStateOf(0.0) }
     var currentLon by remember { mutableStateOf(0.0) }
@@ -117,6 +123,8 @@ fun MisZonasPeligrosasScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
+    var mostrarDialogoSugerencias by remember { mutableStateOf(false) }
+
     val scope = rememberCoroutineScope()
     val isDarkTheme = isSystemInDarkTheme()
 
@@ -128,6 +136,12 @@ fun MisZonasPeligrosasScreen(
             currentLon = cachedLocation.longitude
             locationObtained = true
             Log.d("ZonasPeligrosas", "⚡ Ubicación en caché cargada")
+
+            zonasSugeridasVM.verificarYCargarSugerencias(
+                lat = currentLat,
+                lon = currentLon,
+                radioKm = 10.0f
+            )
         } else {
             Log.d("ZonasPeligrosas", "⏳ Obteniendo nueva ubicación...")
         }
@@ -204,6 +218,22 @@ fun MisZonasPeligrosasScreen(
                             showBottomSheet = true
                         }
                     )
+
+                    if (zonasSugeridasVM.mostrarSugerencias && zonasSugeridasVM.zonasSugeridas.isNotEmpty()) {
+                        BannerZonasSugeridas(
+                            zonasSugeridas = zonasSugeridasVM.zonasSugeridas,
+                            onVerSugerencias = {
+                                mostrarDialogoSugerencias = true
+                            },
+                            onDismiss = {
+                                zonasSugeridasVM.reset()
+                            },
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .statusBarsPadding()
+                                .padding(top = 80.dp) // Debajo del header
+                        )
+                    }
 
                     // Botón de regreso
                     AppBackButton(
@@ -355,6 +385,43 @@ fun MisZonasPeligrosasScreen(
                     onGpsDisabled = { showGpsButton = true }
                 )
             }
+        }
+
+        if (mostrarDialogoSugerencias) {
+            DialogoZonasSugeridas(
+                zonas = zonasSugeridasVM.zonasSugeridas,
+                onAdoptar = { zonaId ->
+                    zonasSugeridasVM.adoptarZona(
+                        zonaId = zonaId,
+                        onSuccess = { zonaAdoptada ->
+                            // Agregar a la lista local
+                            val centro = zonaAdoptada.poligono.firstOrNull()
+                            if (centro != null) {
+                                zonasCreadas = zonasCreadas + ZonaGuardada(
+                                    lat = centro.lat,
+                                    lon = centro.lon,
+                                    radio = zonaAdoptada.radioMetros ?: 200,
+                                    nombre = zonaAdoptada.nombre,
+                                    nivel = zonaAdoptada.nivelPeligro,
+                                    id = zonaAdoptada.id
+                                )
+                            }
+
+                            notificationViewModel.showSuccess("Zona guardada: ${zonaAdoptada.nombre}")
+                        },
+                        onError = { error ->
+                            notificationViewModel.showError(error)
+                        }
+                    )
+                },
+                onDescartar = { zonaId ->
+                    zonasSugeridasVM.descartarZona(zonaId)
+                },
+                onDismiss = {
+                    mostrarDialogoSugerencias = false
+                },
+                isDarkTheme = isDarkTheme
+            )
         }
 
         // Diálogo para crear zona
@@ -873,6 +940,97 @@ fun DetailRow(
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
+        }
+    }
+}
+
+@Composable
+fun BannerZonasSugeridas(
+    zonasSugeridas: List<ZonaSugerida>,
+    onVerSugerencias: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            "Zonas sugeridas cerca",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            "${zonasSugeridas.size} zona(s) reportada(s) por otros usuarios",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Cerrar",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = onVerSugerencias,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Icon(
+                    Icons.Default.Visibility,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Ver sugerencias",
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }

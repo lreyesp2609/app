@@ -66,6 +66,7 @@ fun RouteAlternativesDialogWithSecurity(
     rutasGeneradasEvitandoZonas: Boolean = false,
     onSelectRoute: (RouteAlternative) -> Unit,
     onRegenerarEvitandoZonas: () -> Unit = {},
+    onSavePublicZone: (Int) -> Unit,  // 🚀 NUEVO parámetro
     onDismiss: () -> Unit
 ) {
     var selectedRoute by remember { mutableStateOf<RouteAlternative?>(null) }
@@ -82,7 +83,6 @@ fun RouteAlternativesDialogWithSecurity(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                // Indicador si ya se generaron rutas evitando zonas
                 if (rutasGeneradasEvitandoZonas) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
@@ -118,7 +118,7 @@ fun RouteAlternativesDialogWithSecurity(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 🚨 Advertencia general - Ahora como banner sin Card
+                // Advertencia general
                 validacionSeguridad?.advertenciaGeneral?.let { advertencia ->
                     if (!rutasGeneradasEvitandoZonas) {
                         Row(
@@ -154,7 +154,7 @@ fun RouteAlternativesDialogWithSecurity(
                     }
                 }
 
-                // 🆕 BOTÓN DE REGENERAR - Estilo más moderno
+                // Botón de regenerar
                 if (!rutasGeneradasEvitandoZonas &&
                     validacionSeguridad?.totalZonasUsuario != null &&
                     validacionSeguridad.totalZonasUsuario > 0) {
@@ -197,7 +197,7 @@ fun RouteAlternativesDialogWithSecurity(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                "Regenerar evitando ${validacionSeguridad.totalZonasUsuario} zona(s) peligrosa(s)",
+                                "Generar evitando ${validacionSeguridad.totalZonasUsuario} zona(s) peligrosa(s)",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center
@@ -206,12 +206,13 @@ fun RouteAlternativesDialogWithSecurity(
                     }
                 }
 
-                // 📍 Lista de rutas - Sin Cards anidadas
+                // 🚀 Lista de rutas - AHORA CON onSavePublicZone
                 alternatives.forEach { route ->
                     RouteChipCard(
                         route = route,
                         isSelected = selectedRoute == route,
                         onClick = { selectedRoute = route },
+                        onSavePublicZone = onSavePublicZone,  // 🚀 NUEVO
                         isDarkTheme = isDarkTheme
                     )
                 }
@@ -256,9 +257,10 @@ fun RouteChipCard(
     route: RouteAlternative,
     isSelected: Boolean,
     onClick: () -> Unit,
+    onSavePublicZone: (Int) -> Unit,
     isDarkTheme: Boolean
 ) {
-    // 🎨 Colores simplificados y más claros
+    // Colores
     val backgroundColor = when {
         isSelected -> MaterialTheme.colorScheme.primaryContainer
         route.esSegura == false -> SecurityColors.getDangerBackground(isDarkTheme)
@@ -275,7 +277,6 @@ fun RouteChipCard(
 
     val borderWidth = if (isSelected) 2.5.dp else 1.dp
 
-    // 🔲 Contenedor principal SIN Card - solo Box con bordes
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -285,19 +286,17 @@ fun RouteChipCard(
             .padding(16.dp)
     ) {
         Column {
-            // 📌 Header: Nombre + Badges
+            // Header: Nombre + Badges
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Icono + Nombre
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    // Círculo con icono
                     Box(
                         modifier = Modifier
                             .size(36.dp)
@@ -328,9 +327,8 @@ fun RouteChipCard(
                     )
                 }
 
-                // Badges compactos
+                // Badges
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    // Badge ML
                     if (route.isRecommended) {
                         Box(
                             modifier = Modifier
@@ -349,14 +347,13 @@ fun RouteChipCard(
                         }
                     }
 
-                    // 🔥 Badge Seguridad SIEMPRE SE MUESTRA
                     Box(
                         modifier = Modifier
                             .background(
                                 when {
                                     route.esSegura == true -> SecurityColors.getSafeColor(isDarkTheme)
                                     route.esSegura == false -> SecurityColors.getDangerColor(isDarkTheme)
-                                    else -> SecurityColors.getWarningColor(isDarkTheme) // ← Para null
+                                    else -> SecurityColors.getWarningColor(isDarkTheme)
                                 },
                                 RoundedCornerShape(6.dp)
                             )
@@ -366,7 +363,7 @@ fun RouteChipCard(
                             when {
                                 route.esSegura == true -> "✓"
                                 route.esSegura == false -> "⚠"
-                                else -> "?" // ← Para null
+                                else -> "?"
                             },
                             fontSize = 11.sp,
                             color = Color.White,
@@ -378,7 +375,7 @@ fun RouteChipCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 📊 Info: Distancia y Tiempo
+            // Info: Distancia y Tiempo
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(20.dp)
@@ -393,7 +390,7 @@ fun RouteChipCard(
                 )
             }
 
-            // 💬 Mensaje de seguridad
+            // Mensaje de seguridad (zonas PROPIAS)
             route.mensajeSeguridad?.let { mensaje ->
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
@@ -435,7 +432,7 @@ fun RouteChipCard(
                 }
             }
 
-            // 🗺️ Zonas detectadas
+            // Zonas PROPIAS detectadas
             route.zonasDetectadas?.let { zonas ->
                 if (zonas.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(10.dp))
@@ -462,6 +459,19 @@ fun RouteChipCard(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
+                }
+            }
+
+            // 🚀 NUEVO: Zonas PÚBLICAS agrupadas (solo si hay más de 1)
+            route.zonasPublicasDetectadas?.let { zonasPublicas ->
+                if (zonasPublicas.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    PublicZonesGroupedCard(
+                        zones = zonasPublicas,
+                        onSaveZone = onSavePublicZone,
+                        isDarkTheme = isDarkTheme
+                    )
                 }
             }
         }
