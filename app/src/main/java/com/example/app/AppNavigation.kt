@@ -31,6 +31,7 @@ import androidx.navigation.navArgument
 import com.example.app.network.AppDatabase
 import com.example.app.repository.ReminderRepository
 import com.example.app.repository.RutasRepository
+import com.example.app.screen.SplashScreen
 import com.example.app.screen.auth.LoginScreen
 import com.example.app.screen.auth.RegisterScreen
 import com.example.app.screen.config.SettingsScreen
@@ -137,7 +138,7 @@ fun AppNavigation(
     }
 
     // Determinar la ruta inicial basada en el estado de autenticación
-    val startDestination = if (isLoggedIn) "home" else "login"
+    val startDestination = "splash"
 
     // Mostrar pantalla de carga mientras se restaura la sesión
     if (isLoading && !isLoggedIn && authViewModel.accessToken == null) {
@@ -168,6 +169,23 @@ fun AppNavigation(
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(navController = navController, startDestination = startDestination) {
+            composable("splash") {
+                SplashScreen(
+                    onTimeout = {
+                        // Después de 2 segundos, decide a dónde ir
+                        if (isLoggedIn) {
+                            navController.navigate("home") {
+                                popUpTo("splash") { inclusive = true }
+                            }
+                        } else {
+                            navController.navigate("login") {
+                                popUpTo("splash") { inclusive = true }
+                            }
+                        }
+                    }
+                )
+            }
+
             composable("login") {
                 LoginScreen(
                     navController = navController,

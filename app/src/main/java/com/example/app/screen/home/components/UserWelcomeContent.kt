@@ -24,7 +24,7 @@ fun UserWelcomeContent(userState: Any?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp),
+            .padding(horizontal = 24.dp, vertical = 0.dp), // ✨ Sin padding vertical
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         val userName = (userState as? User)?.let { "${it.nombre} ${it.apellido}" } ?: "Usuario"
@@ -34,8 +34,8 @@ fun UserWelcomeContent(userState: Any?) {
             contentDescription = "User Icon",
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier
-                .padding(bottom = 12.dp)
-                .height(48.dp)
+                .padding(bottom = 6.dp) // ✨ Reducido a 6dp
+                .height(36.dp) // ✨ Reducido a 36dp
         )
 
         Text(
@@ -46,7 +46,7 @@ fun UserWelcomeContent(userState: Any?) {
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Text(
             text = "Nos alegra tenerte de vuelta.\nExplora las nuevas rutas y disfruta tu experiencia.",

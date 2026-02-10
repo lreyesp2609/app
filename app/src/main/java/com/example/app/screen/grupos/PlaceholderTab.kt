@@ -167,7 +167,7 @@ fun CollaborativeGroupsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 0.dp), // ✨ Cambiado a vertical = 0.dp
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Header mejorado
@@ -188,18 +188,18 @@ fun CollaborativeGroupsScreen(
                             imageVector = Icons.Default.Group,
                             contentDescription = "Grupos",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(28.dp) // ✨ Reducido de 32dp a 28dp
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(8.dp)) // ✨ Reducido de 12dp a 8dp
                         Text(
                             text = "Mis grupos",
-                            fontSize = 24.sp,
+                            fontSize = 22.sp, // ✨ Reducido de 24.sp a 22.sp
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp)) // ✨ Reducido de 16dp a 12dp
 
                     // Botón principal más destacado
                     AppButton(
@@ -554,40 +554,6 @@ fun GrupoCard(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                ) {
-                                    Text(
-                                        text = "Código: ${grupo.codigoInvitacion}",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-
-                                    // Animación de carga al copiar
-                                    androidx.compose.animation.AnimatedVisibility(
-                                        visible = isLongPressing,
-                                        enter = fadeIn() + androidx.compose.animation.scaleIn(),
-                                        exit = fadeOut() + androidx.compose.animation.scaleOut()
-                                    ) {
-                                        Row {
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(12.dp),
-                                                strokeWidth = 2.dp,
-                                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                                            )
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
 
@@ -647,7 +613,6 @@ fun GrupoCard(
         }
     }
 }
-
 @Composable
 fun EmptyGroupsMessage() {
     Column(

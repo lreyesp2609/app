@@ -95,7 +95,7 @@ fun AlternateRoutesScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 0.dp) // ✨ Eliminado padding vertical
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -119,20 +119,20 @@ fun AlternateRoutesScreen(
                             imageVector = Icons.Default.Route,
                             contentDescription = "Rutas alternas",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(28.dp)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Mis Destinos",
-                            fontSize = 24.sp,
+                            fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // 🆕 Botones de acción principales
+                    // Botones de acción principales
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -163,7 +163,7 @@ fun AlternateRoutesScreen(
                             )
                         }
 
-                        // 🆕 Botón zonas peligrosas
+                        // Botón zonas peligrosas
                         OutlinedButton(
                             onClick = { navController.navigate("zonas_peligrosas") },
                             modifier = Modifier
@@ -196,7 +196,7 @@ fun AlternateRoutesScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Contenido principal (igual que antes)
+            // Contenido principal
             AnimatedVisibility(
                 visible = showContent,
                 enter = fadeIn(animationSpec = tween(800, delayMillis = 300)) +
@@ -292,7 +292,7 @@ fun AlternateRoutesScreen(
 
                             Spacer(modifier = Modifier.height(32.dp))
 
-                            // Card informativo (NO CLICKEABLE)
+                            // Card informativo
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -349,7 +349,7 @@ fun AlternateRoutesScreen(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(32.dp)) // Espacio adicional al final
+                            Spacer(modifier = Modifier.height(32.dp))
                         }
                     }
 

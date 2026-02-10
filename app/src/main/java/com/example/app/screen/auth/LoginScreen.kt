@@ -25,7 +25,11 @@ import com.example.app.screen.components.AppTextField
 import com.example.app.ui.theme.getBackgroundGradient
 import com.example.app.viewmodel.AuthViewModel
 import com.example.app.viewmodel.NotificationViewModel
-
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
+import com.example.app.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -34,6 +38,9 @@ fun LoginScreen(
     notificationViewModel: NotificationViewModel
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current // 🔥 Agregar esto
+
+
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -65,39 +72,24 @@ fun LoginScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(60.dp))
 
-        // Logo sin caja - solo los íconos
-        Box(modifier = Modifier.size(100.dp), contentAlignment = Alignment.TopEnd) {
-            Icon(
-                imageVector = Icons.Default.LocationOn,
-                contentDescription = "Ubicación",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.fillMaxSize()
-            )
-            Icon(
-                imageVector = Icons.Default.AccessAlarm,
-                contentDescription = "Alarma",
-                tint = Color(0xFFFF6B6B),
-                modifier = Modifier
-                    .size(36.dp)
-                    .offset(x = (-10).dp, y = 10.dp)
-            )
-        }
+        Spacer(modifier = Modifier.height(30.dp))
 
-        Text(
-            text = "RecuerdaGo",
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(bottom = 8.dp)
+        // 🔥 LOGO MUY GRANDE
+        Image(
+            painter = painterResource(id = R.drawable.logo_recuerdago_2),
+            contentDescription = "RecuerdaGo Logo",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxWidth(0.7f) // 85% del ancho
+                .aspectRatio(1f) // Mantener proporción
         )
 
         Text(
             text = "Inicia sesión para continuar",
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-            modifier = Modifier.padding(bottom = 32.dp)
+            modifier = Modifier.padding(bottom = 16.dp)
         )
 
         // Campo de correo electrónico

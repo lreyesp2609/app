@@ -8,6 +8,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,7 +21,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -35,6 +38,7 @@ import com.example.app.ui.theme.getBackgroundGradient
 import com.example.app.viewmodel.AuthViewModel
 import com.example.app.viewmodel.NotificationViewModel
 import kotlinx.coroutines.delay
+import com.example.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,31 +93,18 @@ fun RegisterScreen(
                     AppBackButton(navController = navController)
                 }
 
-                // Logo
-                Box(modifier = Modifier.size(80.dp), contentAlignment = Alignment.TopEnd) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Ubicación",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    Icon(
-                        imageVector = Icons.Default.AccessAlarm,
-                        contentDescription = "Alarma",
-                        tint = Color(0xFFFF6B6B),
-                        modifier = Modifier
-                            .size(28.dp)
-                            .offset(x = (-6).dp, y = 6.dp)
-                    )
-                }
+                // Spacer(modifier = Modifier.height(10.dp))
 
-                // Títulos
-                Text(
-                    text = "RecuerdaGo",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+                // 🔥 LOGO MUY GRANDE
+                Image(
+                    painter = painterResource(id = R.drawable.logo_recuerdago_2),
+                    contentDescription = "RecuerdaGo Logo",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth(0.5f) // 85% del ancho
+                        .aspectRatio(1f) // Mantener proporción
                 )
+
 
                 Text(
                     text = "Crea tu cuenta",

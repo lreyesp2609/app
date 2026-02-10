@@ -73,10 +73,19 @@ import kotlinx.coroutines.delay
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
+import com.example.app.R
 import com.example.app.screen.grupos.CollaborativeGroupsScreen
 import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
@@ -121,27 +130,22 @@ fun HomeScreen(
     var permissionsReady by remember { mutableStateOf(false) }
     var batteryOptimizationRequested by remember { mutableStateOf(false) }
 
-    // 🔥 AGREGAR ESTAS FLAGS DE CONTROL
     var notificationPermissionRequested by remember { mutableStateOf(false) }
     var locationPermissionStarted by remember { mutableStateOf(false) }
 
     var wasIgnoringBatteryOptimization by remember { mutableStateOf(false) }
     var locationReady by remember { mutableStateOf(false) }
 
-    // 🔥 MODIFICADO: Launcher con verificación de estado
     val batteryOptimizationLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { _ ->
-        // Verificar el estado DESPUÉS de regresar del diálogo
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
             val packageName = context.packageName
 
             val isNowIgnoring = powerManager.isIgnoringBatteryOptimizations(packageName)
 
-            // 🔥 COMPARAR: ¿Cambió el estado?
             if (!wasIgnoringBatteryOptimization && isNowIgnoring) {
-                // ✅ El usuario ACEPTÓ (cambió de false a true)
                 Log.d("HomeScreen", "✅ Usuario ACEPTÓ la exclusión de batería")
                 Toast.makeText(
                     context,
@@ -149,7 +153,6 @@ fun HomeScreen(
                     Toast.LENGTH_SHORT
                 ).show()
             } else if (!isNowIgnoring) {
-                // ❌ El usuario RECHAZÓ o canceló (sigue en false)
                 Log.d("HomeScreen", "⚠️ Usuario RECHAZÓ la exclusión de batería")
                 Toast.makeText(
                     context,
@@ -157,7 +160,6 @@ fun HomeScreen(
                     Toast.LENGTH_LONG
                 ).show()
             }
-            // Si ya estaba ignorando optimización, no mostrar nada
         }
     }
 
@@ -196,7 +198,6 @@ fun HomeScreen(
             return@LaunchedEffect
         }
 
-        // Marcar como solicitado INMEDIATAMENTE
         notificationPermissionRequested = true
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -223,7 +224,6 @@ fun HomeScreen(
         NotificationHelper.createNotificationChannel(context)
     }
 
-    // 🔥 MODIFICADO: Controlar ubicación también
     LaunchedEffect(shouldRequestLocation, locationPermissionStarted) {
         if (!shouldRequestLocation || showGpsButton || locationPermissionStarted) {
             return@LaunchedEffect
@@ -233,8 +233,6 @@ fun HomeScreen(
         Log.d("HomeScreen", "📍 Iniciando solicitud de ubicación (UNA VEZ)")
     }
 
-
-    // 🔥 MODIFICADO: Guardar estado ANTES y abrir diálogo
     LaunchedEffect(locationServiceStarted) {
         if (locationServiceStarted && !batteryOptimizationRequested) {
             batteryOptimizationRequested = true
@@ -244,7 +242,6 @@ fun HomeScreen(
                 val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
                 val packageName = context.packageName
 
-                // 🔥 GUARDAR ESTADO ANTES
                 wasIgnoringBatteryOptimization = powerManager.isIgnoringBatteryOptimizations(packageName)
 
                 if (!wasIgnoringBatteryOptimization) {
@@ -280,7 +277,6 @@ fun HomeScreen(
         }
     }
 
-    // 📍 Componente invisible que maneja la ubicación
     if (shouldRequestLocation && !showGpsButton && locationPermissionStarted) {
         GetCurrentLocation(
             hasPermission = false,
@@ -318,7 +314,6 @@ fun HomeScreen(
         )
     }
 
-    // 🔥 AGREGAR ESTO AQUÍ:
     LaunchedEffect(locationPermissionChecked, locationReady) {
         if (locationPermissionChecked && locationReady) {
             Log.d("HomeScreen", "🔄 Permisos de ubicación confirmados, verificando tracking pendiente...")
@@ -326,17 +321,18 @@ fun HomeScreen(
         }
     }
 
+    // 🎨 ANIMACIONES MEJORADAS
     val logoScale by animateFloatAsState(
-        targetValue = if (isVisible) 1f else 0f,
+        targetValue = if (isVisible) 1f else 0.8f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            stiffness = Spring.StiffnessMediumLow
         ), label = ""
     )
 
-    val logoRotation by animateFloatAsState(
-        targetValue = if (isVisible) 0f else 360f,
-        animationSpec = tween(1000), label = ""
+    val logoAlpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(600), label = ""
     )
 
     val accentColor = Color(0xFFFF6B6B)
@@ -352,16 +348,15 @@ fun HomeScreen(
     }
 
     LaunchedEffect("animations") {
-        delay(300)
+        delay(200)
         isVisible = true
-        delay(800)
+        delay(700)
         showContent = true
     }
 
     val isLoading = authViewModel.isLoading
     val errorMessage = authViewModel.errorMessage
 
-    // 🔔 Diálogo de permisos
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDialog = false },
@@ -414,7 +409,6 @@ fun HomeScreen(
         )
     }
 
-    // 🔥 CAMBIO PRINCIPAL: Box que contiene TODO (contenido + overlay GPS)
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             bottomBar = {
@@ -521,55 +515,49 @@ fun HomeScreen(
                     .background(getBackgroundGradient())
                     .padding(paddingValues)
             ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Header con logo
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally // ✨ Centra el logo
+                ) {
+                    // 🎨 LOGO - SOLO ÍCONO DE PIN
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
+                            .padding(top = 24.dp, bottom = 16.dp)
+                            .graphicsLayer {
+                                scaleX = logoScale
+                                scaleY = logoScale
+                                alpha = logoAlpha
+                            },
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start
+                        horizontalArrangement = Arrangement.Center
                     ) {
+                        // Ícono con fondo circular
                         Box(
                             modifier = Modifier
-                                .size(60.dp)
-                                .scale(logoScale)
-                                .rotate(logoRotation),
+                                .size(56.dp)
+                                .background(
+                                    color = Color(0xFF2196F3).copy(alpha = 0.1f),
+                                    shape = CircleShape
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.LocationOn,
-                                contentDescription = "Ubicación",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(50.dp)
-                            )
-                            Icon(
-                                imageVector = Icons.Default.AccessAlarm,
-                                contentDescription = "Alarma",
-                                tint = accentColor,
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .offset(x = 15.dp, y = (-15).dp)
+                                contentDescription = null,
+                                tint = Color(0xFF2196F3),
+                                modifier = Modifier.size(36.dp)
                             )
                         }
 
                         Spacer(modifier = Modifier.width(12.dp))
 
-                        AnimatedVisibility(
-                            visible = isVisible,
-                            enter = slideInVertically(
-                                initialOffsetY = { -it }
-                            ) + fadeIn(
-                                animationSpec = tween(800, delayMillis = 400)
-                            )
-                        ) {
-                            Text(
-                                text = "RecuerdaGo",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                        Text(
+                            text = "RecuerdaGo",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2196F3),
+                            letterSpacing = (-0.5).sp
+                        )
                     }
 
                     HorizontalPager(
