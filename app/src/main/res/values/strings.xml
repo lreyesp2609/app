@@ -1,3 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">app</string>
+    <!-- ✨ NOMBRE DE LA APP -->
+    <string name="app_name">RememberGo</string>
+
+    <!-- Otros strings que puedas necesitar -->
+    <string name="notification_channel_name">Recordatorios RememberGo</string>
+    <string name="notification_channel_description">Notificaciones de recordatorios basados en ubicación</string>
 </resources>
