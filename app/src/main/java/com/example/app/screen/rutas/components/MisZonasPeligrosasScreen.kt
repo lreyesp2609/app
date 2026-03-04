@@ -87,6 +87,7 @@ import com.example.app.viewmodel.MapViewModel
 import com.example.app.viewmodel.NotificationViewModel
 import com.example.app.viewmodel.ZonasSugeridasViewModel
 import kotlinx.coroutines.launch
+import kotlin.inc
 
 @Composable
 fun MisZonasPeligrosasScreen(
@@ -94,11 +95,13 @@ fun MisZonasPeligrosasScreen(
     notificationViewModel: NotificationViewModel,
     mapViewModel: MapViewModel
 ) {
+
     val context = LocalContext.current
     val locationManager = remember { LocationManager.getInstance() }
     val sessionManager = remember { SessionManager.getInstance(context) }
     val token = sessionManager.getAccessToken() ?: return
 
+    var zonaSugeridaPreview by remember { mutableStateOf<ZonaSugerida?>(null) }
     val zonasSugeridasVM = remember { ZonasSugeridasViewModel(token) }
 
     var currentLat by remember { mutableStateOf(0.0) }
@@ -127,6 +130,34 @@ fun MisZonasPeligrosasScreen(
 
     val scope = rememberCoroutineScope()
     val isDarkTheme = isSystemInDarkTheme()
+
+    // Agrega estos dos estados nuevos
+    var mapCenterLat by remember { mutableStateOf(currentLat) }
+    var mapCenterLon by remember { mutableStateOf(currentLon) }
+
+    LaunchedEffect(currentLat, currentLon) {
+        if (currentLat != 0.0 && currentLon != 0.0) {
+            mapCenterLat = currentLat
+            mapCenterLon = currentLon
+        }
+    }
+
+    // Cuando se obtiene la ubicación (sin caché), cargar sugerencias
+    LaunchedEffect(locationObtained) {
+        if (locationObtained && currentLat != 0.0) {
+            zonasSugeridasVM.verificarYCargarSugerencias(
+                lat = currentLat,
+                lon = currentLon,
+                radioKm = 10.0f
+            )
+        }
+    }
+
+    fun flyToZona(lat: Double, lon: Double) {
+        mapCenterLat = lat
+        mapCenterLon = lon
+        recenterTrigger++  // reutiliza el trigger existente que ya llama animateTo()
+    }
 
     // Cargar ubicación desde caché
     LaunchedEffect(Unit) {
@@ -195,6 +226,8 @@ fun MisZonasPeligrosasScreen(
                     OpenStreetMap(
                         latitude = currentLat,
                         longitude = currentLon,
+                        centerLat = mapCenterLat,
+                        centerLon = mapCenterLon,
                         showUserLocation = true,
                         recenterTrigger = recenterTrigger,
                         zoomInTrigger = zoomInTrigger,
@@ -208,15 +241,19 @@ fun MisZonasPeligrosasScreen(
                             mostrarDialogoZona = true
                             radioPreview = 200
                         },
-                        zonaPreviewLat = if (mostrarDialogoZona) coordenadasZonaSeleccionada?.first else null,
-                        zonaPreviewLon = if (mostrarDialogoZona) coordenadasZonaSeleccionada?.second else null,
-                        zonaPreviewRadio = if (mostrarDialogoZona) radioPreview else null,
+                        zonaPreviewLat = zonaSugeridaPreview?.zonaOriginal?.poligono?.firstOrNull()?.lat
+                            ?: if (mostrarDialogoZona) coordenadasZonaSeleccionada?.first else null,
+                        zonaPreviewLon = zonaSugeridaPreview?.zonaOriginal?.poligono?.firstOrNull()?.lon
+                            ?: if (mostrarDialogoZona) coordenadasZonaSeleccionada?.second else null,
+                        zonaPreviewRadio = zonaSugeridaPreview?.zonaOriginal?.radioMetros
+                            ?: if (mostrarDialogoZona) radioPreview else null,
                         zonasGuardadas = if (mostrarZonasPeligrosas) zonasCreadas else emptyList(),
                         onZonaClick = { zona ->
                             // Cuando se hace tap en una zona del mapa
                             zonaSeleccionadaParaEditar = zona
                             showBottomSheet = true
                         }
+
                     )
 
                     if (zonasSugeridasVM.mostrarSugerencias && zonasSugeridasVM.zonasSugeridas.isNotEmpty()) {
@@ -224,6 +261,9 @@ fun MisZonasPeligrosasScreen(
                             zonasSugeridas = zonasSugeridasVM.zonasSugeridas,
                             onVerSugerencias = {
                                 mostrarDialogoSugerencias = true
+//                                zonasSugeridasVM.zonasSugeridas.firstOrNull()?.zonaOriginal?.poligono?.firstOrNull()?.let { punto ->
+//                                    flyToZona(punto.lat, punto.lon)
+//                                }
                             },
                             onDismiss = {
                                 zonasSugeridasVM.reset()
@@ -246,51 +286,38 @@ fun MisZonasPeligrosasScreen(
                     )
 
                     // Header con título
-                    Card(
+                    // Header pill directo en el Box
+                    Row(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .statusBarsPadding()
-                            .padding(top = 16.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                            .padding(top = 16.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                                shape = RoundedCornerShape(50.dp)
+                            )
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = SecurityColors.getDangerColor(isDarkTheme),
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Mis zonas peligrosas",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            if (zonasCreadas.isNotEmpty()) {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .background(
-                                            SecurityColors.getDangerColor(isDarkTheme),
-                                            CircleShape
-                                        )
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        "${zonasCreadas.size}",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-                                }
+                        Text(
+                            "Zonas peligrosas",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        if (zonasCreadas.isNotEmpty()) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .background(AppColors.Danger, CircleShape)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    "${zonasCreadas.size}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
                             }
                         }
                     }
@@ -390,11 +417,16 @@ fun MisZonasPeligrosasScreen(
         if (mostrarDialogoSugerencias) {
             DialogoZonasSugeridas(
                 zonas = zonasSugeridasVM.zonasSugeridas,
+                onVerEnMapa = { lat, lon, zona ->
+                    zonaSugeridaPreview = zona          // activa el círculo
+                    flyToZona(lat, lon)
+                    mostrarDialogoSugerencias = false
+                },
                 onAdoptar = { zonaId ->
+                    zonaSugeridaPreview = null          // limpia preview al guardar
                     zonasSugeridasVM.adoptarZona(
                         zonaId = zonaId,
                         onSuccess = { zonaAdoptada ->
-                            // Agregar a la lista local
                             val centro = zonaAdoptada.poligono.firstOrNull()
                             if (centro != null) {
                                 zonasCreadas = zonasCreadas + ZonaGuardada(
@@ -405,8 +437,8 @@ fun MisZonasPeligrosasScreen(
                                     nivel = zonaAdoptada.nivelPeligro,
                                     id = zonaAdoptada.id
                                 )
+                                flyToZona(centro.lat, centro.lon)
                             }
-
                             notificationViewModel.showSuccess("Zona guardada: ${zonaAdoptada.nombre}")
                         },
                         onError = { error ->
@@ -415,10 +447,12 @@ fun MisZonasPeligrosasScreen(
                     )
                 },
                 onDescartar = { zonaId ->
+                    zonaSugeridaPreview = null
                     zonasSugeridasVM.descartarZona(zonaId)
                 },
                 onDismiss = {
                     mostrarDialogoSugerencias = false
+                    zonaSugeridaPreview = null          // limpia el círculo al cerrar
                 },
                 isDarkTheme = isDarkTheme
             )
@@ -959,7 +993,7 @@ fun BannerZonasSugeridas(
             .padding(16.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
@@ -987,12 +1021,12 @@ fun BannerZonasSugeridas(
                             "Zonas sugeridas cerca",
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             "${zonasSugeridas.size} zona(s) reportada(s) por otros usuarios",
                             fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -1004,7 +1038,7 @@ fun BannerZonasSugeridas(
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "Cerrar",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -1034,3 +1068,4 @@ fun BannerZonasSugeridas(
         }
     }
 }
+

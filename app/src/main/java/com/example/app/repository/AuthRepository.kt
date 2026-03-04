@@ -2,6 +2,7 @@ package com.example.app.repository
 
 import android.util.Log
 import com.example.app.models.LoginResponse
+import com.example.app.models.ProfileResponse
 import com.example.app.network.RetrofitClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -210,6 +211,32 @@ class AuthRepository {
     suspend fun eliminarTokenFCM(bearerToken: String): Response<Unit> {
         return withContext(Dispatchers.IO) {
             api.eliminarTodosLosTokens(bearerToken)
+        }
+    }
+
+    suspend fun actualizarPerfil(
+        token: String,
+        nombre: String,
+        apellido: String
+    ): Result<ProfileResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = api.actualizarPerfil(
+                    token = "Bearer $token",
+                    nombre = nombre,
+                    apellido = apellido
+                )
+                if (response.isSuccessful) {
+                    response.body()?.let { Result.success(it) }
+                        ?: Result.failure(Exception("Respuesta vacía"))
+                } else {
+                    Result.failure(Exception("Error ${response.code()}"))
+                }
+            } catch (e: IOException) {
+                Result.failure(Exception("NETWORK_ERROR"))
+            } catch (e: Exception) {
+                Result.failure(Exception("UNKNOWN_ERROR - ${e.message}"))
+            }
         }
     }
 }

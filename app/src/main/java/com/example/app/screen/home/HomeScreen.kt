@@ -604,6 +604,7 @@ fun HomeScreen(
                                 token = accessToken,
                                 notificationViewModel = notificationViewModel
                             )
+                            // En el HorizontalPager, página 4:
                             4 -> SettingsScreen(
                                 userState = userState,
                                 onLogout = {
@@ -612,6 +613,10 @@ fun HomeScreen(
                                             popUpTo("home") { inclusive = true }
                                         }
                                     }
+                                },
+                                onProfileUpdated = { nuevoNombre, nuevoApellido ->
+                                    authViewModel.actualizarPerfil(nuevoNombre, nuevoApellido)
+                                    notificationViewModel.showSuccess("Perfil actualizado")
                                 }
                             )
                         }

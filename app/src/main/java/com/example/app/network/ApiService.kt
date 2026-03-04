@@ -1,6 +1,7 @@
 package com.example.app.network
 
 import com.example.app.models.LoginResponse
+import com.example.app.models.ProfileResponse
 import com.example.app.models.User
 import retrofit2.Response
 import retrofit2.http.*
@@ -34,6 +35,14 @@ interface ApiService {
         @Field("correo") correo: String,
         @Field("contrasenia") contrasenia: String
     ): Response<LoginResponse>
+
+    @FormUrlEncoded
+    @PUT("usuarios/perfil")
+    suspend fun actualizarPerfil(
+        @Header("Authorization") token: String,
+        @Field("nombre") nombre: String,
+        @Field("apellido") apellido: String
+    ): Response<ProfileResponse>
 
     @FormUrlEncoded
     @POST("login/logout/")

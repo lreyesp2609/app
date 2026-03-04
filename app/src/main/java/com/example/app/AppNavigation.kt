@@ -302,6 +302,9 @@ fun AppNavigation(
                                 popUpTo("home") { inclusive = true }
                             }
                         }
+                    },
+                    onProfileUpdated = { nuevoNombre, nuevoApellido ->
+                        authViewModel.actualizarPerfil(nuevoNombre, nuevoApellido)
                     }
                 )
             }

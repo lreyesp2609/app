@@ -115,6 +115,25 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         }
     }
 
+    fun actualizarPerfil(nombre: String, apellido: String) {
+        val token = accessToken ?: return
+        viewModelScope.launch {
+            val result = repository.actualizarPerfil(token, nombre, apellido)
+            result.onSuccess { profileResponse ->
+                // user es mutableStateOf, no MutableStateFlow
+                user = user?.copy(
+                    nombre = profileResponse.nombre,
+                    apellido = profileResponse.apellido
+                )
+                // Actualizar también en SharedPreferences
+                user?.let { sessionManager.saveUser(it) }
+                Log.d(TAG, "✅ Perfil actualizado: ${profileResponse.nombre}")
+            }.onFailure { error ->
+                Log.e(TAG, "❌ Error actualizando perfil: ${error.message}")
+            }
+        }
+    }
+
     // 🔹 Función de login (actualizada)
     // Dentro de la función login(), después de guardar tokens:
 
@@ -754,4 +773,5 @@ class AuthViewModel(private val context: Context) : ViewModel() {
 
         Log.d(TAG, "🔥 ========================================")
     }
+
 }

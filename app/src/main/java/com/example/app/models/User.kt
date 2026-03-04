@@ -11,7 +11,12 @@ data class LoginResponse(
     val tokenType: String
 )
 
-
+data class ProfileResponse(
+    @SerializedName("id") val id: Int,
+    @SerializedName("nombre") val nombre: String,
+    @SerializedName("apellido") val apellido: String,
+    @SerializedName("correo") val correo: String
+)
 data class User(
     @SerializedName("id")
     val id: Int,
@@ -24,5 +29,7 @@ data class User(
     @SerializedName("id_rol")
     val idRol: Int,
     @SerializedName("rol")
-    val rol: String
+    val rol: String,
+    @SerializedName("correo")           // ← AGREGAR
+    val correo: String = ""
 )

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -49,6 +50,7 @@ fun DialogoZonasSugeridas(
     onAdoptar: (Int) -> Unit,
     onDescartar: (Int) -> Unit,
     onDismiss: () -> Unit,
+    onVerEnMapa: (lat: Double, lon: Double, zona: ZonaSugerida) -> Unit,
     isDarkTheme: Boolean
 ) {
     ModalBottomSheet(
@@ -102,6 +104,10 @@ fun DialogoZonasSugeridas(
                         zona = zonaSugerida,
                         onAdoptar = { onAdoptar(zonaSugerida.zonaOriginal.id) },
                         onDescartar = { onDescartar(zonaSugerida.zonaOriginal.id) },
+                        onVerEnMapa = {
+                            val punto = zonaSugerida.zonaOriginal.poligono.firstOrNull()
+                            if (punto != null) onVerEnMapa(punto.lat, punto.lon, zonaSugerida)
+                        },
                         isDarkTheme = isDarkTheme
                     )
                 }
@@ -125,6 +131,7 @@ fun ZonaSugeridaItem(
     zona: ZonaSugerida,
     onAdoptar: () -> Unit,
     onDescartar: () -> Unit,
+    onVerEnMapa: () -> Unit,
     isDarkTheme: Boolean
 ) {
     Card(
@@ -187,6 +194,29 @@ fun ZonaSugeridaItem(
 
             if (!zona.yaAdoptada) {
                 Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 🆕 Botón ver en mapa (ocupa todo el ancho arriba)
+                    OutlinedButton(
+                        onClick = onVerEnMapa,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Ver en mapa", fontSize = 13.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
