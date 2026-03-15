@@ -44,6 +44,8 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         private const val PREF_PENDING_TRACKING = "pending_tracking_start"  // 🔥 NUEVO
     }
 
+    var isRestoringSession by mutableStateOf(true)
+        private set
     // Estados de la UI
     var isLoading by mutableStateOf(false)
         private set
@@ -70,12 +72,15 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         user = sessionManager.getUser()
     }
 
+
+
     // 🔹 Restaurar sesión automáticamente al iniciar la app
     private fun restoreSession() {
         val savedRefresh = sessionManager.getRefreshToken()
         if (savedRefresh != null && sessionManager.hasValidSession()) {
             viewModelScope.launch {
                 isLoading = true
+                isRestoringSession = true
                 repository.refreshToken(savedRefresh).fold(
                     onSuccess = { response ->
                         accessToken = response.accessToken
@@ -86,32 +91,24 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                         if (user == null) {
                             getCurrentUser {
                                 restoreUserReminders(context, response.accessToken)
-
-                                // 🔥 NUEVO: Iniciar tracking al restaurar sesión
                                 iniciarTrackingPasivoDespuesDeLogin()
-
+                                isRestoringSession = false  // 🔥 Mover AQUÍ dentro del callback
                                 isLoading = false
                             }
                         } else {
                             restoreUserReminders(context, response.accessToken)
-
-                            // 🔥 NUEVO: Iniciar tracking al restaurar sesión
                             iniciarTrackingPasivoDespuesDeLogin()
-
+                            isRestoringSession = false
                             isLoading = false
                         }
                     },
                     onFailure = {
-                        clearLocalSession()
-                        isLoading = false
+                        clearLocalSession() // ya incluye isRestoringSession = false
                     }
                 )
             }
-        } else if (!sessionManager.hasValidSession()) {
-            clearLocalSession()
-            isLoading = false
         } else {
-            isLoading = false
+            clearLocalSession() // ya incluye isRestoringSession = false
         }
     }
 
@@ -381,7 +378,6 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                 repository.getCurrentUser("Bearer $token").fold(
                     onSuccess = { currentUser ->
                         user = currentUser
-                        // 🔹 Guardar usuario en SharedPreferences
                         sessionManager.saveUser(currentUser)
                         isLoading = false
                         errorMessage = null
@@ -393,7 +389,9 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                         accessToken = null
                         sessionManager.saveLoginState(false)
                         isLoading = false
+                        isRestoringSession = false  // 🔥 AGREGAR ESTO
                         errorMessage = it.message
+                        // onSuccess nunca se llama aquí = spinner infinito
                     }
                 )
             }
@@ -403,11 +401,9 @@ class AuthViewModel(private val context: Context) : ViewModel() {
             sessionManager.saveLoginState(false)
             errorMessage = "No hay token de acceso"
             isLoading = false
+            isRestoringSession = false  // 🔥 AGREGAR ESTO también aquí
         }
     }
-
-    // Dentro de AuthViewModel
-    private lateinit var reminderViewModel: ReminderViewModel // O inyecta el repository
 
     fun logout(
         context: Context,
@@ -513,6 +509,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         accessToken = null
         isLoggedIn = false
         isLoading = false
+        isRestoringSession = false  // 🔥 AGREGAR ESTO
         errorMessage = null
         sessionManager.clear()
     }
@@ -525,7 +522,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
             val MAX_FAILURES = 3  // Permitir 3 fallos seguidos antes de logout
 
             while (isActive) {
-                delay(5 * 60 * 1000) // 5 minutos
+                delay(4 * 60 * 1000) // 5 minutos
                 val savedRefresh = sessionManager.getRefreshToken()
 
                 if (savedRefresh != null && isLoggedIn) {
@@ -772,6 +769,30 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         }
 
         Log.d(TAG, "🔥 ========================================")
+    }
+
+    fun verificarYRefrescarToken() {
+        val savedRefresh = sessionManager.getRefreshToken() ?: return
+        if (!isLoggedIn) return
+
+        viewModelScope.launch {
+            Log.d(TAG, "🔄 Verificación proactiva de token al volver de background")
+            repository.refreshToken(savedRefresh).fold(
+                onSuccess = { response ->
+                    accessToken = response.accessToken
+                    sessionManager.saveTokens(response.accessToken, response.refreshToken)
+                    Log.d(TAG, "✅ Token refrescado proactivamente")
+                },
+                onFailure = { error ->
+                    val isAuthError = error.message?.contains("401") == true ||
+                            error.message?.contains("REFRESH_INVALIDO") == true ||
+                            error.message?.contains("REFRESH_EXPIRADO") == true
+                    if (isAuthError) {
+                        logout(context, shouldRemoveFCMToken = false)
+                    }
+                }
+            )
+        }
     }
 
 }

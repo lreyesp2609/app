@@ -458,31 +458,14 @@ fun RutaMapa(
                         },
                         // 🚀 NUEVO: Agregar callback para guardar zonas públicas
                         onSavePublicZone = { zonaId: Int ->
-                            kotlinx.coroutines.GlobalScope.launch {
-                                try {
-                                    Log.d("RutaMapa", "💾 Guardando zona pública ID: $zonaId")
-
-                                    val zonaAdoptada = RetrofitClient.rutasApiService.adoptarZonaSugerida(
-                                        token = "Bearer $token",
-                                        zonaId = zonaId
-                                    )
-
-                                    Log.d("RutaMapa", "✅ Zona adoptada: ${zonaAdoptada.nombre}")
-
-                                    // 1️⃣ Recargar zonas del usuario
+                            viewModel.adoptarZonaPublica(
+                                zonaId = zonaId,
+                                token = token,
+                                onSuccess = {
                                     viewModel.cargarZonasPeligrosas(token)
-
-                                    // 2️⃣ 🔥 RE-VALIDAR RUTAS PARA ACTUALIZAR EL CONTADOR
                                     viewModel.revalidarRutasActuales(token, selectedLocationId)
-
-                                    // 3️⃣ Mostrar notificación (opcional, si tienes NotificationViewModel)
-                                    // notificationViewModel.showSuccess("✅ Zona guardada: ${zonaAdoptada.nombre}")
-
-                                } catch (e: Exception) {
-                                    Log.e("RutaMapa", "❌ Error guardando zona: ${e.message}", e)
-                                    // Mostrar error al usuario (opcional)
                                 }
-                            }
+                            )
                         },
                         onDismiss = {
                             viewModel.hideRouteSelector()

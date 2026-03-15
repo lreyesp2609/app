@@ -342,6 +342,7 @@ fun HomeScreen(
     val accentColor = Color(0xFFFF6B6B)
 
     LaunchedEffect(userState, isLoggedIn) {
+        if (authViewModel.isRestoringSession) return@LaunchedEffect
         if (!isLoggedIn || (userState != null && !userState.activo)) {
             authViewModel.logout(context, shouldRemoveFCMToken = false) {
                 navController.navigate("login") {

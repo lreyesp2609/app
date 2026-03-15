@@ -38,6 +38,8 @@ class MainActivity : ComponentActivity() {
 
     private var navController: NavHostController? = null
     private var pendingNavigation: PendingNavigation? = null
+    private lateinit var authViewModel: AuthViewModel  // 🔥 AGREGAR
+
 
     data class PendingNavigation(
         val ubicacionDestinoId: Int
@@ -84,8 +86,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        authViewModel = ViewModelProvider(  // 🔥 GUARDAR REFERENCIA
+            this,
+            AuthViewModel.AuthViewModelFactory(this)
+        )[AuthViewModel::class.java]
 
         Log.d(TAG, "🏗️ ════════════════════════════════════════")
         Log.d(TAG, "🏗️ onCreate LLAMADO")
@@ -154,6 +162,17 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 🔥 Solo refrescar si ya terminó de restaurar sesión
+        if (::authViewModel.isInitialized &&
+            !authViewModel.isRestoringSession &&
+            authViewModel.isLoggedIn) {
+            Log.d(TAG, "🔄 App volvió de background - verificando token")
+            authViewModel.verificarYRefrescarToken()
         }
     }
 

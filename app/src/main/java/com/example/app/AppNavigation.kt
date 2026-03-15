@@ -89,8 +89,9 @@ fun AppNavigation(
     }
 
     // Conectar WebSocket de Notificaciones
-    LaunchedEffect(isLoggedIn, accessToken) {
-        if (isLoggedIn && accessToken != null) {
+    val isRestoringSession = authViewModel.isRestoringSession
+    LaunchedEffect(isLoggedIn, accessToken, isRestoringSession) {
+        if (isLoggedIn && accessToken != null && !isRestoringSession) {
             val baseUrl = BuildConfig.BASE_URL.removeSuffix("/")
 
             Log.d("AppNavigation", "🚀 USUARIO LOGUEADO - CONECTANDO WEBSOCKETS")
