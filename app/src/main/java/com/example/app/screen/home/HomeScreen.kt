@@ -45,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,6 +84,9 @@ import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.services.UnifiedLocationService
 import com.example.app.utils.LocationManager
 import com.example.app.viewmodel.NotificationViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
 
 @Composable
@@ -93,10 +97,25 @@ fun HomeScreen(
     notificationViewModel: NotificationViewModel
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val userState = authViewModel.user
     val isLoggedIn = authViewModel.isLoggedIn
     val accessToken = authViewModel.accessToken ?: ""
     val locationManager = remember { LocationManager.getInstance() }
+
+    // 🔥 NUEVO: Observar el ciclo de vida para refrescar datos al volver de background
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                Log.d("HomeScreen", "📱 App regresó al primer plano - Actualizando datos...")
+                authViewModel.refreshData(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     var isVisible by remember { mutableStateOf(false) }
     var showContent by remember { mutableStateOf(false) }

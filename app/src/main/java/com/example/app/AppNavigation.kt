@@ -79,10 +79,13 @@ fun AppNavigation(
     val isLoading = authViewModel.isLoading
     val accessToken = authViewModel.accessToken
 
-    // 🆕 INICIALIZAR NotificationWebSocketManager UNA SOLA VEZ (antes que WebSocketLocationManager)
+    // 🆕 INICIALIZAR Managers de WebSocket UNA SOLA VEZ
     LaunchedEffect(Unit) {
         Log.d("AppNavigation", "🏗️ Inicializando NotificationWebSocketManager")
         NotificationWebSocketManager.initialize(context)
+
+        Log.d("AppNavigation", "🏗️ Inicializando WebSocketManager")
+        WebSocketManager.initialize(context)
 
         Log.d("AppNavigation", "🏗️ Inicializando WebSocketLocationManager")
         WebSocketLocationManager.initialize(context)

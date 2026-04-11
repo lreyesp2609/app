@@ -5,6 +5,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -386,13 +387,18 @@ fun ChatMessageList(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    val dotColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
+
+    Box(modifier = modifier
+        .fillMaxSize()
+        .background(MaterialTheme.colorScheme.background)
+    ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val pattern = 20.dp.toPx()
             for (i in 0..(size.width / pattern).toInt()) {
                 for (j in 0..(size.height / pattern).toInt()) {
                     drawCircle(
-                        color = Color.Gray.copy(alpha = 0.03f),
+                        color = dotColor,
                         radius = 1.dp.toPx(),
                         center = Offset(i * pattern, j * pattern)
                     )
@@ -458,7 +464,7 @@ fun MensajeBubble(
                 bottomEnd = if (mensaje.esMio) 4.dp else 16.dp
             ),
             color = if (mensaje.esMio)
-                MaterialTheme.colorScheme.primaryContainer
+                MaterialTheme.colorScheme.primary
             else
                 MaterialTheme.colorScheme.surfaceVariant,
             shadowElevation = 1.dp,
@@ -483,7 +489,7 @@ fun MensajeBubble(
                     text = mensaje.contenido,
                     fontSize = 15.sp,
                     color = if (mensaje.esMio)
-                        MaterialTheme.colorScheme.onPrimaryContainer
+                        MaterialTheme.colorScheme.onPrimary
                     else
                         MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 20.sp
@@ -500,7 +506,7 @@ fun MensajeBubble(
                         text = mensaje.hora,
                         fontSize = 11.sp,
                         color = if (mensaje.esMio)
-                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
                         else
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -513,7 +519,7 @@ fun MensajeBubble(
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(14.dp),
                                     strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
                                 )
                             }
 
@@ -521,7 +527,7 @@ fun MensajeBubble(
                                 Icon(
                                     imageVector = Icons.Default.ErrorOutline,
                                     contentDescription = "Error al enviar",
-                                    tint = Color(0xFFE57373),
+                                    tint = MaterialTheme.colorScheme.error,
                                     modifier = Modifier
                                         .size(16.dp)
                                         .clickable {
@@ -534,7 +540,7 @@ fun MensajeBubble(
                                 Icon(
                                     imageVector = Icons.Default.DoneAll,
                                     contentDescription = "Leído por ${mensaje.leidoPor}",
-                                    tint = Color(0xFF34B7F1),
+                                    tint = if (mensaje.esMio) Color(0xFF81D4FA) else Color(0xFF34B7F1),
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -543,7 +549,7 @@ fun MensajeBubble(
                                 Icon(
                                     imageVector = Icons.Default.DoneAll,
                                     contentDescription = "Entregado",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
+                                    tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -552,7 +558,7 @@ fun MensajeBubble(
                                 Icon(
                                     imageVector = Icons.Default.Done,
                                     contentDescription = "Enviado",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
+                                    tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -566,7 +572,7 @@ fun MensajeBubble(
             Text(
                 text = "No se pudo enviar. Toca para reintentar.",
                 fontSize = 10.sp,
-                color = Color(0xFFE57373),
+                color = MaterialTheme.colorScheme.error,
                 modifier = Modifier
                     .padding(top = 4.dp, end = 8.dp)
                     .clickable {

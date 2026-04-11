@@ -1,6 +1,10 @@
 package com.example.app.websocket
 
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import com.example.app.utils.SessionManager
 import com.google.gson.Gson
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -19,16 +23,16 @@ object WebSocketManager {
     private var client: OkHttpClient? = null
     private const val TAG = "WS_ChatManager"
 
-    // 🆕 Listener externo (para ChatGrupoScreen)
     private var externalListener: WebSocketListener? = null
-
-    // 🆕 Lista de listeners para broadcast
     private val broadcastListeners = mutableListOf<WebSocketListener>()
-
     private var currentToken: String? = null
     private val gson = Gson()
 
-    // 🆕 Listener interno que hace BROADCAST
+    // 🆕 Parámetros guardados para reconexión
+    private var savedBaseUrl: String? = null
+    private var sessionManager: SessionManager? = null
+    private var isInitialized = false
+
     private val internalListener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             Log.d(TAG, "✅ ════════════════════════════════════════")
@@ -46,7 +50,6 @@ object WebSocketManager {
                 val json = JSONObject(text)
                 val type = json.optString("type")
 
-                // 🔄 Manejar mensajes de token
                 when (type) {
                     "refresh_token", "token_refreshed" -> {
                         Log.d(TAG, "🔄 Mensaje de token detectado: $type")
@@ -57,7 +60,7 @@ object WebSocketManager {
                                 Log.d(TAG, "✅ Token actualizado: ${newToken.take(20)}...")
                             }
                         }
-                        return // No propagar mensajes internos
+                        return 
                     }
                     "pong" -> {
                         Log.v(TAG, "🏓 Pong recibido")
@@ -68,7 +71,6 @@ object WebSocketManager {
                 Log.v(TAG, "ℹ️ Mensaje no es JSON, propagando...")
             }
 
-            // 📤 Propagar a TODOS los listeners
             externalListener?.onMessage(webSocket, text)
             broadcastListeners.forEach {
                 try {
@@ -89,19 +91,74 @@ object WebSocketManager {
             Log.d(TAG, "🔒 WebSocket cerrado: $code - $reason")
             externalListener?.onClosed(webSocket, code, reason)
             broadcastListeners.forEach { it.onClosed(webSocket, code, reason) }
+            
+            // Intentar reconectar si se cerró inesperadamente (no por logout)
+            if (code != 1000 && savedBaseUrl != null && currentToken != null) {
+                scheduleReconnect()
+            }
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            Log.e(TAG, "❌ Error: ${t.message}")
+            Log.e(TAG, "❌ Error en WebSocket: ${t.message}")
             externalListener?.onFailure(webSocket, t, response)
             broadcastListeners.forEach { it.onFailure(webSocket, t, response) }
+            
+            // 🆕 LÓGICA DE REINTENTO UNIFICADA
+            if (savedBaseUrl != null && currentToken != null) {
+                val delay = if (response?.code == 403) 30000L else 10000L
+                Log.d(TAG, "🔄 Reintentando conexión en ${delay/1000}s...")
+                scheduleReconnect(delay)
+            }
         }
     }
 
+    private fun scheduleReconnect(delay: Long = 10000L) {
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (!isConnected() && savedBaseUrl != null && currentToken != null) {
+                Log.d(TAG, "🔄 Ejecutando reconexión programada...")
+                connectGlobal(savedBaseUrl!!, currentToken!!)
+            }
+        }, delay)
+    }
+
     /**
-     * 🆕 Conectar desde AppNavigation (sin listener externo)
+     * 🆕 Inicializar para observar cambios de token
      */
+    fun initialize(context: Context) {
+        if (isInitialized) return
+        
+        sessionManager = SessionManager.getInstance(context)
+        sessionManager?.addTokenChangeListener { newToken ->
+            Log.d(TAG, "🔄 Token actualizado por SessionManager")
+            currentToken = newToken
+            if (isConnected()) {
+                updateToken(newToken)
+            } else if (savedBaseUrl != null) {
+                // Si estaba desconectado, intentar abrir con el nuevo token
+                Log.d(TAG, "🔄 WebSocket caído, intentando abrir con nuevo token...")
+                connectGlobal(savedBaseUrl!!, newToken)
+            }
+        }
+        isInitialized = true
+        Log.d(TAG, "✅ WebSocketManager inicializado y vinculado a SessionManager")
+    }
+
+    /**
+     * 🆕 Forzar verificación de salud (usar en onResume)
+     */
+    fun checkHealth() {
+        if (!isConnected() && savedBaseUrl != null && currentToken != null) {
+            Log.d(TAG, "🏥 Salud: WebSocket caído detectado en onResume, reconectando...")
+            connectGlobal(savedBaseUrl!!, currentToken!!)
+        } else {
+            Log.v(TAG, "🏥 Salud: WebSocket OK")
+        }
+    }
+
     fun connectGlobal(baseUrl: String, token: String) {
+        savedBaseUrl = baseUrl
+        currentToken = token
+
         if (isConnected()) {
             Log.d(TAG, "⚠️ Ya está conectado, actualizando token...")
             updateToken(token)
@@ -117,13 +174,9 @@ object WebSocketManager {
         Log.d(TAG, "🔌 ════════════════════════════════════════")
         Log.d(TAG, "   URL: ${wsUrl.substringBefore("?token=")}")
 
-        currentToken = token
         connectInternal(wsUrl)
     }
 
-    /**
-     * Conectar con listener externo (para ChatGrupoScreen)
-     */
     fun connect(url: String, listener: WebSocketListener) {
         if (isConnected()) {
             Log.d(TAG, "✅ Ya conectado, registrando listener externo")
@@ -137,9 +190,13 @@ object WebSocketManager {
     }
 
     private fun connectInternal(url: String) {
+        // Limpiar cliente anterior si existe
+        client?.dispatcher?.executorService?.shutdown()
+        
         client = OkHttpClient.Builder()
             .pingInterval(30, TimeUnit.SECONDS)
             .readTimeout(0, TimeUnit.MILLISECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
             .build()
 
         val request = Request.Builder()
@@ -149,64 +206,39 @@ object WebSocketManager {
         webSocket = client?.newWebSocket(request, internalListener)
     }
 
-    /**
-     * 🆕 Actualizar token sin reconectar
-     */
     fun updateToken(newToken: String) {
         if (!isConnected()) {
             Log.w(TAG, "⚠️ No conectado, no se puede actualizar token")
             return
         }
 
-        Log.d(TAG, "🔄 ════════════════════════════════════════")
         Log.d(TAG, "🔄 ACTUALIZANDO TOKEN EN WEBSOCKET")
-        Log.d(TAG, "🔄 ════════════════════════════════════════")
-
         currentToken = newToken
         val message = JSONObject().apply {
             put("type", "refresh_token")
             put("token", newToken)
         }.toString()
 
-        val sent = send(message)
-        if (sent) {
-            Log.d(TAG, "✅ Token enviado al servidor")
-        } else {
-            Log.e(TAG, "❌ Error al enviar token")
-        }
+        send(message)
     }
 
-    /**
-     * 🆕 Registrar listener adicional
-     */
     fun addBroadcastListener(listener: WebSocketListener) {
         if (!broadcastListeners.contains(listener)) {
             broadcastListeners.add(listener)
-            Log.d(TAG, "📢 Listener agregado. Total: ${broadcastListeners.size}")
         }
     }
 
-    /**
-     * 🆕 Desregistrar listener
-     */
     fun removeBroadcastListener(listener: WebSocketListener) {
-        val removed = broadcastListeners.remove(listener)
-        if (removed) {
-            Log.d(TAG, "📢 Listener removido. Total: ${broadcastListeners.size}")
-        }
+        broadcastListeners.remove(listener)
     }
 
     fun send(message: String): Boolean {
         return try {
             val sent = webSocket?.send(message) ?: false
-            if (sent) {
-                Log.v(TAG, "📤 Mensaje enviado")
-            } else {
-                Log.w(TAG, "⚠️ No conectado")
-            }
+            if (!sent) Log.w(TAG, "⚠️ No se pudo enviar mensaje (socket desconectado)")
             sent
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error: ${e.message}")
+            Log.e(TAG, "❌ Error al enviar: ${e.message}")
             false
         }
     }
@@ -222,6 +254,7 @@ object WebSocketManager {
         externalListener = null
         broadcastListeners.clear()
         currentToken = null
+        savedBaseUrl = null
         client?.dispatcher?.executorService?.shutdown()
         client = null
     }

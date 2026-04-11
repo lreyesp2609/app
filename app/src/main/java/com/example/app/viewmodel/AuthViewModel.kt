@@ -81,34 +81,112 @@ class AuthViewModel(private val context: Context) : ViewModel() {
             viewModelScope.launch {
                 isLoading = true
                 isRestoringSession = true
-                repository.refreshToken(savedRefresh).fold(
-                    onSuccess = { response ->
-                        accessToken = response.accessToken
-                        isLoggedIn = true
-                        sessionManager.saveTokens(response.accessToken, response.refreshToken)
-                        sessionManager.saveLoginState(true)
+                try {
+                    repository.refreshToken(savedRefresh).fold(
+                        onSuccess = { response ->
+                            accessToken = response.accessToken
+                            isLoggedIn = true
+                            sessionManager.saveTokens(response.accessToken, response.refreshToken)
+                            sessionManager.saveLoginState(true)
 
-                        if (user == null) {
-                            getCurrentUser {
+                            if (user == null) {
+                                getCurrentUser {
+                                    restoreUserReminders(context, response.accessToken)
+                                    iniciarTrackingPasivoDespuesDeLogin()
+                                }
+                            } else {
                                 restoreUserReminders(context, response.accessToken)
                                 iniciarTrackingPasivoDespuesDeLogin()
-                                isRestoringSession = false  // 🔥 Mover AQUÍ dentro del callback
-                                isLoading = false
                             }
-                        } else {
-                            restoreUserReminders(context, response.accessToken)
-                            iniciarTrackingPasivoDespuesDeLogin()
-                            isRestoringSession = false
-                            isLoading = false
+                        },
+                        onFailure = {
+                            clearLocalSession()
                         }
-                    },
-                    onFailure = {
-                        clearLocalSession() // ya incluye isRestoringSession = false
-                    }
-                )
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error en restoreSession: ${e.message}")
+                    clearLocalSession()
+                } finally {
+                    isRestoringSession = false
+                    isLoading = false
+                }
             }
         } else {
-            clearLocalSession() // ya incluye isRestoringSession = false
+            clearLocalSession()
+        }
+    }
+
+    /**
+     * 🔥 NUEVA FUNCIÓN: Refresca los datos al volver al primer plano
+     */
+    fun refreshData(context: Context) {
+        if (!isLoggedIn) return
+        
+        Log.d(TAG, "🔄 Refreshing data on app resume...")
+        
+        // Si ya está cargando, no duplicar esfuerzo
+        if (isLoading) return
+
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                // 1. Verificar/Refrescar token proactivamente
+                val savedRefresh = sessionManager.getRefreshToken()
+                if (savedRefresh != null) {
+                    repository.refreshToken(savedRefresh).fold(
+                        onSuccess = { response ->
+                            accessToken = response.accessToken
+                            sessionManager.saveTokens(response.accessToken, response.refreshToken)
+                            Log.d(TAG, "✅ Token refrescado proactivamente")
+                        },
+                        onFailure = { error ->
+                            Log.e(TAG, "❌ Fallo refresh token en refreshData: ${error.message}")
+                        }
+                    )
+                }
+
+                accessToken?.let { token ->
+                    repository.getCurrentUser("Bearer $token").fold(
+                        onSuccess = { currentUser ->
+                            user = currentUser
+                            sessionManager.saveUser(currentUser)
+                            errorMessage = null
+                            Log.d(TAG, "✅ Datos de usuario actualizados")
+                        },
+                        onFailure = {
+                            Log.e(TAG, "❌ Error obteniendo usuario en refreshData: ${it.message}")
+                            errorMessage = "Error de conexión. Reintentando..."
+                        }
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Excepción en refreshData: ${e.message}")
+            } finally {
+                // 3. Verificar salud de WebSockets al volver al primer plano
+                checkWebSocketsHealth()
+                
+                isLoading = false
+                isRestoringSession = false
+            }
+        }
+    }
+
+    /**
+     * 🔥 Verifica que los WebSockets estén conectados y reconecta si es necesario
+     */
+    private fun checkWebSocketsHealth() {
+        Log.d(TAG, "🏥 Revisando salud de WebSockets...")
+        
+        // El de notificaciones es robusto pero podemos intentar reconectar si cayó
+        try {
+            val baseUrl = com.example.app.BuildConfig.BASE_URL.removeSuffix("/")
+            accessToken?.let { token ->
+                // WebSocketManager (Chat) y WebSocketLocationManager ahora tienen checkHealth()
+                com.example.app.websocket.WebSocketManager.checkHealth()
+                com.example.app.websocket.WebSocketLocationManager.checkHealth()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error en checkWebSocketsHealth: ${e.message}")
         }
     }
 
@@ -138,56 +216,48 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
+            try {
+                repository.login(email, password, Build.MODEL, getAppVersion(context), obtenerIp())
+                    .fold(
+                        onSuccess = { loginResponse ->
+                            accessToken = loginResponse.accessToken
+                            isLoggedIn = true
 
-            repository.login(email, password, Build.MODEL, getAppVersion(context), obtenerIp())
-                .fold(
-                    onSuccess = { loginResponse ->
-                        accessToken = loginResponse.accessToken
-                        isLoggedIn = true
+                            sessionManager.saveTokens(loginResponse.accessToken, loginResponse.refreshToken)
+                            sessionManager.saveLoginState(true)
 
-                        sessionManager.saveTokens(loginResponse.accessToken, loginResponse.refreshToken)
-                        sessionManager.saveLoginState(true)
-
-                        getCurrentUser {
-                            restoreUserReminders(context, loginResponse.accessToken)
-                            enviarTokenFCMPendiente()
-
-                            // 🔥 NUEVO: Iniciar tracking pasivo después del login
-                            iniciarTrackingPasivoDespuesDeLogin()
-
-                            onResult(true)
+                            getCurrentUser {
+                                restoreUserReminders(context, loginResponse.accessToken)
+                                enviarTokenFCMPendiente()
+                                iniciarTrackingPasivoDespuesDeLogin()
+                                onResult(true)
+                            }
+                        },
+                        onFailure = { exception ->
+                            isLoggedIn = false
+                            sessionManager.saveLoginState(false)
+                            errorMessage = when {
+                                exception.message?.contains("INVALID_CREDENTIALS") == true -> "Correo o contraseña incorrectos"
+                                exception.message?.contains("USER_NOT_FOUND") == true -> "No existe una cuenta con este correo"
+                                exception.message?.contains("ACCOUNT_LOCKED") == true -> "Cuenta bloqueada. Contacta soporte"
+                                exception.message?.contains("NETWORK_ERROR") == true -> "Error de conexión. Verifica tu internet"
+                                exception.message?.contains("401") == true -> "Credenciales inválidas"
+                                exception.message?.contains("500") == true -> "Error del servidor. Inténtalo más tarde"
+                                else -> "Error al iniciar sesión. Inténtalo nuevamente"
+                            }
+                            onResult(false)
                         }
-                    },
-                    onFailure = { exception ->
-                        isLoggedIn = false
-                        sessionManager.saveLoginState(false)
-                        isLoading = false
-                        errorMessage = when {
-                            exception.message?.contains("INVALID_CREDENTIALS") == true -> {
-                                "Correo o contraseña incorrectos"
-                            }
-                            exception.message?.contains("USER_NOT_FOUND") == true -> {
-                                "No existe una cuenta con este correo"
-                            }
-                            exception.message?.contains("ACCOUNT_LOCKED") == true -> {
-                                "Cuenta bloqueada. Contacta soporte"
-                            }
-                            exception.message?.contains("NETWORK_ERROR") == true -> {
-                                "Error de conexión. Verifica tu internet"
-                            }
-                            exception.message?.contains("401") == true -> {
-                                "Credenciales inválidas"
-                            }
-                            exception.message?.contains("500") == true -> {
-                                "Error del servidor. Inténtalo más tarde"
-                            }
-                            else -> {
-                                "Error al iniciar sesión. Inténtalo nuevamente"
-                            }
-                        }
-                        onResult(false)
-                    }
-                )
+                    )
+            } catch (e: Exception) {
+                Log.e(TAG, "Excepción en login: ${e.message}")
+                errorMessage = "Error inesperado: ${e.message}"
+                onResult(false)
+            } finally {
+                // Solo apagamos el loading si NOT éxito (porque onSuccess llama a getCurrentUser que tiene su propio loading)
+                // O mejor aún, lo apagamos siempre y dejamos que getCurrentUser lo vuelva a prender si quiere,
+                // Pero como es síncrono en el Main, no hay parpadeo perceptible.
+                isLoading = false
+            }
         }
     }
 
@@ -375,33 +445,33 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         accessToken?.let { token ->
             viewModelScope.launch {
                 isLoading = true
-                repository.getCurrentUser("Bearer $token").fold(
-                    onSuccess = { currentUser ->
-                        user = currentUser
-                        sessionManager.saveUser(currentUser)
-                        isLoading = false
-                        errorMessage = null
-                        onSuccess()
-                    },
-                    onFailure = {
-                        user = null
-                        isLoggedIn = false
-                        accessToken = null
-                        sessionManager.saveLoginState(false)
-                        isLoading = false
-                        isRestoringSession = false  // 🔥 AGREGAR ESTO
-                        errorMessage = it.message
-                        // onSuccess nunca se llama aquí = spinner infinito
-                    }
-                )
+                try {
+                    repository.getCurrentUser("Bearer $token").fold(
+                        onSuccess = { currentUser ->
+                            user = currentUser
+                            sessionManager.saveUser(currentUser)
+                            errorMessage = null
+                            onSuccess()
+                        },
+                        onFailure = {
+                            Log.e(TAG, "❌ Error en getCurrentUser: ${it.message}")
+                            errorMessage = it.message
+                            // Si el error es 401, cerrar sesión
+                            if (it.message?.contains("401") == true) {
+                                clearLocalSession()
+                            }
+                        }
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Excepción en getCurrentUser: ${e.message}")
+                } finally {
+                    isLoading = false
+                    isRestoringSession = false
+                }
             }
         } ?: run {
-            user = null
-            isLoggedIn = false
-            sessionManager.saveLoginState(false)
+            clearLocalSession()
             errorMessage = "No hay token de acceso"
-            isLoading = false
-            isRestoringSession = false  // 🔥 AGREGAR ESTO también aquí
         }
     }
 
@@ -611,47 +681,33 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         viewModelScope.launch {
             isLoading = true
             errorMessage = null // Limpiar errores anteriores
-
-            repository.register(nombre, apellido, email, password).fold(
-                onSuccess = {
-                    isLoading = false
-                    onResult(true)
-                },
-                onFailure = { exception ->
-                    isLoading = false
-
-                    // Manejar diferentes tipos de errores del backend
-                    errorMessage = when {
-                        exception.message?.contains("USER_ALREADY_EXISTS") == true -> {
-                            "Ya existe una cuenta con este correo electrónico"
+            try {
+                repository.register(nombre, apellido, email, password).fold(
+                    onSuccess = {
+                        onResult(true)
+                    },
+                    onFailure = { exception ->
+                        // Manejar diferentes tipos de errores del backend
+                        errorMessage = when {
+                            exception.message?.contains("USER_ALREADY_EXISTS") == true -> "Ya existe una cuenta con este correo electrónico"
+                            exception.message?.contains("INVALID_EMAIL") == true -> "El formato del correo electrónico no es válido"
+                            exception.message?.contains("WEAK_PASSWORD") == true -> "La contraseña debe ser más fuerte"
+                            exception.message?.contains("NETWORK_ERROR") == true -> "Error de conexión. Verifica tu internet"
+                            exception.message?.contains("SERVER_ERROR") == true -> "Error del servidor. Inténtalo más tarde"
+                            exception.message?.contains("400") == true -> "Datos inválidos. Verifica la información ingresada"
+                            exception.message?.contains("500") == true -> "Error interno del servidor. Inténtalo más tarde"
+                            else -> "Error al crear la cuenta. Inténtalo nuevamente"
                         }
-                        exception.message?.contains("INVALID_EMAIL") == true -> {
-                            "El formato del correo electrónico no es válido"
-                        }
-                        exception.message?.contains("WEAK_PASSWORD") == true -> {
-                            "La contraseña debe ser más fuerte"
-                        }
-                        exception.message?.contains("NETWORK_ERROR") == true -> {
-                            "Error de conexión. Verifica tu internet"
-                        }
-                        exception.message?.contains("SERVER_ERROR") == true -> {
-                            "Error del servidor. Inténtalo más tarde"
-                        }
-                        exception.message?.contains("400") == true -> {
-                            "Datos inválidos. Verifica la información ingresada"
-                        }
-                        exception.message?.contains("500") == true -> {
-                            "Error interno del servidor. Inténtalo más tarde"
-                        }
-                        else -> {
-                            // Mensaje genérico amigable
-                            "Error al crear la cuenta. Inténtalo nuevamente"
-                        }
+                        onResult(false)
                     }
-
-                    onResult(false)
-                }
-            )
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Excepción en registerUser: ${e.message}")
+                errorMessage = "Error inesperado: ${e.message}"
+                onResult(false)
+            } finally {
+                isLoading = false
+            }
         }
     }
 
