@@ -41,7 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.models.ZonaSugerida
-import com.example.app.ui.theme.SecurityColors
+import com.example.app.ui.theme.DangerLevelColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,7 +91,6 @@ fun DialogoZonasSugeridas(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Lista de zonas
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -115,7 +114,6 @@ fun DialogoZonasSugeridas(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Botón cerrar
             TextButton(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth()
@@ -134,20 +132,21 @@ fun ZonaSugeridaItem(
     onVerEnMapa: () -> Unit,
     isDarkTheme: Boolean
 ) {
+    // Color dinámico según el nivel de peligro de la zona (1=turquesa, 2=naranja, 3=rojo)
+    val nivelUI    = DangerLevelColors.clampNivel(zona.zonaOriginal.nivelPeligro)
+    val nivelColor = DangerLevelColors.getColor(nivelUI, isDarkTheme)
+    val nivelBg    = DangerLevelColors.getBackground(nivelUI, isDarkTheme)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (zona.yaAdoptada) {
+            containerColor = if (zona.yaAdoptada)
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            } else {
-                SecurityColors.getDangerBackground(isDarkTheme)
-            }
+            else
+                nivelBg
         ),
-        border = BorderStroke(
-            1.dp,
-            SecurityColors.getDangerColor(isDarkTheme).copy(alpha = 0.3f)
-        )
+        border = BorderStroke(1.dp, nivelColor.copy(alpha = 0.3f))
     ) {
         Column(
             modifier = Modifier
@@ -161,16 +160,13 @@ fun ZonaSugeridaItem(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(
-                            SecurityColors.getDangerColor(isDarkTheme).copy(alpha = 0.2f),
-                            CircleShape
-                        ),
+                        .background(nivelColor.copy(alpha = 0.2f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.Warning,
                         contentDescription = null,
-                        tint = SecurityColors.getDangerColor(isDarkTheme),
+                        tint = nivelColor,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -184,8 +180,9 @@ fun ZonaSugeridaItem(
                         fontSize = 15.sp
                     )
                     Spacer(modifier = Modifier.height(4.dp))
+                    // Nivel con nombre descriptivo en lugar de estrellas
                     Text(
-                        "Nivel ${"⭐".repeat(zona.zonaOriginal.nivelPeligro)} • ${String.format("%.1f", zona.distanciaKm)} km de ti",
+                        "${getNombreNivel(nivelUI)} • ${String.format("%.1f", zona.distanciaKm)} km de ti",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -195,28 +192,22 @@ fun ZonaSugeridaItem(
             if (!zona.yaAdoptada) {
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Row(
+                // Botón ver en mapa
+                OutlinedButton(
+                    onClick = onVerEnMapa,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    // 🆕 Botón ver en mapa (ocupa todo el ancho arriba)
-                    OutlinedButton(
-                        onClick = onVerEnMapa,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.LocationOn,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Ver en mapa", fontSize = 13.sp)
-                    }
+                    Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Ver en mapa", fontSize = 13.sp)
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
-
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -255,9 +246,7 @@ fun ZonaSugeridaItem(
                 }
             } else {
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.Check,
                         contentDescription = null,

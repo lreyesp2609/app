@@ -195,18 +195,18 @@ fun DialogoCrearZonaPeligrosa(
                                         .padding(horizontal = 8.dp, vertical = 2.dp)
                                 ) {
                                     Text(
-                                        "$nivel/5",
+                                        "$nivel/3",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (nivel >= 4) Color.White else Color.Black
+                                        color = Color.White  // blanco siempre sobre verde/naranja/rojo
                                     )
                                 }
                             }
                             Slider(
                                 value = nivel.toFloat(),
                                 onValueChange = { nivel = it.toInt() },
-                                valueRange = 1f..5f,
-                                steps = 3,
+                                valueRange = 1f..3f,
+                                steps = 1,
                                 modifier = Modifier.height(32.dp),
                                 colors = SliderDefaults.colors(
                                     thumbColor = getNivelPeligroColor(nivel),
@@ -337,16 +337,13 @@ fun DialogoCrearZonaPeligrosa(
     }
 }
 
-fun getNivelPeligroColor(nivel: Int): Color {
-    return when (nivel) {
-        1 -> Color(0xFF4CAF50)
-        2 -> Color(0xFFFFEB3B)
-        3 -> Color(0xFFFF9800)
-        4 -> Color(0xFFFF5722)
-        5 -> Color(0xFFF44336)
-        else -> Color.Gray
-    }
+fun getNivelPeligroColor(nivel: Int): Color = when {
+    nivel <= 1 -> Color(0xFF4CAF50)  // Verde
+    nivel == 2 -> Color(0xFFFF9800)  // Naranja
+    else       -> Color(0xFFF44336)  // Rojo
 }
+
+
 /**
  * Devuelve el nombre legible del modo de transporte
  */

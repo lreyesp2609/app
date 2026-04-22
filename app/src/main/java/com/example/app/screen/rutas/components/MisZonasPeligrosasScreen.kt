@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.LocationOn
@@ -79,7 +78,7 @@ import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.screen.mapa.MapControlButton
 import com.example.app.screen.mapa.OpenStreetMap
 import com.example.app.ui.theme.AppColors
-import com.example.app.ui.theme.SecurityColors
+import com.example.app.ui.theme.DangerLevelColors
 import com.example.app.utils.DialogoCrearZonaPeligrosa
 import com.example.app.utils.LocationManager
 import com.example.app.utils.SessionManager
@@ -87,7 +86,14 @@ import com.example.app.viewmodel.MapViewModel
 import com.example.app.viewmodel.NotificationViewModel
 import com.example.app.viewmodel.ZonasSugeridasViewModel
 import kotlinx.coroutines.launch
-import kotlin.inc
+
+// ─── Helper: nombre legible para cada nivel ───────────────────────────────────
+fun getNombreNivel(nivel: Int): String = when (nivel) {
+    1    -> "Bajo"
+    2    -> "Medio"
+    3    -> "Alto"
+    else -> "Alto"   // valores legacy 4 o 5 del backend → "Alto"
+}
 
 @Composable
 fun MisZonasPeligrosasScreen(
@@ -113,7 +119,6 @@ fun MisZonasPeligrosasScreen(
     var zoomInTrigger by remember { mutableStateOf(0) }
     var zoomOutTrigger by remember { mutableStateOf(0) }
 
-    // Estados para zonas peligrosas
     var zonasCreadas by remember { mutableStateOf<List<ZonaGuardada>>(emptyList()) }
     var mostrarDialogoZona by remember { mutableStateOf(false) }
     var coordenadasZonaSeleccionada by remember { mutableStateOf<Pair<Double, Double>?>(null) }
@@ -121,7 +126,6 @@ fun MisZonasPeligrosasScreen(
     var mostrarZonasPeligrosas by remember { mutableStateOf(true) }
     var cargandoZonas by remember { mutableStateOf(false) }
 
-    // Estado para edición/eliminación
     var zonaSeleccionadaParaEditar by remember { mutableStateOf<ZonaGuardada?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -131,7 +135,6 @@ fun MisZonasPeligrosasScreen(
     val scope = rememberCoroutineScope()
     val isDarkTheme = isSystemInDarkTheme()
 
-    // Agrega estos dos estados nuevos
     var mapCenterLat by remember { mutableStateOf(currentLat) }
     var mapCenterLon by remember { mutableStateOf(currentLon) }
 
@@ -142,7 +145,6 @@ fun MisZonasPeligrosasScreen(
         }
     }
 
-    // Cuando se obtiene la ubicación (sin caché), cargar sugerencias
     LaunchedEffect(locationObtained) {
         if (locationObtained && currentLat != 0.0) {
             zonasSugeridasVM.verificarYCargarSugerencias(
@@ -156,10 +158,9 @@ fun MisZonasPeligrosasScreen(
     fun flyToZona(lat: Double, lon: Double) {
         mapCenterLat = lat
         mapCenterLon = lon
-        recenterTrigger++  // reutiliza el trigger existente que ya llama animateTo()
+        recenterTrigger++
     }
 
-    // Cargar ubicación desde caché
     LaunchedEffect(Unit) {
         val cachedLocation = locationManager.getLastKnownLocation()
         if (cachedLocation != null) {
@@ -178,7 +179,6 @@ fun MisZonasPeligrosasScreen(
         }
     }
 
-    // Cargar zonas desde el backend
     LaunchedEffect(token) {
         if (token.isNotEmpty()) {
             cargandoZonas = true
@@ -195,7 +195,7 @@ fun MisZonasPeligrosasScreen(
                                 radio = zona.radioMetros ?: 200,
                                 nombre = zona.nombre,
                                 nivel = zona.nivelPeligro,
-                                id = zona.id // Asegúrate de tener este campo
+                                id = zona.id
                             )
                         } else {
                             Log.w("ZonasPeligrosas", "Zona sin coordenadas: ${zona.nombre}")
@@ -222,7 +222,6 @@ fun MisZonasPeligrosasScreen(
         when {
             locationObtained -> {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    // Mapa
                     OpenStreetMap(
                         latitude = currentLat,
                         longitude = currentLon,
@@ -233,9 +232,7 @@ fun MisZonasPeligrosasScreen(
                         zoomInTrigger = zoomInTrigger,
                         zoomOutTrigger = zoomOutTrigger,
                         modifier = Modifier.fillMaxSize(),
-                        onLocationSelected = { lat, lon ->
-                            // No hacer nada en tap simple
-                        },
+                        onLocationSelected = { _, _ -> },
                         onLocationLongPress = { lat, lon ->
                             coordenadasZonaSeleccionada = Pair(lat, lon)
                             mostrarDialogoZona = true
@@ -249,33 +246,23 @@ fun MisZonasPeligrosasScreen(
                             ?: if (mostrarDialogoZona) radioPreview else null,
                         zonasGuardadas = if (mostrarZonasPeligrosas) zonasCreadas else emptyList(),
                         onZonaClick = { zona ->
-                            // Cuando se hace tap en una zona del mapa
                             zonaSeleccionadaParaEditar = zona
                             showBottomSheet = true
                         }
-
                     )
 
                     if (zonasSugeridasVM.mostrarSugerencias && zonasSugeridasVM.zonasSugeridas.isNotEmpty()) {
                         BannerZonasSugeridas(
                             zonasSugeridas = zonasSugeridasVM.zonasSugeridas,
-                            onVerSugerencias = {
-                                mostrarDialogoSugerencias = true
-//                                zonasSugeridasVM.zonasSugeridas.firstOrNull()?.zonaOriginal?.poligono?.firstOrNull()?.let { punto ->
-//                                    flyToZona(punto.lat, punto.lon)
-//                                }
-                            },
-                            onDismiss = {
-                                zonasSugeridasVM.reset()
-                            },
+                            onVerSugerencias = { mostrarDialogoSugerencias = true },
+                            onDismiss = { zonasSugeridasVM.reset() },
                             modifier = Modifier
                                 .align(Alignment.TopCenter)
                                 .statusBarsPadding()
-                                .padding(top = 80.dp) // Debajo del header
+                                .padding(top = 80.dp)
                         )
                     }
 
-                    // Botón de regreso
                     AppBackButton(
                         navController = navController,
                         modifier = Modifier
@@ -285,8 +272,6 @@ fun MisZonasPeligrosasScreen(
                         backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
 
-                    // Header con título
-                    // Header pill directo en el Box
                     Row(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
@@ -322,7 +307,6 @@ fun MisZonasPeligrosasScreen(
                         }
                     }
 
-                    // Botones de control
                     Column(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
@@ -330,33 +314,18 @@ fun MisZonasPeligrosasScreen(
                             .offset(y = 40.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        MapControlButton(
-                            icon = Icons.Default.Add,
-                            onClick = { zoomInTrigger++ }
-                        )
-
-                        MapControlButton(
-                            icon = Icons.Default.Remove,
-                            onClick = { zoomOutTrigger++ }
-                        )
-
-                        MapControlButton(
-                            icon = Icons.Default.MyLocation,
-                            onClick = { recenterTrigger++ }
-                        )
+                        MapControlButton(icon = Icons.Default.Add, onClick = { zoomInTrigger++ })
+                        MapControlButton(icon = Icons.Default.Remove, onClick = { zoomOutTrigger++ })
+                        MapControlButton(icon = Icons.Default.MyLocation, onClick = { recenterTrigger++ })
 
                         if (zonasCreadas.isNotEmpty()) {
                             MapControlButton(
-                                icon = if (mostrarZonasPeligrosas) {
-                                    Icons.Default.Visibility
-                                } else {
-                                    Icons.Default.VisibilityOff
-                                },
+                                icon = if (mostrarZonasPeligrosas) Icons.Default.Visibility
+                                else Icons.Default.VisibilityOff,
                                 onClick = {
                                     mostrarZonasPeligrosas = !mostrarZonasPeligrosas
                                     notificationViewModel.showInfo(
-                                        if (mostrarZonasPeligrosas) "Zonas visibles"
-                                        else "Zonas ocultas"
+                                        if (mostrarZonasPeligrosas) "Zonas visibles" else "Zonas ocultas"
                                     )
                                 },
                                 badge = zonasCreadas.size.toString()
@@ -364,7 +333,6 @@ fun MisZonasPeligrosasScreen(
                         }
                     }
 
-                    // Panel inferior con lista de zonas
                     BottomZonasPanel(
                         zonas = zonasCreadas,
                         isLoading = cargandoZonas,
@@ -378,7 +346,6 @@ fun MisZonasPeligrosasScreen(
             }
 
             else -> {
-                // Loading state
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -406,9 +373,7 @@ fun MisZonasPeligrosasScreen(
                         locationManager.updateLocation(lat, lon, "")
                         Log.d("ZonasPeligrosas", "✅ Ubicación obtenida")
                     },
-                    onError = { error ->
-                        Log.e("ZonasPeligrosas", "Error: $error")
-                    },
+                    onError = { error -> Log.e("ZonasPeligrosas", "Error: $error") },
                     onGpsDisabled = { showGpsButton = true }
                 )
             }
@@ -418,12 +383,12 @@ fun MisZonasPeligrosasScreen(
             DialogoZonasSugeridas(
                 zonas = zonasSugeridasVM.zonasSugeridas,
                 onVerEnMapa = { lat, lon, zona ->
-                    zonaSugeridaPreview = zona          // activa el círculo
+                    zonaSugeridaPreview = zona
                     flyToZona(lat, lon)
                     mostrarDialogoSugerencias = false
                 },
                 onAdoptar = { zonaId ->
-                    zonaSugeridaPreview = null          // limpia preview al guardar
+                    zonaSugeridaPreview = null
                     zonasSugeridasVM.adoptarZona(
                         zonaId = zonaId,
                         onSuccess = { zonaAdoptada ->
@@ -441,9 +406,7 @@ fun MisZonasPeligrosasScreen(
                             }
                             notificationViewModel.showSuccess("Zona guardada: ${zonaAdoptada.nombre}")
                         },
-                        onError = { error ->
-                            notificationViewModel.showError(error)
-                        }
+                        onError = { error -> notificationViewModel.showError(error) }
                     )
                 },
                 onDescartar = { zonaId ->
@@ -452,13 +415,12 @@ fun MisZonasPeligrosasScreen(
                 },
                 onDismiss = {
                     mostrarDialogoSugerencias = false
-                    zonaSugeridaPreview = null          // limpia el círculo al cerrar
+                    zonaSugeridaPreview = null
                 },
                 isDarkTheme = isDarkTheme
             )
         }
 
-        // Diálogo para crear zona
         if (mostrarDialogoZona && coordenadasZonaSeleccionada != null) {
             DialogoCrearZonaPeligrosa(
                 coordenadas = coordenadasZonaSeleccionada!!,
@@ -504,13 +466,10 @@ fun MisZonasPeligrosasScreen(
                     mostrarDialogoZona = false
                     radioPreview = 200
                 },
-                onRadioChanged = { nuevoRadio ->
-                    radioPreview = nuevoRadio
-                }
+                onRadioChanged = { nuevoRadio -> radioPreview = nuevoRadio }
             )
         }
 
-        // Bottom sheet para editar/eliminar zona
         if (showBottomSheet && zonaSeleccionadaParaEditar != null) {
             ZonaDetailBottomSheet(
                 zona = zonaSeleccionadaParaEditar!!,
@@ -518,14 +477,11 @@ fun MisZonasPeligrosasScreen(
                     showBottomSheet = false
                     zonaSeleccionadaParaEditar = null
                 },
-                onEliminar = {
-                    showDeleteDialog = true
-                },
+                onEliminar = { showDeleteDialog = true },
                 isDarkTheme = isDarkTheme
             )
         }
 
-        // Diálogo de confirmación para eliminar
         if (showDeleteDialog && zonaSeleccionadaParaEditar != null) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
@@ -537,12 +493,7 @@ fun MisZonasPeligrosasScreen(
                         modifier = Modifier.size(32.dp)
                     )
                 },
-                title = {
-                    Text(
-                        "¿Eliminar zona?",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+                title = { Text("¿Eliminar zona?", fontWeight = FontWeight.Bold) },
                 text = {
                     Column {
                         Text("Estás a punto de eliminar:")
@@ -562,7 +513,6 @@ fun MisZonasPeligrosasScreen(
                 },
                 confirmButton = {
                     val scope = rememberCoroutineScope()
-
                     Button(
                         onClick = {
                             val zonaId = zonaSeleccionadaParaEditar?.id
@@ -583,24 +533,18 @@ fun MisZonasPeligrosasScreen(
                                     )
 
                                     if (response.isSuccessful) {
-                                        // ✅ Éxito
                                         zonasCreadas = zonasCreadas.filter { it.id != zonaId }
                                         notificationViewModel.showSuccess("Zona eliminada correctamente")
-
-                                        // También actualizar el ViewModel si lo usas
                                         mapViewModel.cargarZonasPeligrosas(token)
-
                                         showDeleteDialog = false
                                         showBottomSheet = false
                                         zonaSeleccionadaParaEditar = null
-
                                         Log.d("ZonasScreen", "✅ Zona eliminada correctamente")
                                     } else {
                                         val errorMsg = "Error ${response.code()}: ${response.message()}"
                                         notificationViewModel.showError(errorMsg)
                                         Log.e("ZonasScreen", "❌ $errorMsg")
                                     }
-
                                 } catch (e: Exception) {
                                     val errorMsg = e.message ?: "Error desconocido"
                                     notificationViewModel.showError("Error: $errorMsg")
@@ -608,23 +552,15 @@ fun MisZonasPeligrosasScreen(
                                 }
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AppColors.Danger
-                        )
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.Danger)
                     ) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Eliminar", fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancelar")
-                    }
+                    TextButton(onClick = { showDeleteDialog = false }) { Text("Cancelar") }
                 },
                 containerColor = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(20.dp)
@@ -637,6 +573,7 @@ fun MisZonasPeligrosasScreen(
     }
 }
 
+// ─── BottomZonasPanel ─────────────────────────────────────────────────────────
 
 @Composable
 fun BottomZonasPanel(
@@ -653,9 +590,7 @@ fun BottomZonasPanel(
             .heightIn(max = 300.dp)
             .navigationBarsPadding(),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Column(
@@ -663,7 +598,6 @@ fun BottomZonasPanel(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -699,9 +633,7 @@ fun BottomZonasPanel(
             when {
                 isLoading -> {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp),
+                        modifier = Modifier.fillMaxWidth().height(100.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
@@ -742,15 +674,8 @@ fun BottomZonasPanel(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(
-                            items = zonas,
-                            key = { it.id ?: it.hashCode() }
-                        ) { zona ->
-                            ZonaListItem(
-                                zona = zona,
-                                onClick = { onZonaClick(zona) },
-                                isDarkTheme = isDarkTheme
-                            )
+                        items(items = zonas, key = { it.id ?: it.hashCode() }) { zona ->
+                            ZonaListItem(zona = zona, onClick = { onZonaClick(zona) }, isDarkTheme = isDarkTheme)
                         }
                     }
                 }
@@ -759,24 +684,25 @@ fun BottomZonasPanel(
     }
 }
 
+// ─── ZonaListItem — color dinámico por nivel ──────────────────────────────────
+
 @Composable
 fun ZonaListItem(
     zona: ZonaGuardada,
     onClick: () -> Unit,
     isDarkTheme: Boolean
 ) {
+    val nivelUI    = DangerLevelColors.clampNivel(zona.nivel)
+    val nivelColor = DangerLevelColors.getColor(nivelUI, isDarkTheme)
+    val nivelBg    = DangerLevelColors.getBackground(nivelUI, isDarkTheme)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = SecurityColors.getDangerBackground(isDarkTheme)
-        ),
-        border = BorderStroke(
-            1.dp,
-            SecurityColors.getDangerColor(isDarkTheme).copy(alpha = 0.3f)
-        )
+        colors = CardDefaults.cardColors(containerColor = nivelBg),
+        border = BorderStroke(1.dp, nivelColor.copy(alpha = 0.4f))
     ) {
         Row(
             modifier = Modifier
@@ -787,16 +713,13 @@ fun ZonaListItem(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(
-                        SecurityColors.getDangerColor(isDarkTheme).copy(alpha = 0.2f),
-                        CircleShape
-                    ),
+                    .background(nivelColor.copy(alpha = 0.2f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Warning,
                     contentDescription = null,
-                    tint = SecurityColors.getDangerColor(isDarkTheme),
+                    tint = nivelColor,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -812,7 +735,7 @@ fun ZonaListItem(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    "Radio: ${zona.radio}m • Nivel: ${zona.nivel}",
+                    "Radio: ${zona.radio}m • ${getNombreNivel(nivelUI)}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
@@ -828,6 +751,8 @@ fun ZonaListItem(
     }
 }
 
+// ─── ZonaDetailBottomSheet — color dinámico por nivel ────────────────────────
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ZonaDetailBottomSheet(
@@ -836,6 +761,10 @@ fun ZonaDetailBottomSheet(
     onEliminar: () -> Unit,
     isDarkTheme: Boolean
 ) {
+    val nivelUI    = DangerLevelColors.clampNivel(zona.nivel)
+    val nivelColor = DangerLevelColors.getColor(nivelUI, isDarkTheme)
+    val nivelBg    = DangerLevelColors.getBackground(nivelUI, isDarkTheme)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -846,7 +775,6 @@ fun ZonaDetailBottomSheet(
                 .fillMaxWidth()
                 .padding(24.dp)
         ) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -854,16 +782,13 @@ fun ZonaDetailBottomSheet(
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .background(
-                            SecurityColors.getDangerBackground(isDarkTheme),
-                            CircleShape
-                        ),
+                        .background(nivelBg, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.Warning,
                         contentDescription = null,
-                        tint = SecurityColors.getDangerColor(isDarkTheme),
+                        tint = nivelColor,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -886,7 +811,6 @@ fun ZonaDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Detalles
             DetailRow(
                 icon = Icons.Default.RadioButtonChecked,
                 label = "Radio",
@@ -895,14 +819,11 @@ fun ZonaDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 🔥 Nivel de peligro con estrellas
+            // Nivel con nombre descriptivo y color — sin estrellas ni "/5"
             DetailRow(
                 icon = Icons.Default.Warning,
                 label = "Nivel de peligro",
-                value = buildString {
-                    append("⭐".repeat(zona.nivel))
-                    append(" (${zona.nivel}/5)")
-                }
+                value = "${getNombreNivel(nivelUI)} (nivel $nivelUI/3)"
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -915,36 +836,25 @@ fun ZonaDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Botón eliminar
             Button(
                 onClick = onEliminar,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AppColors.Danger
-                ),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = AppColors.Danger),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "Eliminar zona",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                Text("Eliminar zona", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }
 }
 
+// ─── DetailRow ────────────────────────────────────────────────────────────────
+
 @Composable
 fun DetailRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     value: String,
     modifier: Modifier = Modifier
@@ -978,6 +888,8 @@ fun DetailRow(
     }
 }
 
+// ─── BannerZonasSugeridas ─────────────────────────────────────────────────────
+
 @Composable
 fun BannerZonasSugeridas(
     zonasSugeridas: List<ZonaSugerida>,
@@ -985,21 +897,15 @@ fun BannerZonasSugeridas(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
-
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(16.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1031,10 +937,7 @@ fun BannerZonasSugeridas(
                     }
                 }
 
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(32.dp)
-                ) {
+                IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "Cerrar",
@@ -1049,23 +952,13 @@ fun BannerZonasSugeridas(
             Button(
                 onClick = onVerSugerencias,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                ),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Icon(
-                    Icons.Default.Visibility,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
+                Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "Ver sugerencias",
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Ver sugerencias", fontWeight = FontWeight.Bold)
             }
         }
     }
 }
-

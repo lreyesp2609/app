@@ -7,7 +7,7 @@ data class ZonaPeligrosaCreate(
     @SerializedName("lat") val lat: Double,
     @SerializedName("lon") val lon: Double,
     @SerializedName("radio_metros") val radioMetros: Int = 200,
-    @SerializedName("nivel_peligro") val nivelPeligro: Int = 3,
+    @SerializedName("nivel_peligro") val nivelPeligro: Int = 1,
     @SerializedName("tipo") val tipo: String? = null,
     @SerializedName("notas") val notas: String? = null
 )

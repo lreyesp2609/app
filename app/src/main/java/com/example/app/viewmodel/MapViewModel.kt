@@ -10,6 +10,7 @@ import com.example.app.network.RetrofitClient
 import com.example.app.network.RetrofitInstance
 import com.example.app.repository.RutasRepository
 import com.example.app.screen.rutas.components.getPreferenceDisplayName
+import com.example.app.ui.theme.DangerLevelColors
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
@@ -114,24 +115,7 @@ class MapViewModel(
 
     // 🆕 FUNCIÓN PARA OBTENER COLOR SEGÚN NIVEL DE PELIGRO
     fun getColorForDangerLevel(nivel: Int, isDarkTheme: Boolean): Int {
-        return when (nivel) {
-            1, 2 -> if (isDarkTheme) {
-                android.graphics.Color.argb(100, 251, 191, 36) // Warning con alpha
-            } else {
-                android.graphics.Color.argb(100, 245, 158, 11)
-            }
-            3, 4 -> if (isDarkTheme) {
-                android.graphics.Color.argb(120, 249, 115, 22) // WarningDark con alpha
-            } else {
-                android.graphics.Color.argb(120, 234, 88, 12)
-            }
-            5 -> if (isDarkTheme) {
-                android.graphics.Color.argb(140, 239, 68, 68) // Danger con alpha
-            } else {
-                android.graphics.Color.argb(140, 220, 38, 38)
-            }
-            else -> android.graphics.Color.argb(100, 156, 163, 175) // Gray por defecto
-        }
+        return DangerLevelColors.getArgbColor(nivel, isDarkTheme)
     }
 
     // 🔥 FUNCIÓN PRINCIPAL MODIFICADA
