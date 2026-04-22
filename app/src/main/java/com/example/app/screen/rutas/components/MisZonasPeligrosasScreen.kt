@@ -232,6 +232,7 @@ fun MisZonasPeligrosasScreen(
                         zoomInTrigger = zoomInTrigger,
                         zoomOutTrigger = zoomOutTrigger,
                         modifier = Modifier.fillMaxSize(),
+                        isDarkTheme = isDarkTheme,
                         onLocationSelected = { _, _ -> },
                         onLocationLongPress = { lat, lon ->
                             coordenadasZonaSeleccionada = Pair(lat, lon)

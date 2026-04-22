@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.example.app.R
 import com.example.app.models.ZonaPeligrosaResponse
+import com.example.app.ui.theme.DangerLevelColors
 import com.example.app.viewmodel.MapViewModel
 import com.example.app.viewmodel.decodePolyline
 import org.osmdroid.views.overlay.Polygon
@@ -39,7 +40,6 @@ fun SimpleMapOSM(
     context: Context = LocalContext.current,
     transportMode: String,
     routeGeometry: String? = null,
-    // 🆕 NUEVOS PARÁMETROS
     zonasPeligrosas: List<ZonaPeligrosaResponse> = emptyList(),
     mostrarZonasPeligrosas: Boolean = true,
     viewModel: MapViewModel? = null
@@ -47,11 +47,9 @@ fun SimpleMapOSM(
     val mapView = rememberMapView(context, zoom)
     val isDarkTheme = isSystemInDarkTheme()
 
-    // Obtener colores del tema actual
     val primaryColor = MaterialTheme.colorScheme.primary
     val secondaryColor = MaterialTheme.colorScheme.secondary
 
-    // Inicializar configuración
     LaunchedEffect(Unit) {
         Configuration.getInstance().load(
             context,
@@ -63,15 +61,12 @@ fun SimpleMapOSM(
         modifier = modifier.fillMaxSize(),
         factory = { mapView },
         update = { map ->
-            // Limpiar overlays existentes
             map.overlays.clear()
 
-            // 🆕 AGREGAR ZONAS PELIGROSAS (PRIMERO, para que estén debajo de la ruta)
-            // 🆕 AGREGAR ZONAS PELIGROSAS (PRIMERO, para que estén debajo de la ruta)
+            // ZONAS PELIGROSAS — color driven by DangerLevelColors
             if (mostrarZonasPeligrosas && zonasPeligrosas.isNotEmpty()) {
                 zonasPeligrosas.forEach { zona ->
                     try {
-                        // 🔍 Verificar que tenga coordenadas válidas
                         val puntosCentro = zona.poligono.firstOrNull()
                         if (puntosCentro == null) {
                             Log.w("SimpleMapOSM", "⚠️ Zona ${zona.nombre} sin coordenadas")
@@ -82,74 +77,69 @@ fun SimpleMapOSM(
                         val lonCentro = puntosCentro.lon
                         val radio = zona.radioMetros ?: 200
 
-                        Log.d("SimpleMapOSM", "📍 Dibujando zona: ${zona.nombre}")
-                        Log.d("SimpleMapOSM", "   Centro: ($latCentro, $lonCentro)")
-                        Log.d("SimpleMapOSM", "   Radio: ${radio}m")
+                        // Clamp level to 1-3 range used by DangerLevelColors
+                        val nivelUI = DangerLevelColors.clampNivel(zona.nivelPeligro)
 
-                        // 🔥 SIEMPRE REGENERAR LOCALMENTE (ignorar puntos del backend)
-                        Log.d("SimpleMapOSM", "🔄 Regenerando círculo localmente con código corregido")
+                        // ARGB fill color from DangerLevelColors (includes alpha)
+                        val fillArgb = DangerLevelColors.getArgbColor(nivelUI, isDarkTheme)
+
+                        // Solid border color (same ramp, no alpha)
+                        val borderArgb = when (nivelUI) {
+                            1 -> if (isDarkTheme)
+                                android.graphics.Color.rgb(77, 182, 172)   // Teal dark
+                            else
+                                android.graphics.Color.rgb(0, 150, 136)    // Teal light
+                            2 -> if (isDarkTheme)
+                                android.graphics.Color.rgb(255, 152, 0)    // Orange dark
+                            else
+                                android.graphics.Color.rgb(230, 81, 0)     // Orange light
+                            else -> if (isDarkTheme)
+                                android.graphics.Color.rgb(239, 68, 68)    // Red dark
+                            else
+                                android.graphics.Color.rgb(220, 38, 38)    // Red light
+                        }
+
+                        Log.d("SimpleMapOSM", "📍 Dibujando zona: ${zona.nombre} nivel=$nivelUI")
+
                         val puntosCirculo = generarPuntosCirculo(latCentro, lonCentro, radio)
 
-                        // Dibujar el círculo/polígono
                         val circulo = Polygon(map).apply {
                             points = puntosCirculo
-
-                            // Color según nivel de peligro
-                            val color = viewModel?.getColorForDangerLevel(zona.nivelPeligro, isDarkTheme)
-                                ?: android.graphics.Color.argb(100, 239, 68, 68)
-
-                            fillPaint.color = color
+                            fillPaint.color = fillArgb
                             fillPaint.style = android.graphics.Paint.Style.FILL
-
-                            // Borde más visible
-                            outlinePaint.color = when (zona.nivelPeligro) {
-                                1, 2 -> android.graphics.Color.rgb(245, 158, 11)
-                                3, 4 -> android.graphics.Color.rgb(234, 88, 12)
-                                5 -> android.graphics.Color.rgb(220, 38, 38)
-                                else -> android.graphics.Color.rgb(156, 163, 175)
-                            }
+                            outlinePaint.color = borderArgb
                             outlinePaint.strokeWidth = 3f
                             outlinePaint.style = android.graphics.Paint.Style.STROKE
-
-                            // Información al hacer tap
                             title = zona.nombre
                             snippet = buildString {
-                                append("Nivel de peligro: ${zona.nivelPeligro}/5")
+                                append("Nivel: ${DangerLevelColors.getNombreNivel(nivelUI)}")
                                 zona.tipo?.let { append("\nTipo: $it") }
                                 zona.notas?.let { append("\n$it") }
                             }
                         }
-
                         map.overlays.add(circulo)
 
-                        // 🆕 Marcador central de la zona
+                        // Central marker dot — same color ramp
+                        val markerSize = when (nivelUI) {
+                            1 -> 20
+                            2 -> 24
+                            else -> 28
+                        }
+
                         val marcadorZona = Marker(map).apply {
                             position = GeoPoint(latCentro, lonCentro)
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-
                             icon = ShapeDrawable(OvalShape()).apply {
-                                intrinsicHeight = when (zona.nivelPeligro) {
-                                    1, 2 -> 20
-                                    3, 4 -> 24
-                                    5 -> 28
-                                    else -> 20
-                                }
-                                intrinsicWidth = intrinsicHeight
+                                intrinsicHeight = markerSize
+                                intrinsicWidth = markerSize
                                 paint.apply {
-                                    color = when (zona.nivelPeligro) {
-                                        1, 2 -> android.graphics.Color.rgb(245, 158, 11)
-                                        3, 4 -> android.graphics.Color.rgb(234, 88, 12)
-                                        5 -> android.graphics.Color.rgb(220, 38, 38)
-                                        else -> android.graphics.Color.rgb(156, 163, 175)
-                                    }
+                                    color = borderArgb
                                     style = android.graphics.Paint.Style.FILL
                                     isAntiAlias = true
                                 }
                             }
-
                             title = "⚠️ ${zona.nombre}"
-                            snippet = "Nivel ${zona.nivelPeligro}/5 • Radio ${radio}m"
-
+                            snippet = "Nivel ${DangerLevelColors.getNombreNivel(nivelUI)} • Radio ${radio}m"
                             setOnMarkerClickListener { marker, _ ->
                                 marker.showInfoWindow()
                                 true
@@ -157,7 +147,7 @@ fun SimpleMapOSM(
                         }
                         map.overlays.add(marcadorZona)
 
-                        Log.d("SimpleMapOSM", "✅ Zona ${zona.nombre} dibujada correctamente")
+                        Log.d("SimpleMapOSM", "✅ Zona ${zona.nombre} (nivel $nivelUI) dibujada")
 
                     } catch (e: Exception) {
                         Log.e("SimpleMapOSM", "❌ Error dibujando zona ${zona.nombre}: ${e.message}", e)
@@ -165,7 +155,7 @@ fun SimpleMapOSM(
                 }
             }
 
-            // Ruta con colores del tema (encima de las zonas)
+            // Route polyline (above zones)
             routeGeometry?.let { geometry ->
                 try {
                     val routePoints = geometry.decodePolyline()
@@ -187,7 +177,7 @@ fun SimpleMapOSM(
                 }
             }
 
-            // Marcador usuario (encima de todo)
+            // User location marker (topmost)
             val userMarker = Marker(map).apply {
                 position = GeoPoint(userLat, userLon)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
@@ -204,7 +194,7 @@ fun SimpleMapOSM(
             }
             map.overlays.add(userMarker)
 
-            // Marcadores destinos
+            // Destination markers
             val drawable = ContextCompat.getDrawable(context, R.drawable.ic_marker_red)
             ubicaciones.forEach { ubicacion ->
                 val marker = Marker(map).apply {
@@ -221,21 +211,18 @@ fun SimpleMapOSM(
         }
     )
 
-    // SEGUIR UBICACIÓN DEL USUARIO
     LaunchedEffect(userLat, userLon) {
         if (userLat != 0.0 && userLon != 0.0) {
             mapView.controller.animateTo(GeoPoint(userLat, userLon))
         }
     }
 
-    // Recentrar mapa
     LaunchedEffect(recenterTrigger) {
         if (recenterTrigger > 0 && userLat != 0.0 && userLon != 0.0) {
             mapView.controller.animateTo(GeoPoint(userLat, userLon))
         }
     }
 
-    // Ajustar cámara al cargar nueva ruta
     LaunchedEffect(routeGeometry) {
         routeGeometry?.let { geometry ->
             try {
@@ -258,7 +245,6 @@ fun SimpleMapOSM(
         }
     }
 
-    // Zoom in/out manual
     LaunchedEffect(zoomInTrigger) {
         if (zoomInTrigger > 0) {
             val currentZoom = mapView.zoomLevelDouble
@@ -282,17 +268,13 @@ private fun generarPuntosCirculo(
     val puntos = mutableListOf<GeoPoint>()
     val numPuntos = 32
 
-    // 🔥 FIX: Conversión correcta de metros a grados
     val radioGradosLat = radioMetros / 111320.0
     val radioGradosLon = radioMetros / (111320.0 * Math.cos(Math.toRadians(lat)))
 
     for (i in 0..numPuntos) {
         val angulo = 2 * Math.PI * i / numPuntos
-
-        // 🔥 CORRECCIÓN: Sin() para latitud, Cos() para longitud
-        val newLat = lat + (radioGradosLat * Math.sin(angulo))  // ✅ Cambio aquí
-        val newLon = lon + (radioGradosLon * Math.cos(angulo))  // ✅ Cambio aquí
-
+        val newLat = lat + (radioGradosLat * Math.sin(angulo))
+        val newLon = lon + (radioGradosLon * Math.cos(angulo))
         puntos.add(GeoPoint(newLat, newLon))
     }
 

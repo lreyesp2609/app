@@ -23,12 +23,12 @@ import com.example.app.models.Feature
 import com.example.app.models.ZonaGuardada
 import com.example.app.models.getDisplayName
 import com.example.app.screen.recordatorios.components.getIconResource
+import com.example.app.ui.theme.DangerLevelColors
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
 import org.osmdroid.views.overlay.MapEventsOverlay
-
 import org.osmdroid.views.overlay.Polygon
 
 @Composable
@@ -46,17 +46,15 @@ fun OpenStreetMap(
     showCenterPin: Boolean = true,
     onLocationSelected: (lat: Double, lon: Double) -> Unit = { _, _ -> },
     onLocationLongPress: ((Double, Double) -> Unit)? = null,
-    // Preview de zona en creación
     zonaPreviewLat: Double? = null,
     zonaPreviewLon: Double? = null,
     zonaPreviewRadio: Int? = null,
-    // 🔥 ZONAS YA GUARDADAS
     zonasGuardadas: List<ZonaGuardada> = emptyList(),
-    // 🆕 CALLBACK PARA DETECTAR TAP EN ZONA
     onZonaClick: ((ZonaGuardada) -> Unit)? = null,
-    // 🆕 COORDENADAS DEL CENTRO DEL MAPA (para búsqueda)
     centerLat: Double = latitude,
-    centerLon: Double = longitude
+    centerLon: Double = longitude,
+    // Pass isDarkTheme from the composable caller so AndroidView update block can use it
+    isDarkTheme: Boolean = false
 ) {
     val mapView = rememberMapView(context, zoom)
 
@@ -67,7 +65,6 @@ fun OpenStreetMap(
         )
     }
 
-    // 🔥 Centrar el mapa cuando cambien las coordenadas del usuario
     LaunchedEffect(latitude, longitude) {
         if (latitude != 0.0 && longitude != 0.0) {
             Log.d("OpenStreetMap", "📍 Centrando mapa en: $latitude, $longitude")
@@ -81,11 +78,10 @@ fun OpenStreetMap(
         update = { map ->
             map.overlays.clear()
 
-            // Detector de long press (debe ir PRIMERO)
+            // Long press detector (must go first)
             if (onLocationLongPress != null) {
                 val mapEventsReceiver = object : MapEventsReceiver {
                     override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean = false
-
                     override fun longPressHelper(p: GeoPoint?): Boolean {
                         if (p != null) {
                             Log.d("OpenStreetMap", "🔴 Long press: ${p.latitude}, ${p.longitude}")
@@ -97,54 +93,60 @@ fun OpenStreetMap(
                 map.overlays.add(MapEventsOverlay(mapEventsReceiver))
             }
 
-            // 🔥 DIBUJAR ZONAS GUARDADAS (primero, para que estén debajo)
+            // SAVED DANGER ZONES — color driven by DangerLevelColors
             zonasGuardadas.forEach { zona ->
                 try {
                     val center = GeoPoint(zona.lat, zona.lon)
 
                     Log.d("OpenStreetMap", "🎯 Dibujando zona guardada: ${zona.nombre}")
-                    Log.d("OpenStreetMap", "   Centro: (${zona.lat}, ${zona.lon})")
-                    Log.d("OpenStreetMap", "   Radio: ${zona.radio}m")
 
-                    // 🔥 USAR FUNCIÓN PERSONALIZADA (NO Polygon.pointsAsCircle)
+                    val nivelUI = DangerLevelColors.clampNivel(zona.nivel)
+
+                    val fillArgb = DangerLevelColors.getArgbColor(nivelUI, isDarkTheme)
+
+                    val borderArgb = when (nivelUI) {
+                        1 -> if (isDarkTheme)
+                            android.graphics.Color.rgb(77, 182, 172)
+                        else
+                            android.graphics.Color.rgb(0, 150, 136)
+                        2 -> if (isDarkTheme)
+                            android.graphics.Color.rgb(255, 152, 0)
+                        else
+                            android.graphics.Color.rgb(230, 81, 0)
+                        else -> if (isDarkTheme)
+                            android.graphics.Color.rgb(239, 68, 68)
+                        else
+                            android.graphics.Color.rgb(220, 38, 38)
+                    }
+
                     val puntosCirculo = crearCirculoPersonalizado(
                         lat = zona.lat,
                         lon = zona.lon,
                         radioMetros = zona.radio.toInt()
                     )
 
-                    // Círculo de la zona
                     val circle = Polygon(map).apply {
                         points = puntosCirculo
-                        fillPaint.color = android.graphics.Color.parseColor("#33FF5252")
-                        outlinePaint.color = android.graphics.Color.parseColor("#FFFF5252")
+                        fillPaint.color = fillArgb
+                        fillPaint.style = android.graphics.Paint.Style.FILL
+                        outlinePaint.color = borderArgb
                         outlinePaint.strokeWidth = 3f
                     }
                     map.overlays.add(circle)
-
-                    // 🆕 Marcador con nivel de peligro Y CLICK LISTENER
-                    val markerColor = when (zona.nivel) {
-                        1 -> "#FF4CAF50" // Verde
-                        2 -> "#FFFFEB3B" // Amarillo
-                        3 -> "#FFFF9800" // Naranja
-                        4 -> "#FFFF5722" // Naranja oscuro
-                        5 -> "#FFF44336" // Rojo
-                        else -> "#FFFF5252"
-                    }
 
                     val marker = Marker(map).apply {
                         position = center
                         setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                         icon = ShapeDrawable(OvalShape()).apply {
-                            intrinsicHeight = 35
-                            intrinsicWidth = 35
-                            paint.color = android.graphics.Color.parseColor(markerColor)
+                            val size = when (nivelUI) { 1 -> 28; 2 -> 32; else -> 36 }
+                            intrinsicHeight = size
+                            intrinsicWidth = size
+                            paint.color = borderArgb
                             paint.style = android.graphics.Paint.Style.FILL
+                            paint.isAntiAlias = true
                         }
                         title = zona.nombre
-                        snippet = "Nivel: ${zona.nivel}/5 • Radio: ${zona.radio}m"
-
-                        // 🔥 DETECTAR TAP EN ZONA
+                        snippet = "Nivel: ${DangerLevelColors.getNombreNivel(nivelUI)} • Radio: ${zona.radio}m"
                         setOnMarkerClickListener { clickedMarker, mapView ->
                             Log.d("OpenStreetMap", "👆 Tap en zona: ${zona.nombre}")
                             onZonaClick?.invoke(zona)
@@ -153,14 +155,14 @@ fun OpenStreetMap(
                     }
                     map.overlays.add(marker)
 
-                    Log.d("OpenStreetMap", "✅ Zona ${zona.nombre} dibujada con ${puntosCirculo.size} puntos")
+                    Log.d("OpenStreetMap", "✅ Zona ${zona.nombre} (nivel $nivelUI) dibujada con ${puntosCirculo.size} puntos")
 
                 } catch (e: Exception) {
                     Log.e("OpenStreetMap", "❌ Error dibujando zona ${zona.nombre}: ${e.message}", e)
                 }
             }
 
-            // 🔥 PREVIEW DE ZONA EN CREACIÓN (si existe)
+            // ZONE PREVIEW while creating (dashed red — always red for new/unsaved)
             if (zonaPreviewLat != null && zonaPreviewLon != null && zonaPreviewRadio != null) {
                 try {
                     val center = GeoPoint(zonaPreviewLat, zonaPreviewLon)
@@ -175,7 +177,7 @@ fun OpenStreetMap(
 
                     val circle = Polygon(map).apply {
                         points = puntosPreview
-                        fillPaint.color = android.graphics.Color.parseColor("#44FF5252")
+                        fillPaint.color = android.graphics.Color.argb(68, 255, 82, 82)
                         outlinePaint.color = android.graphics.Color.parseColor("#FFFF5252")
                         outlinePaint.strokeWidth = 4f
                         outlinePaint.pathEffect = android.graphics.DashPathEffect(floatArrayOf(10f, 10f), 0f)
@@ -202,7 +204,7 @@ fun OpenStreetMap(
                 }
             }
 
-            // Usuario (punto azul)
+            // User location dot (blue)
             if (showUserLocation) {
                 val geoPoint = GeoPoint(latitude, longitude)
                 val circleMarker = Marker(map).apply {
@@ -247,17 +249,15 @@ fun OpenStreetMap(
                 }
             }
 
-            // Pin central
+            // Center pin
             if (showCenterPin) {
                 map.overlays.add(CenteredPinOverlay(context))
             }
 
-            // Forzar redibujado
             map.invalidate()
         }
     )
 
-    // 🔥 FIX: Recentrar mapa usando centerLat/centerLon en lugar de latitude/longitude
     LaunchedEffect(recenterTrigger) {
         if (recenterTrigger > 0) {
             Log.d("OpenStreetMap", "🎯 Recentrando a: $centerLat, $centerLon")
@@ -265,14 +265,12 @@ fun OpenStreetMap(
         }
     }
 
-    // Zoom In
     LaunchedEffect(zoomInTrigger) {
         if (zoomInTrigger > 0) {
             mapView.controller.zoomIn()
         }
     }
 
-    // Zoom Out
     LaunchedEffect(zoomOutTrigger) {
         if (zoomOutTrigger > 0) {
             mapView.controller.zoomOut()
@@ -287,7 +285,6 @@ fun OpenStreetMap(
                 }
                 return true
             }
-
             override fun onZoom(event: ZoomEvent?): Boolean {
                 event?.source?.mapCenter?.let { center ->
                     onLocationSelected(center.latitude, center.longitude)
@@ -299,6 +296,7 @@ fun OpenStreetMap(
         onDispose { mapView.removeMapListener(listener) }
     }
 }
+
 @Composable
 fun rememberMapView(context: Context, zoom: Double = 16.0): MapView {
     return remember {
@@ -327,7 +325,7 @@ class CenteredPinOverlay(private val context: Context) : Overlay() {
     }
 }
 
-// 🔥 FUNCIÓN PERSONALIZADA - NUNCA USAR Polygon.pointsAsCircle()
+// Uses Cos for lat, Sin for lon (correct formula)
 private fun crearCirculoPersonalizado(
     lat: Double,
     lon: Double,
@@ -336,17 +334,13 @@ private fun crearCirculoPersonalizado(
     val puntos = mutableListOf<GeoPoint>()
     val numPuntos = 32
 
-    // Conversión correcta de metros a grados
     val radioGradosLat = radioMetros / 111320.0
     val radioGradosLon = radioMetros / (111320.0 * Math.cos(Math.toRadians(lat)))
 
     for (i in 0..numPuntos) {
         val angulo = 2 * Math.PI * i / numPuntos
-
-        // ✅ CORRECTO: Cos() para latitud, Sin() para longitud
         val newLat = lat + (radioGradosLat * Math.cos(angulo))
         val newLon = lon + (radioGradosLon * Math.sin(angulo))
-
         puntos.add(GeoPoint(newLat, newLon))
     }
 
