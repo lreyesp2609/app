@@ -112,8 +112,8 @@ fun SimpleMapOSM(
                             outlinePaint.style = android.graphics.Paint.Style.STROKE
                             title = zona.nombre
                             snippet = buildString {
-                                append("Nivel: ${DangerLevelColors.getNombreNivel(nivelUI)}")
-                                zona.tipo?.let { append("\nTipo: $it") }
+                                append(context.getString(R.string.map_snippet_zone_level, DangerLevelColors.getNombreNivel(nivelUI, context)))
+                                zona.tipo?.let { append("\n" + context.getString(R.string.map_snippet_type, it)) }
                                 zona.notas?.let { append("\n$it") }
                             }
                         }
@@ -139,12 +139,17 @@ fun SimpleMapOSM(
                                 }
                             }
                             title = "⚠️ ${zona.nombre}"
-                            snippet = "Nivel ${DangerLevelColors.getNombreNivel(nivelUI)} • Radio ${radio}m"
+                            snippet = context.getString(
+                                R.string.map_snippet_zone,
+                                DangerLevelColors.getNombreNivel(nivelUI, context),
+                                radio
+                            )
                             setOnMarkerClickListener { marker, _ ->
                                 marker.showInfoWindow()
                                 true
                             }
                         }
+
                         map.overlays.add(marcadorZona)
 
                         Log.d("SimpleMapOSM", "✅ Zona ${zona.nombre} (nivel $nivelUI) dibujada")
@@ -190,7 +195,7 @@ fun SimpleMapOSM(
                         isAntiAlias = true
                     }
                 }
-                title = "Tu ubicación"
+                title = context.getString(R.string.map_your_location)
             }
             map.overlays.add(userMarker)
 

@@ -46,6 +46,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.ui.theme.AppColors
 
 @Composable
@@ -103,13 +105,13 @@ fun MapHelpBannerIntegrated(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "💡 Consejo",
+                        text = stringResource(R.string.map_help_title),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "Mantén presionado el mapa para marcar zonas peligrosas",
+                        text = stringResource(R.string.map_help_message),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
@@ -131,7 +133,7 @@ fun MapHelpBannerIntegrated(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Cerrar",
+                        contentDescription = stringResource(R.string.close),
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         modifier = Modifier.size(16.dp)
                     )

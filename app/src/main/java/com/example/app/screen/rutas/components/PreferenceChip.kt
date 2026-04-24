@@ -26,12 +26,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+import android.content.Context
+import com.example.app.R
+
 // ✅ Función NORMAL (sin @Composable) - para usar en ViewModel
-fun getPreferenceDisplayName(preference: String): String {
+fun getPreferenceDisplayName(context: Context, preference: String): String {
     return when (preference) {
-        "fastest" -> "Más Rápida"
-        "shortest" -> "Más Corta"
-        "recommended" -> "Recomendada"
+        "fastest" -> context.getString(R.string.pref_fastest)
+        "shortest" -> context.getString(R.string.pref_shortest)
+        "recommended" -> context.getString(R.string.pref_recommended)
         else -> preference
     }
 }

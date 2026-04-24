@@ -14,11 +14,13 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import android.util.Log
+import com.example.app.R
 import com.example.app.models.MiembroUbicacion
 import com.example.app.screen.grupos.components.MarkerColors
 import com.example.app.screen.grupos.components.UserMarker
 import com.example.app.screen.grupos.components.UserMarkerOverlay
 import com.example.app.screen.grupos.components.getInitial
+import androidx.compose.ui.res.stringResource
 
 /**
  * Componente de mapa exclusivo para grupos
@@ -36,10 +38,11 @@ fun GrupoOpenStreetMap(
     context: Context = LocalContext.current,
     miembrosGrupo: List<MiembroUbicacion> = emptyList(),
     currentUserId: Int = 0,
-    currentUserName: String = "Tú",
+    currentUserName: String = stringResource(R.string.you),
     onLocationSelected: (lat: Double, lon: Double) -> Unit = { _, _ -> }
 ) {
     val mapView = rememberMapViewForGrupo(context, zoom)
+    val youLabel = stringResource(R.string.you)
 
     LaunchedEffect(Unit) {
         Configuration.getInstance().load(
@@ -75,7 +78,7 @@ fun GrupoOpenStreetMap(
             userMarkers.add(
                 UserMarker(
                     position = GeoPoint(latitude, longitude),
-                    name = "Tú",
+                    name = youLabel,
                     initial = currentUserName.getInitial(),
                     backgroundColor = MarkerColors.CURRENT_USER_BG,
                     textColor = MarkerColors.CURRENT_USER_TEXT,
@@ -85,7 +88,7 @@ fun GrupoOpenStreetMap(
                 )
             )
 
-            Log.d("GrupoMap", "✅ Marcador propio agregado: Tú en ($latitude, $longitude)")
+            Log.d("GrupoMap", "✅ Marcador propio agregado: $youLabel en ($latitude, $longitude)")
 
             // Agregar marcadores de OTROS miembros
             if (miembrosGrupo.isNotEmpty()) {

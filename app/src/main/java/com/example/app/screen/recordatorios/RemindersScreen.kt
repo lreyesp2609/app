@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.models.Reminder
 import com.example.app.network.AppDatabase
 import com.example.app.screen.components.AppButton
@@ -83,10 +85,10 @@ fun RemindersScreen(
                 )
             },
             title = {
-                Text(text = "Eliminar recordatorio")
+                Text(text = stringResource(R.string.delete_reminder_title))
             },
             text = {
-                Text(text = "¿Estás seguro de que deseas eliminar \"${reminderToDelete?.title}\"?")
+                Text(text = stringResource(R.string.delete_reminder_confirmation, reminderToDelete?.title ?: ""))
             },
             confirmButton = {
                 TextButton(
@@ -102,12 +104,12 @@ fun RemindersScreen(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Eliminar")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -138,13 +140,13 @@ fun RemindersScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Notifications,
-                            contentDescription = "Recordatorios",
+                            contentDescription = stringResource(R.string.reminders_title),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(28.dp) // ✨ Reducido de 32dp a 28dp (consistencia)
                         )
                         Spacer(modifier = Modifier.width(8.dp)) // ✨ Reducido de 12dp a 8dp
                         Text(
-                            text = "Recordatorios",
+                            text = stringResource(R.string.reminders_title),
                             fontSize = 22.sp, // ✨ Reducido de 24.sp a 22.sp (consistencia)
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
@@ -155,7 +157,7 @@ fun RemindersScreen(
 
                     // Botón más destacado y con animación
                     AppButton(
-                        text = "Crear recordatorio",
+                        text = stringResource(R.string.create_reminder),
                         icon = Icons.Default.AddLocationAlt,
                         onClick = { navController.navigate("reminder_map") },
                         modifier = Modifier
@@ -184,21 +186,21 @@ fun RemindersScreen(
                     StatCard(
                         icon = Icons.Default.CheckCircle,
                         value = reminders.count().toString(),
-                        label = "Total",
+                        label = stringResource(R.string.stat_total),
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f)
                     )
                     StatCard(
                         icon = Icons.Default.LocationOn,
                         value = reminders.count { it.reminder_type == "location" || it.reminder_type == "both" }.toString(),
-                        label = "Ubicación",
+                        label = stringResource(R.string.stat_location),
                         color = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.weight(1f)
                     )
                     StatCard(
                         icon = Icons.Default.Schedule,
                         value = reminders.count { it.reminder_type == "datetime" || it.reminder_type == "both" }.toString(),
-                        label = "Fecha/Hora",
+                        label = stringResource(R.string.stat_datetime),
                         color = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.weight(1f)
                     )
@@ -229,7 +231,7 @@ fun RemindersScreen(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    "Cargando recordatorios...",
+                                    stringResource(R.string.loading_reminders),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
@@ -320,7 +322,7 @@ private fun EmptyRemindersState() {
         ) {
             Icon(
                 imageVector = Icons.Default.NotificationsNone,
-                contentDescription = "Sin recordatorios",
+                contentDescription = stringResource(R.string.cd_no_reminders),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(72.dp)
             )
@@ -330,7 +332,7 @@ private fun EmptyRemindersState() {
 
         // Título y descripción más claros
         Text(
-            text = "No tienes recordatorios",
+            text = stringResource(R.string.no_reminders_title),
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -340,7 +342,7 @@ private fun EmptyRemindersState() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Crea tu primer recordatorio tocando el botón de arriba",
+            text = stringResource(R.string.no_reminders_description),
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,
@@ -374,7 +376,7 @@ private fun EmptyRemindersState() {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "¿Qué puedes hacer?",
+                        text = stringResource(R.string.empty_state_help_title),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
@@ -384,24 +386,24 @@ private fun EmptyRemindersState() {
                 // Características (sin iconos grandes ni interactividad)
                 FeatureRow(
                     icon = Icons.Default.LocationOn,
-                    title = "Recordatorios por ubicación",
-                    description = "Recibe alertas al entrar o salir de un lugar"
+                    title = stringResource(R.string.feature_location_title),
+                    description = stringResource(R.string.feature_location_desc)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 FeatureRow(
                     icon = Icons.Default.Schedule,
-                    title = "Alertas por fecha y hora",
-                    description = "Programa recordatorios en momentos específicos"
+                    title = stringResource(R.string.feature_datetime_title),
+                    description = stringResource(R.string.feature_datetime_desc)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 FeatureRow(
                     icon = Icons.Default.Map,
-                    title = "Selección en mapa",
-                    description = "Elige ubicaciones fácilmente"
+                    title = stringResource(R.string.feature_map_title),
+                    description = stringResource(R.string.feature_map_desc)
                 )
             }
         }
@@ -568,9 +570,9 @@ fun ReminderCard(
                         )
                         Text(
                             text = when (reminder.reminder_type) {
-                                "location" -> "Ubicación"
-                                "datetime" -> "Fecha y hora"
-                                else -> "Ubicación y fecha"
+                                "location" -> stringResource(R.string.type_location)
+                                "datetime" -> stringResource(R.string.type_datetime)
+                                else -> stringResource(R.string.type_both)
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(
@@ -597,7 +599,7 @@ fun ReminderCard(
                 IconButton(onClick = { expanded = !expanded }) {
                     Icon(
                         imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (expanded) "Contraer" else "Expandir",
+                        contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
@@ -654,11 +656,14 @@ fun ReminderCard(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "Radio: ${reminder.radius?.toInt() ?: 0}m • ${
+                                        text = stringResource(
+                                            R.string.radius_label,
+                                            reminder.radius?.toInt() ?: 0
+                                        ) + " • ${
                                             when (reminder.trigger_type) {
-                                                "enter" -> "Al entrar"
-                                                "exit" -> "Al salir"
-                                                else -> "Al entrar o salir"
+                                                "enter" -> stringResource(R.string.trigger_enter)
+                                                "exit" -> stringResource(R.string.trigger_exit)
+                                                else -> stringResource(R.string.trigger_both)
                                             }
                                         }",
                                         style = MaterialTheme.typography.bodySmall,
@@ -694,7 +699,7 @@ fun ReminderCard(
                         modifier = Modifier.padding(bottom = 16.dp)
                     ) {
                         if (reminder.vibration) {
-                            Chip(label = "Vibración", icon = Icons.Default.Vibration)
+                            Chip(label = stringResource(R.string.vibration), icon = Icons.Default.Vibration)
                             Spacer(modifier = Modifier.width(8.dp))
                         }
                         if (reminder.sound) {
@@ -704,11 +709,11 @@ fun ReminderCard(
                                 reminder.sound_uri?.let { uri ->
                                     try {
                                         val ringtone = RingtoneManager.getRingtone(context, Uri.parse(uri))
-                                        ringtone.getTitle(context) ?: "Sonido"
+                                        ringtone.getTitle(context) ?: context.getString(R.string.sound)
                                     } catch (e: Exception) {
-                                        "Sonido"
+                                        context.getString(R.string.sound)
                                     }
-                                } ?: "Sonido"
+                                } ?: context.getString(R.string.sound)
                             }
 
                             Chip(
@@ -732,7 +737,7 @@ fun ReminderCard(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Editar")
+                            Text(stringResource(R.string.edit))
                         }
 
                         OutlinedButton(
@@ -748,7 +753,7 @@ fun ReminderCard(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Eliminar")
+                            Text(stringResource(R.string.delete))
                         }
                     }
                 }

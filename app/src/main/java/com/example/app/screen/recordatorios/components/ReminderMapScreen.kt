@@ -8,7 +8,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.app.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.app.models.Feature
@@ -152,7 +154,7 @@ fun ReminderMapScreen(
                                         )
                                         selectedAddress = response.display_name ?: ""
                                     } catch (e: Exception) {
-                                        selectedAddress = "Error obteniendo dirección"
+                                        selectedAddress = context.getString(R.string.error_obtaining_address)
                                     }
                                 }
                                 loadPOIsForLocation(lat, lon)
@@ -225,7 +227,7 @@ fun ReminderMapScreen(
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        "Obteniendo ubicación...",
+                        stringResource(R.string.map_getting_location),
                         color = MaterialTheme.colorScheme.onBackground
                     )
                 }
@@ -247,7 +249,7 @@ fun ReminderMapScreen(
                                 selectedAddress = response.display_name ?: ""
                                 locationManager.updateLocation(lat, lon, selectedAddress)
                             } catch (e: Exception) {
-                                selectedAddress = "Error obteniendo dirección"
+                                selectedAddress = context.getString(R.string.error_obtaining_address)
                             }
                             loadPOIsForLocation(lat, lon)
                         }

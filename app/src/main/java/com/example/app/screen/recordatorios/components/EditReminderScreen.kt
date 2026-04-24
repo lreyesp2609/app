@@ -18,6 +18,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import com.example.app.R
 import com.example.app.models.toReminder
 import com.example.app.network.NominatimClient
 import com.example.app.screen.mapa.OpenStreetMap
@@ -97,13 +100,13 @@ fun EditReminderScreen(
 
                     isLoading = false
                 } else {
-                    notificationViewModel.showError("Recordatorio no encontrado")
+                    notificationViewModel.showError(context.getString(R.string.error_reminder_not_found))
                     navController.popBackStack()
                 }
             }
         } catch (e: Exception) {
             Log.e("EditReminder", "Error cargando recordatorio: ${e.message}")
-            notificationViewModel.showError("Error al cargar recordatorio")
+            notificationViewModel.showError(context.getString(R.string.error_loading_reminder))
             navController.popBackStack()
         }
     }
@@ -141,7 +144,7 @@ fun EditReminderScreen(
                                 )
                                 selectedAddress = response.display_name ?: ""
                             } catch (e: Exception) {
-                                selectedAddress = "Error obteniendo dirección"
+                                selectedAddress = context.getString(R.string.error_obtaining_address)
                             }
                         }
                     }

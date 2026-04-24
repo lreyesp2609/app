@@ -22,11 +22,13 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.app.R
 import com.example.app.models.EstadisticasResponse
 import com.example.app.repository.RutasRepository
 import com.example.app.ui.theme.getBackgroundGradient
@@ -85,7 +87,7 @@ fun EstadisticasScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Volver",
+                        contentDescription = stringResource(R.string.cd_back_arrow),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
@@ -123,13 +125,13 @@ fun EstadisticasScreen(
                 AnimatedVisibility(visible = isVisible) {
                     Column {
                         Text(
-                            "RecuerdaGo",
+                            stringResource(R.string.app_name),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            "Estadísticas",
+                            stringResource(R.string.stats_title_label),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                         )
@@ -153,7 +155,7 @@ fun EstadisticasScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "Cargando estadísticas...",
+                                stringResource(R.string.stats_loading),
                                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                                 fontSize = 16.sp
                             )
@@ -169,7 +171,7 @@ fun EstadisticasScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                "Error: $error",
+                                stringResource(R.string.generic_error, error ?: ""),
                                 color = MaterialTheme.colorScheme.error,
                                 fontSize = 16.sp,
                                 textAlign = TextAlign.Center
@@ -190,7 +192,7 @@ fun EstadisticasScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                             ) {
                                 Text(
-                                    "Reintentar",
+                                    stringResource(R.string.stats_retry),
                                     color = MaterialTheme.colorScheme.onPrimary
                                 )
                             }
@@ -212,16 +214,16 @@ fun EstadisticasScreen(
                             val total = (completadas + canceladas).takeIf { it > 0 } ?: 1
                             val completionPercent = completadas.toFloat() / total
 
-                            StatCard("Resumen General") {
+                            StatCard(stringResource(R.string.stats_summary_title)) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     StatItem(
                                         total.toString(),
-                                        "Total de rutas",
+                                        stringResource(R.string.stats_total_routes),
                                         Icons.Default.DirectionsCar
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        "Completadas vs Canceladas",
+                                        stringResource(R.string.stats_completed_vs_cancelled),
                                         fontSize = 14.sp,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
@@ -235,7 +237,7 @@ fun EstadisticasScreen(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        "$completadas completadas / $canceladas canceladas",
+                                        stringResource(R.string.stats_completed_cancelled_count, completadas, canceladas),
                                         fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                     )
@@ -245,7 +247,7 @@ fun EstadisticasScreen(
 
                         // Tiempo promedio por tipo
                         item {
-                            StatCard("Tiempo promedio por tipo de ruta") { // Parametros removidos
+                            StatCard(stringResource(R.string.stats_avg_time_title)) { // Parametros removidos
                                 estadisticas?.tiempo_promedio_por_tipo?.forEach { (tipo, tiempo) ->
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -258,8 +260,8 @@ fun EstadisticasScreen(
                                         )
 
                                         val tiempoFormateado = when {
-                                            tiempo >= 60 -> "${(tiempo / 60).toInt()} min ${(tiempo % 60).toInt()} seg"
-                                            else -> "${tiempo.toInt()} seg"
+                                            tiempo >= 60 -> stringResource(R.string.stats_time_format_min_sec, (tiempo / 60).toInt(), (tiempo % 60).toInt())
+                                            else -> stringResource(R.string.stats_time_format_sec, tiempo.toInt())
                                         }
 
                                         Text(
@@ -277,9 +279,9 @@ fun EstadisticasScreen(
                         // Ruta más usada
                         item {
                             val rutaMasUsada = estadisticas?.bandits?.maxByOrNull { it.total_usos }?.tipo_ruta ?: "N/A"
-                            StatCard("Ruta más usada") { // Parametros removidos
+                            StatCard(stringResource(R.string.stats_most_used_title)) { // Parametros removidos
                                 Text(
-                                    "Ruta: $rutaMasUsada",
+                                    stringResource(R.string.stats_route_label, rutaMasUsada),
                                     color = MaterialTheme.colorScheme.primary,
                                     fontSize = 16.sp
                                 )

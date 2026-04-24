@@ -232,11 +232,11 @@ fun AppNavigation(
                 val token = authViewModel.accessToken ?: ""
 
                 val mapViewModel: MapViewModel = viewModel(
-                    factory = MapViewModelFactory()
+                    factory = MapViewModelFactory(LocalContext.current)
                 )
 
                 val viewModel: UbicacionesViewModel = viewModel(
-                    factory = UbicacionesViewModelFactory(token)
+                    factory = UbicacionesViewModelFactory(LocalContext.current, token)
                 )
 
                 LaunchedEffect(id) {

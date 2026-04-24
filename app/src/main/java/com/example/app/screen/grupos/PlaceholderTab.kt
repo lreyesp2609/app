@@ -48,6 +48,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.models.GrupoResponse
 import com.example.app.screen.components.AppButton
 import com.example.app.viewmodel.GrupoState
@@ -93,11 +96,13 @@ fun CollaborativeGroupsScreen(
     notificationViewModel: NotificationViewModel, // 🔥 Ahora es REQUERIDO, no opcional
     viewModel: GrupoViewModel = viewModel(
         factory = GrupoViewModelFactory(
+            LocalContext.current,
             GrupoRepository(RetrofitClient.grupoService)
         )
     )
 ) {
     val grupoState by viewModel.grupoState.collectAsState()
+    val context = LocalContext.current
     var showContent by remember { mutableStateOf(false) }
     var showStats by remember { mutableStateOf(false) }
     var showJoinDialog by remember { mutableStateOf(false) }
@@ -131,7 +136,7 @@ fun CollaborativeGroupsScreen(
         // 🔥 Mostrar notificación si se creó un grupo
         if (grupoCreado?.value == true && !grupoMensaje?.value.isNullOrBlank()) {
             notificationViewModel.showSuccess(
-                message = grupoMensaje?.value ?: "Grupo creado exitosamente"
+                message = grupoMensaje?.value ?: context.getString(R.string.group_created_success)
             )
 
             // Limpiar los flags
@@ -186,13 +191,13 @@ fun CollaborativeGroupsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Group,
-                            contentDescription = "Grupos",
+                            contentDescription = stringResource(R.string.cd_groups),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(28.dp) // ✨ Reducido de 32dp a 28dp
                         )
                         Spacer(modifier = Modifier.width(8.dp)) // ✨ Reducido de 12dp a 8dp
                         Text(
-                            text = "Mis grupos",
+                            text = stringResource(R.string.groups_title),
                             fontSize = 22.sp, // ✨ Reducido de 24.sp a 22.sp
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
@@ -203,7 +208,7 @@ fun CollaborativeGroupsScreen(
 
                     // Botón principal más destacado
                     AppButton(
-                        text = "Crear grupo",
+                        text = stringResource(R.string.create_group),
                         icon = Icons.Default.GroupAdd,
                         onClick = { navController.navigate("create_group") },
                         modifier = Modifier
@@ -216,7 +221,7 @@ fun CollaborativeGroupsScreen(
 
                     // Botón secundario
                     AppButton(
-                        text = "Unirse con código",
+                        text = stringResource(R.string.join_with_code),
                         icon = Icons.Default.Login,
                         onClick = { showJoinDialog = true },
                         modifier = Modifier
@@ -251,7 +256,7 @@ fun CollaborativeGroupsScreen(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    "Cargando grupos...",
+                                    stringResource(R.string.loading_groups),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
@@ -309,11 +314,11 @@ fun CollaborativeGroupsScreen(
             onJoin = { codigo ->
                 when {
                     codigo.isBlank() -> {
-                        notificationViewModel.showError("Ingresa un código")
+                        notificationViewModel.showError(context.getString(R.string.enter_code_error))
                     }
 
                     codigo.length != 8 -> {
-                        notificationViewModel.showError("El código debe tener 8 caracteres")
+                        notificationViewModel.showError(context.getString(R.string.code_length_error))
                     }
 
                     else -> {
@@ -348,7 +353,7 @@ fun JoinGroupDialog(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Unirse a un grupo",
+                    text = stringResource(R.string.join_group_title),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -360,7 +365,7 @@ fun JoinGroupDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Ingresa el código de invitación del grupo",
+                    text = stringResource(R.string.join_group_description),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -372,8 +377,8 @@ fun JoinGroupDialog(
                     onValueChange = {
                         codigoInvitacion = it.uppercase().take(8)
                     },
-                    label = "Código de invitación",
-                    placeholder = "Ej: C6FB334B",
+                    label = stringResource(R.string.invitation_code_label),
+                    placeholder = stringResource(R.string.invitation_code_placeholder),
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Key,
@@ -399,7 +404,7 @@ fun JoinGroupDialog(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "El código debe tener 8 caracteres",
+                        text = stringResource(R.string.code_length_requirement),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -408,7 +413,7 @@ fun JoinGroupDialog(
         },
         confirmButton = {
             AppButton(
-                text = "Unirse",
+                text = stringResource(R.string.join_button),
                 onClick = { onJoin(codigoInvitacion) },
                 enabled = codigoInvitacion.length == 8,
                 modifier = Modifier.width(120.dp)
@@ -416,7 +421,7 @@ fun JoinGroupDialog(
         },
         dismissButton = {
             AppButton(
-                text = "Cancelar",
+                text = stringResource(R.string.cancel),
                 onClick = onDismiss,
                 outlined = true,
                 modifier = Modifier.width(120.dp)
@@ -602,7 +607,7 @@ fun GrupoCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Código copiado",
+                            text = stringResource(R.string.code_copied),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.inverseOnSurface,
                             fontWeight = FontWeight.Medium
@@ -652,7 +657,7 @@ fun EmptyGroupsMessage() {
         ) {
             Icon(
                 imageVector = Icons.Default.GroupOff,
-                contentDescription = "Sin grupos",
+                contentDescription = stringResource(R.string.cd_no_reminders),
                 tint = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.size(72.dp)
             )
@@ -661,7 +666,7 @@ fun EmptyGroupsMessage() {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "No tienes grupos",
+            text = stringResource(R.string.no_groups_title),
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -671,7 +676,7 @@ fun EmptyGroupsMessage() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Crea un grupo para compartir con personas de confianza",
+            text = stringResource(R.string.no_groups_description),
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,
@@ -705,7 +710,7 @@ fun EmptyGroupsMessage() {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "¿Qué puedes hacer?",
+                        text = stringResource(R.string.empty_state_help_title),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
@@ -715,24 +720,24 @@ fun EmptyGroupsMessage() {
                 // Características
                 GroupFeatureRow(
                     icon = Icons.Default.GroupAdd,
-                    title = "Crea grupos de confianza",
-                    description = "Comparte con amigos, familia o compañeros"
+                    title = stringResource(R.string.feature_groups_title),
+                    description = stringResource(R.string.feature_groups_desc)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 GroupFeatureRow(
                     icon = Icons.Default.Chat,
-                    title = "Chatea en tiempo real",
-                    description = "Comunícate al instante con tus contactos"
+                    title = stringResource(R.string.feature_chat_title),
+                    description = stringResource(R.string.feature_chat_desc)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 GroupFeatureRow(
                     icon = Icons.Default.Share,
-                    title = "Invita con códigos",
-                    description = "Comparte códigos de forma segura"
+                    title = stringResource(R.string.feature_invite_title),
+                    description = stringResource(R.string.feature_invite_desc)
                 )
             }
         }

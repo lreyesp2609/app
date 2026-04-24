@@ -11,6 +11,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.ui.theme.AppColors
 import kotlinx.coroutines.delay
 import androidx.compose.animation.core.Spring
@@ -104,13 +106,13 @@ fun SplashScreen(onTimeout: () -> Unit) {
             ) {
                 Icon(
                     imageVector = Icons.Default.LocationOn,
-                    contentDescription = "Ubicación",
+                    contentDescription = stringResource(R.string.cd_location),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(50.dp)
                 )
                 Icon(
                     imageVector = Icons.Default.AccessAlarm,
-                    contentDescription = "Alarma",
+                    contentDescription = stringResource(R.string.cd_alarm),
                     tint = accentColor,
                     modifier = Modifier
                         .size(20.dp)
@@ -129,7 +131,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
                 )
             ) {
                 Text(
-                    text = "RememberGo",
+                    text = stringResource(R.string.app_name),
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary

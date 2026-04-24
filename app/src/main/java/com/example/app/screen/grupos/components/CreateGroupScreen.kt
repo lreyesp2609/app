@@ -38,8 +38,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.example.app.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -70,7 +73,7 @@ fun CreateGroupScreen(
     notificationViewModel: NotificationViewModel // 🔥 SIN valor por defecto
 ) {
     val viewModel: GrupoViewModel = viewModel(
-        factory = GrupoViewModelFactory(GrupoRepository(RetrofitClient.grupoService))
+        factory = GrupoViewModelFactory(LocalContext.current, GrupoRepository(RetrofitClient.grupoService))
     )
 
     val grupoState by viewModel.grupoState.collectAsState()
@@ -134,7 +137,7 @@ fun CreateGroupScreen(
                 AppBackButton(navController = navController)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Crear Grupo",
+                    text = stringResource(R.string.create_group_title),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -176,7 +179,7 @@ fun CreateGroupScreen(
                     modifier = Modifier.padding(20.dp)
                 ) {
                     Text(
-                        text = "Nombre del grupo",
+                        text = stringResource(R.string.group_name_label),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
@@ -185,8 +188,8 @@ fun CreateGroupScreen(
                     AppTextField(
                         value = groupName,
                         onValueChange = { groupName = it },
-                        label = "Nombre",
-                        placeholder = "Ej: Familia, Amigos, Trabajo...",
+                        label = stringResource(R.string.group_name_field_label),
+                        placeholder = stringResource(R.string.group_name_placeholder),
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Group,
@@ -200,7 +203,7 @@ fun CreateGroupScreen(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     Text(
-                        text = "Descripción (opcional)",
+                        text = stringResource(R.string.group_description_label),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
@@ -209,8 +212,8 @@ fun CreateGroupScreen(
                     AppTextField(
                         value = groupDescription,
                         onValueChange = { groupDescription = it },
-                        label = "Descripción",
-                        placeholder = "Describe el propósito del grupo...",
+                        label = stringResource(R.string.group_description_field_label),
+                        placeholder = stringResource(R.string.group_description_placeholder),
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Description,
@@ -227,15 +230,15 @@ fun CreateGroupScreen(
 
             // Botón crear
             AppButton(
-                text = if (grupoState is GrupoState.Loading) "Creando..." else "Crear Grupo",
+                text = if (grupoState is GrupoState.Loading) stringResource(R.string.creating_group) else stringResource(R.string.create_group),
                 icon = Icons.Default.Check,
                 onClick = {
                     when {
                         groupName.isBlank() -> {
-                            notificationViewModel.showError("El nombre del grupo no puede estar vacío")
+                            notificationViewModel.showError(R.string.error_empty_group_name)
                         }
                         grupoState is GrupoState.Loading -> {
-                            notificationViewModel.showWarning("Espera, creando grupo...")
+                            notificationViewModel.showWarning(R.string.warning_creating_group)
                         }
                         else -> {
                             val grupoCreate = GrupoCreate(
@@ -271,7 +274,7 @@ fun CreateGroupScreen(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Podrás invitar miembros después de crear el grupo",
+                        text = stringResource(R.string.create_group_info),
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         lineHeight = 18.sp

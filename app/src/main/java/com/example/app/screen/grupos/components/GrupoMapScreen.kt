@@ -67,7 +67,7 @@ fun GrupoMapScreen(
     val sessionManager = SessionManager.getInstance(context)
     val currentUser = sessionManager.getUser()
     val currentUserId = currentUser?.id ?: 0
-    val currentUserName = currentUser?.nombre ?: "Tú"
+    val currentUserName = currentUser?.nombre ?: context.getString(com.example.app.R.string.map_you)
 
     val locationViewModel: LocationGrupoViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
@@ -90,7 +90,7 @@ fun GrupoMapScreen(
 
     LaunchedEffect(grupoId) {
         Log.d("ReminderMapScreen", "🚀 INICIANDO RASTREO AUTOMÁTICO")
-        val grupoNombre = "Grupo $grupoId"
+        val grupoNombre = context.getString(com.example.app.R.string.map_group_name_prefix, grupoId)
         LocationTrackingService.startTracking(
             context = context,
             grupoId = grupoId,
@@ -176,7 +176,7 @@ fun GrupoMapScreen(
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Obteniendo ubicación...",
+                        text = context.getString(com.example.app.R.string.map_getting_location),
                         color = MaterialTheme.colorScheme.onBackground
                     )
                 }

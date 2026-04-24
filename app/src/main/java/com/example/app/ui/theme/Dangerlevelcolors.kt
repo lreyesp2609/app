@@ -1,6 +1,8 @@
 package com.example.app.ui.theme
 
+import android.content.Context
 import androidx.compose.ui.graphics.Color
+import com.example.app.R
 
 /**
  * Colores para los 3 niveles de peligro:
@@ -45,11 +47,11 @@ object DangerLevelColors {
     }
 
     /** Nombre descriptivo del nivel */
-    fun getNombreNivel(nivel: Int): String = when (nivel) {
-        1    -> "Bajo"
-        2    -> "Medio"
-        3    -> "Alto"
-        else -> "Alto"
+    fun getNombreNivel(nivel: Int, context: Context): String = when (nivel) {
+        1    -> context.getString(R.string.risk_low)
+        2    -> context.getString(R.string.risk_medium)
+        3    -> context.getString(R.string.risk_high)
+        else -> context.getString(R.string.risk_high)
     }
 
     /** Emoji / indicador visual del nivel */

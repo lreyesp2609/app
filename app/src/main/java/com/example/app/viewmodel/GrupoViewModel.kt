@@ -1,5 +1,6 @@
 package com.example.app.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -20,7 +21,10 @@ sealed class GrupoState {
     data class Error(val message: String) : GrupoState()
 }
 
-class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
+class GrupoViewModel(
+    private val context: Context,
+    private val repository: GrupoRepository
+) : ViewModel() {
 
     private val _grupoState = MutableStateFlow<GrupoState>(GrupoState.Idle)
     val grupoState: StateFlow<GrupoState> = _grupoState
@@ -35,22 +39,22 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
                     response.isSuccessful && response.body() != null -> {
                         _grupoState.value = GrupoState.Success(
                             grupo = response.body()!!,
-                            message = "¡Grupo creado exitosamente!"
+                            message = context.getString(com.example.app.R.string.group_created_success)
                         )
                     }
                     response.code() == 400 -> {
                         _grupoState.value = GrupoState.Error(
-                            "Ya existe un grupo con ese nombre. Intenta con otro nombre."
+                            context.getString(com.example.app.R.string.error_group_name_exists)
                         )
                     }
                     response.code() == 401 -> {
                         _grupoState.value = GrupoState.Error(
-                            "Tu sesión ha expirado. Por favor, inicia sesión nuevamente."
+                            context.getString(com.example.app.R.string.error_session_expired)
                         )
                     }
                     response.code() == 500 -> {
                         _grupoState.value = GrupoState.Error(
-                            "Error en el servidor. Intenta de nuevo más tarde."
+                            context.getString(com.example.app.R.string.error_server_internal)
                         )
                     }
                     else -> {
@@ -63,9 +67,9 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
             } catch (e: Exception) {
                 _grupoState.value = GrupoState.Error(
                     when (e) {
-                        is java.net.UnknownHostException -> "Sin conexión a internet. Verifica tu conexión."
-                        is java.net.SocketTimeoutException -> "La solicitud tardó demasiado. Intenta de nuevo."
-                        else -> e.localizedMessage ?: "Error desconocido al crear el grupo"
+                        is java.net.UnknownHostException -> context.getString(com.example.app.R.string.error_no_internet)
+                        is java.net.SocketTimeoutException -> context.getString(com.example.app.R.string.error_timeout)
+                        else -> e.localizedMessage ?: context.getString(com.example.app.R.string.error_unknown_create_group)
                     }
                 )
             }
@@ -86,10 +90,14 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
                 if (response.isSuccessful && response.body() != null) {
                     _grupoState.value = GrupoState.ListSuccess(response.body()!!)
                 } else {
-                    _grupoState.value = GrupoState.Error("Error al obtener grupos: ${response.message()}")
+                    _grupoState.value = GrupoState.Error(
+                        context.getString(com.example.app.R.string.error_getting_groups, response.message())
+                    )
                 }
             } catch (e: Exception) {
-                _grupoState.value = GrupoState.Error("Error: ${e.localizedMessage}")
+                _grupoState.value = GrupoState.Error(
+                    context.getString(com.example.app.R.string.error_generic_message, e.localizedMessage)
+                )
             }
         }
     }
@@ -107,35 +115,35 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
                     response.isSuccessful && response.body() != null -> {
                         _grupoState.value = GrupoState.JoinSuccess(
                             grupo = response.body()!!,
-                            message = "¡Te uniste al grupo exitosamente!"
+                            message = context.getString(com.example.app.R.string.join_group_success)
                         )
                     }
                     response.code() == 404 -> {
                         _grupoState.value = GrupoState.Error(
-                            "El código de invitación no es válido o el grupo no existe."
+                            context.getString(com.example.app.R.string.error_invalid_code)
                         )
                     }
                     response.code() == 400 -> {
                         val errorBody = response.errorBody()?.string()
                         val errorMessage = when {
                             errorBody?.contains("Ya perteneces") == true ->
-                                "Ya perteneces a este grupo."
+                                context.getString(com.example.app.R.string.error_already_in_group)
                             errorBody?.contains("creador") == true ->
-                                "Eres el creador de este grupo, ya perteneces a él."
+                                context.getString(com.example.app.R.string.error_creator_already_in_group)
                             else ->
-                                errorBody ?: "Error al unirse al grupo."
+                                errorBody ?: context.getString(com.example.app.R.string.error_join_group)
                         }
                         _grupoState.value = GrupoState.Error(errorMessage)
                     }
                     response.code() == 401 -> {
                         _grupoState.value = GrupoState.Error(
-                            "Tu sesión ha expirado. Inicia sesión nuevamente."
+                            context.getString(com.example.app.R.string.error_session_expired_join)
                         )
                         shouldReloadList = false
                     }
                     response.code() == 500 -> {
                         _grupoState.value = GrupoState.Error(
-                            "Error del servidor. Intenta más tarde."
+                            context.getString(com.example.app.R.string.error_server_internal_short)
                         )
                     }
                     else -> {
@@ -148,9 +156,9 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
             } catch (e: Exception) {
                 _grupoState.value = GrupoState.Error(
                     when (e) {
-                        is java.net.UnknownHostException -> "Sin conexión a internet. Verifica tu red."
-                        is java.net.SocketTimeoutException -> "La solicitud tardó demasiado. Intenta de nuevo."
-                        else -> e.localizedMessage ?: "Error desconocido al unirse al grupo."
+                        is java.net.UnknownHostException -> context.getString(com.example.app.R.string.error_no_internet_join)
+                        is java.net.SocketTimeoutException -> context.getString(com.example.app.R.string.error_timeout_join)
+                        else -> e.localizedMessage ?: context.getString(com.example.app.R.string.error_unknown_join)
                     }
                 )
             }
@@ -175,12 +183,12 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
             try {
                 val response = repository.salirDelGrupo(token, grupoId)
                 if (response.isSuccessful) {
-                    _mensajeSalida.value = response.body()?.message ?: "Has salido del grupo"
+                    _mensajeSalida.value = response.body()?.message ?: context.getString(com.example.app.R.string.exit_group_success_msg)
                 } else {
-                    _mensajeSalida.value = "Error: ${response.errorBody()?.string()}"
+                    _mensajeSalida.value = context.getString(com.example.app.R.string.error_exit_group, response.errorBody()?.string())
                 }
             } catch (e: Exception) {
-                _mensajeSalida.value = "Error de conexión: ${e.localizedMessage}"
+                _mensajeSalida.value = context.getString(com.example.app.R.string.error_connection_exit_group, e.localizedMessage)
             }
         }
     }
@@ -197,12 +205,12 @@ class GrupoViewModel(private val repository: GrupoRepository) : ViewModel() {
             try {
                 val response = repository.eliminarGrupo(token, grupoId)
                 if (response.isSuccessful) {
-                    _mensajeEliminacion.value = response.body()?.message ?: "Grupo eliminado exitosamente"
+                    _mensajeEliminacion.value = response.body()?.message ?: context.getString(com.example.app.R.string.delete_group_success_msg)
                 } else {
-                    _mensajeEliminacion.value = "Error al eliminar grupo: ${response.errorBody()?.string()}"
+                    _mensajeEliminacion.value = context.getString(com.example.app.R.string.error_delete_group, response.errorBody()?.string())
                 }
             } catch (e: Exception) {
-                _mensajeEliminacion.value = "Error de conexión: ${e.localizedMessage}"
+                _mensajeEliminacion.value = context.getString(com.example.app.R.string.error_connection_delete_group, e.localizedMessage)
             }
         }
     }

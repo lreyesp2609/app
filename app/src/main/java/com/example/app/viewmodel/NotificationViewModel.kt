@@ -10,10 +10,26 @@ class NotificationViewModel : ViewModel() {
     private val _notificationState = MutableStateFlow<NotificationState?>(null)
     val notificationState: StateFlow<NotificationState?> = _notificationState.asStateFlow()
 
+    fun showSuccess(messageRes: Int, duration: Long = 3000L) {
+        _notificationState.value = NotificationState(
+            messageRes = messageRes,
+            type = NotificationType.SUCCESS,
+            duration = duration
+        )
+    }
+
     fun showSuccess(message: String, duration: Long = 3000L) {
         _notificationState.value = NotificationState(
             message = message,
             type = NotificationType.SUCCESS,
+            duration = duration
+        )
+    }
+
+    fun showError(messageRes: Int, duration: Long = 4000L) {
+        _notificationState.value = NotificationState(
+            messageRes = messageRes,
+            type = NotificationType.ERROR,
             duration = duration
         )
     }
@@ -26,10 +42,26 @@ class NotificationViewModel : ViewModel() {
         )
     }
 
+    fun showInfo(messageRes: Int, duration: Long = 3000L) {
+        _notificationState.value = NotificationState(
+            messageRes = messageRes,
+            type = NotificationType.INFO,
+            duration = duration
+        )
+    }
+
     fun showInfo(message: String, duration: Long = 3000L) {
         _notificationState.value = NotificationState(
             message = message,
             type = NotificationType.INFO,
+            duration = duration
+        )
+    }
+
+    fun showWarning(messageRes: Int, duration: Long = 3500L) {
+        _notificationState.value = NotificationState(
+            messageRes = messageRes,
+            type = NotificationType.WARNING,
             duration = duration
         )
     }
@@ -48,7 +80,8 @@ class NotificationViewModel : ViewModel() {
 }
 
 data class NotificationState(
-    val message: String,
+    val message: String? = null,
+    val messageRes: Int? = null,
     val type: NotificationType,
     val duration: Long
 )

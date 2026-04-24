@@ -17,6 +17,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.viewmodel.AuthViewModel
 
 @Composable
@@ -28,7 +30,7 @@ fun NoUserContent(authViewModel: AuthViewModel) {
         modifier = Modifier.padding(16.dp)
     ) {
         Text(
-            text = "No se encontró información del usuario",
+            text = stringResource(R.string.no_user_info),
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyMedium
@@ -43,7 +45,7 @@ fun NoUserContent(authViewModel: AuthViewModel) {
             )
         ) {
             Text(
-                "Cerrar sesión",
+                stringResource(R.string.settings_logout),
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }

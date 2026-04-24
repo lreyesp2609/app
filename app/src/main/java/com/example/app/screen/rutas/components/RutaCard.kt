@@ -18,6 +18,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.models.RouteAlternative
 import com.example.app.models.ZonaPublicaDetectada
 import kotlinx.coroutines.delay
@@ -60,7 +62,7 @@ fun RutaCard(
                     // Badge ML
                     if (route.isRecommended) {
                         Badge(containerColor = Color(0xFF4CAF50)) {
-                            Text("🤖 ML", fontSize = 10.sp, color = Color.White)
+                            Text(stringResource(R.string.route_ml_badge), fontSize = 10.sp, color = Color.White)
                         }
                     }
 
@@ -70,7 +72,7 @@ fun RutaCard(
                             containerColor = if (esSegura) Color(0xFF4CAF50) else Color(0xFFF44336)
                         ) {
                             Text(
-                                if (esSegura) "SEGURA" else "RIESGO",
+                                if (esSegura) stringResource(R.string.route_safe_badge) else stringResource(R.string.route_risk_badge),
                                 fontSize = 10.sp,
                                 color = Color.White
                             )
@@ -83,8 +85,8 @@ fun RutaCard(
 
             // DISTANCIA Y DURACIÓN
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("📏 ${(route.distance / 1000).roundToInt()} km", fontSize = 14.sp)
-                Text("⏱ ${(route.duration / 60).toInt()} min", fontSize = 14.sp)
+                Text(stringResource(R.string.route_distance_km_format, (route.distance / 1000).roundToInt()), fontSize = 14.sp)
+                Text(stringResource(R.string.route_duration_min_format, (route.duration / 60).toInt()), fontSize = 14.sp)
             }
 
             // MENSAJE DE SEGURIDAD (zonas PROPIAS)
@@ -103,7 +105,7 @@ fun RutaCard(
                 if (zonas.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "${zonas.size} zona(s) de riesgo detectada(s)",
+                        stringResource(R.string.route_danger_detected, zonas.size),
                         fontSize = 11.sp,
                         color = Color.Gray
                     )

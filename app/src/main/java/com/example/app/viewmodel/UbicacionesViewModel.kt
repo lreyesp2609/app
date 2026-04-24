@@ -1,5 +1,6 @@
 package com.example.app.viewmodel
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -10,7 +11,10 @@ import com.example.app.models.UbicacionUsuarioResponse
 import com.example.app.repository.UbicacionesRepository
 import kotlinx.coroutines.launch
 
-class UbicacionesViewModel(private val token: String) : ViewModel() {
+class UbicacionesViewModel(
+    private val context: Context,
+    private val token: String
+) : ViewModel() {
 
     private val repository = UbicacionesRepository()
 
@@ -44,16 +48,16 @@ class UbicacionesViewModel(private val token: String) : ViewModel() {
 
                     val error = when {
                         exception.message?.contains("LOCATION_NAME_ALREADY_EXISTS") == true ->
-                            "Ya tienes una ubicación con este nombre"
+                            context.getString(com.example.app.R.string.error_location_name_exists)
 
                         exception.message?.contains("NETWORK_ERROR") == true ->
-                            "Error de conexión. Verifica tu internet"
+                            context.getString(com.example.app.R.string.error_network_connection)
 
                         exception.message?.contains("HTTP_ERROR") == true ->
-                            "Error de comunicación con el servidor"
+                            context.getString(com.example.app.R.string.error_server_communication)
 
                         else ->
-                            "Error al crear la ubicación"
+                            context.getString(com.example.app.R.string.error_create_location)
                     }
 
                     callback(false, error)
@@ -74,7 +78,7 @@ class UbicacionesViewModel(private val token: String) : ViewModel() {
                 },
                 onFailure = {
                     isLoading = false
-                    errorMessage = "No se pudieron cargar las ubicaciones"
+                    errorMessage = context.getString(com.example.app.R.string.error_load_locations)
                 }
             )
         }
@@ -92,7 +96,7 @@ class UbicacionesViewModel(private val token: String) : ViewModel() {
                 },
                 onFailure = {
                     isLoading = false
-                    errorMessage = "No se pudo cargar la ubicación solicitada"
+                    errorMessage = context.getString(com.example.app.R.string.error_load_location_id)
                 }
             )
         }
@@ -110,20 +114,20 @@ class UbicacionesViewModel(private val token: String) : ViewModel() {
                     ubicaciones = ubicaciones.filter { it.id != id }
 
                     isLoading = false
-                    notificationViewModel.showSuccess("Ubicación eliminada correctamente")
+                    notificationViewModel.showSuccess(com.example.app.R.string.location_deleted_success_msg)
                 },
                 onFailure = { exception ->
                     isLoading = false
 
                     val error = when {
                         exception.message?.contains("NETWORK_ERROR") == true ->
-                            "Error de conexión. Verifica tu internet"
+                            context.getString(com.example.app.R.string.error_network_connection)
 
                         exception.message?.contains("HTTP_ERROR_404") == true ->
-                            "La ubicación no existe o ya fue eliminada"
+                            context.getString(com.example.app.R.string.error_location_not_found)
 
                         else ->
-                            "No se pudo eliminar la ubicación"
+                            context.getString(com.example.app.R.string.error_delete_location)
                     }
 
                     notificationViewModel.showError(error)

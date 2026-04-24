@@ -1,0 +1,475 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RememberGo</string>
+    <string name="notification_channel_name">Recordatorios RememberGo</string>
+    <string name="notification_channel_description">Notificaciones de recordatorios basados en ubicación</string>
+
+    <!-- Welcome Screen -->
+    <string name="welcome_user">¡Bienvenido, %1$s!</string>
+    <string name="welcome_back_message">Nos alegra tenerte de vuelta.\nExplora las nuevas rutas y disfruta tu experiencia.</string>
+    <string name="default_user_name">Usuario</string>
+    <string name="cd_user_icon">Icono de usuario</string>
+
+    <!-- Reminders Screen -->
+    <string name="reminders_title">Recordatorios</string>
+    <string name="create_reminder">Crear recordatorio</string>
+    <string name="loading_reminders">Cargando recordatorios...</string>
+    <string name="no_reminders_title">No tienes recordatorios</string>
+    <string name="no_reminders_description">Crea tu primer recordatorio tocando el botón de arriba</string>
+    <string name="cd_no_reminders">Sin recordatorios</string>
+    <string name="empty_state_help_title">¿Qué puedes hacer?</string>
+
+    <string name="feature_location_title">Recordatorios por ubicación</string>
+    <string name="feature_location_desc">Recibe alertas al entrar o salir de un lugar</string>
+    <string name="feature_datetime_title">Alertas por fecha y hora</string>
+    <string name="feature_datetime_desc">Programa recordatorios en momentos específicos</string>
+    <string name="feature_map_title">Selección en mapa</string>
+    <string name="feature_map_desc">Elige ubicaciones fácilmente</string>
+
+    <string name="stat_total">Total</string>
+    <string name="stat_location">Ubicación</string>
+    <string name="stat_datetime">Fecha/Hora</string>
+
+    <string name="delete_reminder_title">Eliminar recordatorio</string>
+    <string name="delete_reminder_confirmation">¿Estás seguro de que deseas eliminar \"%1$s\"?</string>
+    <string name="delete">Eliminar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="edit">Editar</string>
+    <string name="vibration">Vibración</string>
+    <string name="sound">Sonido</string>
+
+    <string name="type_location">Ubicación</string>
+    <string name="type_datetime">Fecha y hora</string>
+    <string name="type_both">Ubicación y fecha</string>
+
+    <string name="trigger_enter">Al entrar</string>
+    <string name="trigger_exit">Al salir</string>
+    <string name="trigger_both">Al entrar o salir</string>
+    <string name="radius_label">Radio: %1$dm</string>
+    <string name="collapse">Contraer</string>
+    <string name="expand">Expandir</string>
+    <!-- Auth Screens -->
+    <string name="login_title">Inicia sesión para continuar</string>
+    <string name="label_email">Correo electrónico</string>
+    <string name="placeholder_email">tu@email.com</string>
+    <string name="label_password">Contraseña</string>
+    <string name="placeholder_password">Tu contraseña</string>
+    <string name="logging_in">Iniciando sesión...</string>
+    <string name="login_button">Iniciar sesión</string>
+    <string name="error_empty_fields">Por favor completa todos los campos</string>
+    <string name="error_empty_email">Ingresa tu correo electrónico</string>
+    <string name="error_empty_password">Ingresa tu contraseña</string>
+    <string name="login_success">¡Bienvenido de nuevo!</string>
+    <string name="create_new_account">Crear cuenta nueva</string>
+    <string name="cd_location">Ubicación</string>
+    <string name="cd_alarm">Alarma</string>
+
+    <string name="register_title">Crea tu cuenta</string>
+    <string name="register_subtitle">Completa la información para comenzar</string>
+    <string name="label_first_name">Nombre</string>
+    <string name="placeholder_first_name">Tu nombre</string>
+    <string name="label_last_name">Apellido</string>
+    <string name="placeholder_last_name">Tu apellido</string>
+    <string name="placeholder_password_min">Mínimo 6 caracteres</string>
+    <string name="label_confirm_password">Confirmar contraseña</string>
+    <string name="placeholder_confirm_password">Repite tu contraseña</string>
+    <string name="error_passwords_dont_match">Las contraseñas no coinciden</string>
+    <string name="creating_account">Creando cuenta...</string>
+    <string name="register_button">Crear cuenta</string>
+    <string name="error_fill_all_fields">Completa todos los campos</string>
+    <string name="error_password_too_short">La contraseña debe tener al menos 6 caracteres</string>
+    <string name="register_success">¡Cuenta creada! Iniciando sesión...</string>
+    <string name="close">Cerrar</string>
+
+    <!-- Battery Optimization -->
+    <string name="battery_opt_success">¡Perfecto! RememberGo funcionará mejor en segundo plano</string>
+    <string name="battery_opt_rationale">Recomendamos activar esta opción para que los recordatorios funcionen mejor</string>
+    <string name="battery_opt_error">No se pudo solicitar exclusión de batería</string>
+
+    <!-- Permission Messages -->
+    <string name="notifications_enabled">Notificaciones activadas</string>
+    <string name="profile_updated_success">Perfil actualizado</string>
+
+    <!-- Permission Dialog -->
+    <string name="notifications_disabled_title">Notificaciones desactivadas</string>
+    <string name="location_disabled_title">Ubicación desactivada</string>
+    <string name="notifications_disabled_message">Para recibir recordatorios, necesitas activar las notificaciones en la configuración de tu dispositivo.\n\nVe a: Ajustes → Apps → RememberGo → Notificaciones</string>
+    <string name="location_disabled_message">Para usar recordatorios basados en ubicación, necesitas activar los permisos de ubicación.\n\nVe a: Ajustes → Apps → RememberGo → Permisos → Ubicación</string>
+    <string name="go_to_settings">Ir a ajustes</string>
+    <string name="not_now">Ahora no</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Inicio</string>
+    <string name="nav_routes">Rutas alternas</string>
+    <string name="nav_reminders">Recordatorios</string>
+    <string name="nav_groups">Grupos colaborativos</string>
+    <string name="nav_settings">Configuración</string>
+
+    <!-- Groups Screen -->
+    <string name="groups_title">Mis grupos</string>
+    <string name="create_group">Crear grupo</string>
+    <string name="join_with_code">Unirse con código</string>
+    <string name="loading_groups">Cargando grupos...</string>
+    <string name="no_groups_title">No tienes grupos</string>
+    <string name="no_groups_description">Crea un grupo para compartir con personas de confianza</string>
+    <string name="group_created_success">Grupo creado exitosamente</string>
+    <string name="join_group_title">Unirse a un grupo</string>
+    <string name="join_group_description">Ingresa el código de invitación del grupo</string>
+    <string name="invitation_code_label">Código de invitación</string>
+    <string name="invitation_code_placeholder">Ej: C6FB334B</string>
+    <string name="code_length_requirement">El código debe tener 8 caracteres</string>
+    <string name="join_button">Unirse</string>
+    <string name="enter_code_error">Ingresa un código</string>
+    <string name="code_length_error">El código debe tener 8 caracteres</string>
+    <string name="code_copied">Código copiado</string>
+
+    <string name="map_group_name_prefix">Grupo %1$d</string>
+    <string name="map_you">Tú</string>
+
+    <string name="feature_groups_title">Crea grupos de confianza</string>
+    <string name="feature_groups_desc">Comparte con amigos, familia o compañeros</string>
+    <string name="feature_chat_title">Chatea en tiempo real</string>
+    <string name="feature_chat_desc">Comunícate al instante con tus contactos</string>
+    <string name="feature_invite_title">Invita con códigos</string>
+    <string name="feature_invite_desc">Comparte códigos de forma segura</string>
+
+    <!-- Create Group Screen -->
+    <string name="create_group_title">Crear Grupo</string>
+    <string name="group_name_label">Nombre del grupo</string>
+    <string name="group_name_field_label">Nombre</string>
+    <string name="group_name_placeholder">Ej: Familia, Amigos, Trabajo...</string>
+    <string name="group_description_label">Descripción (opcional)</string>
+    <string name="group_description_field_label">Descripción</string>
+    <string name="group_description_placeholder">Describe el propósito del grupo...</string>
+    <string name="creating_group">Creando...</string>
+    <string name="error_empty_group_name">El nombre del grupo no puede estar vacío</string>
+    <string name="warning_creating_group">Espera, creando grupo...</string>
+    <string name="create_group_info">Podrás invitar miembros después de crear el grupo</string>
+
+    <!-- Chat Screen -->
+    <string name="chat_type_message">Escribe un mensaje...</string>
+    <string name="chat_no_messages">No hay mensajes aún.\n¡Sé el primero en escribir! 💬</string>
+    <string name="chat_location_shared">📍 Ubicación compartida: %1$s</string>
+    <string name="chat_error_sending">No se pudo enviar. Toca para reintentar.</string>
+    <string name="chat_header_today">Hoy</string>
+    <string name="chat_header_yesterday">Ayer</string>
+    <string name="cd_open_map">Abrir mapa</string>
+    <string name="cd_send">Enviar</string>
+    <string name="cd_emoji">Emoji</string>
+    <string name="cd_back">Atrás</string>
+    <string name="cd_error_sending">Error al enviar</string>
+    <string name="cd_read_by">Leído por %1$s</string>
+    <string name="cd_delivered">Entregado</string>
+    <string name="cd_go_to_map">Ir al mapa</string>
+    <string name="cd_back_to_chat">Volver al chat</string>
+
+    <string name="cd_chat">Chat</string>
+    <string name="cd_map">Mapa</string>
+
+    <string name="chat_header_today_label">Hoy</string>
+    <string name="chat_header_yesterday_label">Ayer</string>
+
+    <!-- Group Detail Screen -->
+    <string name="group_info_title">Información del grupo</string>
+    <string name="group_id_label">Grupo #%1$d</string>
+    <string name="group_option_participants">Participantes</string>
+    <string name="group_option_participants_sub">Ver todos los miembros del grupo</string>
+    <string name="group_option_invite">Invitar personas</string>
+    <string name="group_option_invite_sub">Comparte el código o link del grupo</string>
+    <string name="group_option_delete">Eliminar grupo</string>
+    <string name="group_option_delete_sub">Esta acción no se puede deshacer</string>
+    <string name="group_option_exit">Salir del grupo</string>
+    <string name="group_option_exit_sub">Ya no recibirás mensajes de este grupo</string>
+    <string name="delete_group_dialog_title">¿Eliminar grupo?</string>
+    <string name="delete_group_dialog_message">Esta acción eliminará el grupo \"%1$s\" permanentemente y no se puede deshacer. Todos los miembros perderán el acceso.</string>
+    <string name="exit_group_success">Saliste del grupo</string>
+    <string name="cd_sent">Enviado</string>
+    <string name="group_deleted_success">Grupo eliminado exitosamente</string>
+    <string name="delete_group_success">Grupo eliminado exitosamente</string>
+    <string name="group_exit_success">Saliste del grupo</string>
+
+    <!-- Participants Screen -->
+    <string name="participants_empty">No hay participantes</string>
+    <string name="participants_count">%1$d participantes</string>
+    <string name="you">Tú</string>
+    <string name="role_creator">Creador</string>
+    <string name="role_admin">Administrador</string>
+    <string name="role_moderator">Moderador</string>
+    <string name="role_member">Miembro</string>
+    <string name="status_inactive">• Inactivo</string>
+
+    <!-- Invitation Dialog -->
+    <string name="invite_to_group">Invitar a %1$s</string>
+    <string name="invite_dialog_desc">Comparte este código para que otros se unan</string>
+    <string name="label_code">CÓDIGO</string>
+    <string name="share_message">¡Únete a mi grupo \"%1$s\"! 🎉\n\nCódigo de invitación: %2$s\n\nAbre la app e ingresa este código para unirte.</string>
+    <string name="share_chooser_title">Compartir código</string>
+    <string name="share_button">Compartir por…</string>
+
+    <string name="cd_groups">Grupos</string>
+
+    <!-- Routes Screen -->
+    <string name="routes_title">Mis Destinos</string>
+    <string name="new_destination">Nuevo destino</string>
+    <string name="zones">Zonas</string>
+    <string name="loading_destinations">Cargando destinos...</string>
+    <string name="no_destinations_title">No tienes destinos guardados</string>
+    <string name="no_destinations_description">Agrega tus lugares favoritos para generar rutas rápidamente</string>
+    <string name="destinations_count">Mis destinos (%1$d)</string>
+
+    <string name="feature_save_destinations_title">Guarda tus destinos frecuentes</string>
+    <string name="feature_save_destinations_desc">Accede rápidamente a tus lugares favoritos</string>
+    <string name="feature_route_options_title">Recibe 3 opciones de ruta</string>
+    <string name="feature_route_options_desc">La IA te ayuda a variar tus trayectos habituales</string>
+    <string name="feature_stats_title">Consulta tus estadísticas</string>
+    <string name="feature_stats_desc">Revisa el historial de tus viajes</string>
+
+    <string name="generate_route">Generar ruta</string>
+    <string name="data">Datos</string>
+    <string name="delete_destination_title">¿Eliminar destino?</string>
+    <string name="delete_destination_confirmation">Se eliminará \"%1$s\" y todo su historial de viajes. Esta acción no se puede deshacer.</string>
+
+    <string name="cd_routes">Rutas alternas</string>
+
+    <!-- Map Screen (Routes) -->
+    <string name="map_search_success">📍 Ubicación encontrada</string>
+    <string name="map_hide_info">Ocultar info</string>
+    <string name="map_show_info">Mostrar info</string>
+    <string name="map_zones_visible">Zonas peligrosas visibles</string>
+    <string name="map_zones_hidden">Zonas peligrosas ocultas</string>
+    <string name="map_selected_location">Ubicación seleccionada</string>
+    <string name="map_naming_destination">Nombra este destino</string>
+    <string name="map_destination_name_label">Nombre del destino</string>
+    <string name="map_destination_placeholder">ej. Casa, Trabajo, Gimnasio...</string>
+    <string name="map_characters_count">%1$d/100 caracteres</string>
+    <string name="map_save_destination">Guardar destino</string>
+    <string name="map_select_location">Selecciona una ubicación</string>
+    <string name="generic_error">Error: %1$s</string>
+    <string name="map_destination_saved">Destino guardado correctamente</string>
+    <string name="map_save_error">Error guardando el destino</string>
+    <string name="map_getting_location">Obteniendo ubicación...</string>
+    <string name="map_getting_location_long">Esto puede tardar unos segundos</string>
+    <string name="finish">Finalizar</string>
+    <string name="my_zones_title">Zonas peligrosas</string>
+    <string name="zones_loaded_success">%1$d zona(s) cargada(s)</string>
+    <string name="error_loading_zones">Error al cargar zonas peligrosas</string>
+    <string name="delete_zone_title">¿Eliminar zona?</string>
+    <string name="delete_zone_confirmation">Estás a punto de eliminar:</string>
+    <string name="cannot_be_undone_warning">Esta acción no se puede deshacer.</string>
+    <string name="error_zone_no_id">Error: Zona sin ID</string>
+    <string name="zone_deleted_success">Zona eliminada correctamente</string>
+    <string name="registered_zones_title">Zonas registradas</string>
+    <string name="zones_count_label">%1$d zona(s)</string>
+    <string name="no_zones_registered">No hay zonas registradas</string>
+    <string name="long_press_map_to_add">Mantén presionado el mapa para agregar</string>
+    <string name="danger_zone_label">Zona peligrosa</string>
+    <string name="radius_label_simple">Radio</string>
+    <string name="meters_unit">metros</string>
+    <string name="risk_level_label_simple">Nivel de peligro</string>
+    <string name="risk_level_format">%1$s (nivel %2$d/3)</string>
+    <string name="coordinates_label">Coordenadas</string>
+    <string name="delete_zone_button">Eliminar zona</string>
+    <string name="suggested_zones_nearby">Zonas sugeridas cerca</string>
+    <string name="zones_reported_by_others">%1$d zona(s) reportada(s) por otros usuarios</string>
+    <string name="view_suggestions">Ver sugerencias</string>
+    <string name="zone_created_success">Zona creada: %1$s</string>
+    <string name="error_creating_zone">Error al crear zona: %1$s</string>
+    <string name="map_location_error">Error de ubicación: %1$s</string>
+
+    <!-- Statistics Screen -->
+    <string name="stats_loading">Cargando estadísticas...</string>
+    <string name="stats_retry">Reintentar</string>
+    <string name="stats_title_label">Estadísticas</string>
+    <string name="stats_summary_title">Resumen General</string>
+    <string name="stats_total_routes">Total de rutas</string>
+    <string name="stats_completed_vs_cancelled">Completadas vs Canceladas</string>
+    <string name="stats_completed_cancelled_count">%1$d completadas / %2$d canceladas</string>
+    <string name="stats_avg_time_title">Tiempo promedio por tipo de ruta</string>
+    <string name="stats_most_used_title">Ruta más usada</string>
+    <string name="stats_route_label">Ruta: %1$s</string>
+    <string name="stats_time_format_min_sec">%1$d min %2$d seg</string>
+    <string name="stats_time_format_sec">%1$d seg</string>
+
+    <!-- Route Selection Dialog -->
+    <string name="route_dialog_title">Selecciona tu ruta</string>
+    <string name="route_safe_avoiding">Rutas evitando zonas peligrosas</string>
+    <string name="route_generating_safe">Generando rutas seguras...</string>
+    <string name="route_generate_avoiding">Generar evitando %1$d zona(s) peligrosa(s)</string>
+    <string name="route_confirm">Confirmar</string>
+    <string name="route_danger_detected">%1$d zona(s) de riesgo detectada(s)</string>
+
+    <string name="security_warning_title">⚠️ ADVERTENCIA DE SEGURIDAD</string>
+    <string name="detected_zones_label">Zonas detectadas:</string>
+    <string name="risk_level_label">Nivel de riesgo: %1$d/5</string>
+    <string name="affects_route_percentage">Afecta %1$d%% de la ruta</string>
+    <string name="continue_route_question">¿Deseas continuar con esta ruta?</string>
+    <string name="accept_risk_continue">Aceptar Riesgo y Continuar</string>
+
+    <string name="transport_mode_label">Modo de transporte: %1$s</string>
+    <string name="route_selected_message">Ruta %1$s seleccionada</string>
+    <string name="calculating_alternatives">Calculando rutas alternativas...</string>
+    <string name="user_location_unavailable">Ubicación del usuario no disponible</string>
+    <string name="select_destination_first">Selecciona un destino primero</string>
+
+    <string name="alternate_route">Ruta alterna</string>
+    <string name="cd_calculate_alternate_route">Calcular ruta alternativa</string>
+    <string name="cd_close_alert">Cerrar alerta</string>
+    <string name="cd_close_notification">Cerrar notificación</string>
+
+    <string name="mode_walking">Caminar</string>
+    <string name="mode_driving">Carro</string>
+    <string name="mode_cycling">Bicicleta</string>
+    <string name="cd_back_arrow">Volver</string>
+
+    <!-- Search Location Card -->
+    <string name="search_location_title">Buscar ubicación</string>
+    <string name="search_location_placeholder">Escribe una dirección...</string>
+    <string name="cd_clear_search">Limpiar búsqueda</string>
+    <string name="searching">Buscando...</string>
+    <string name="unknown_location">Ubicación desconocida</string>
+
+    <!-- Suggested Zones Dialog -->
+    <string name="reported_zones_title">Zonas reportadas por otros</string>
+    <string name="zones_near_you">%1$d zona(s) cerca de ti</string>
+    <string name="view_on_map">Ver en mapa</string>
+    <string name="discard">Descartar</string>
+    <string name="save">Guardar</string>
+    <string name="zone_saved">Zona guardada</string>
+    <string name="risk_low">Bajo</string>
+    <string name="risk_medium">Medio</string>
+    <string name="risk_high">Alto</string>
+    <string name="distance_near_you">%1$s • %2$.1f km de ti</string>
+    <string name="map_snippet_zone">Nivel: %1$s • Radio: %2$dm</string>
+    <string name="map_snippet_zone_level">Nivel: %1$s</string>
+    <string name="map_snippet_type">Tipo: %1$s</string>
+    <string name="map_your_location">Tu ubicación</string>
+    <string name="zone_level_tag">nivel %1$d/3</string>
+
+    <!-- Public Zones Grouped Card -->
+    <string name="public_zones_title">Zonas reportadas por otros usuarios</string>
+    <string name="public_zones_detected_count">%1$d zona(s) detectada(s) en esta ruta</string>
+    <string name="public_zones_levels_label">Niveles:</string>
+    <string name="public_zones_level_value">Nivel %1$d</string>
+    <string name="public_zones_save_cd">Guardar zona</string>
+    <string name="public_zones_save_button">Guardar esta zona</string>
+    <string name="public_zones_saving">Guardando...</string>
+    <string name="public_zones_saved_success">Zona guardada en tus zonas personales</string>
+    <string name="public_zones_distance_from_destination">%1$.1f km del destino</string>
+    <string name="public_zones_saved_cd">Guardada</string>
+
+    <string name="route_ml_badge">🤖 ML</string>
+    <string name="route_safe_badge">SEGURA</string>
+    <string name="route_risk_badge">RIESGO</string>
+    <string name="route_distance_km_format">📏 %1$d km</string>
+    <string name="route_duration_min_format">⏱ %1$d min</string>
+
+    <string name="pref_fastest">Más Rápida</string>
+    <string name="pref_shortest">Más Corta</string>
+    <string name="pref_recommended">Recomendada</string>
+
+    <string name="map_help_title">💡 Consejo</string>
+    <string name="map_help_message">Mantén presionado el mapa para marcar zonas peligrosas</string>
+
+    <string name="eta_arriving">Llegando...</string>
+    <string name="eta_less_than_min">&lt; 1 min</string>
+    <string name="eta_mins_format">%1$d min</string>
+    <string name="eta_hours_mins_format">%1$dh %2$dmin</string>
+    <string name="eta_meters_format">%1$.0f m</string>
+    <string name="eta_km_format">%1$.2f km</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_personal_info">Información personal</string>
+    <string name="settings_label_first_name">Nombre</string>
+    <string name="settings_label_last_name">Apellido</string>
+    <string name="settings_label_email">Correo electrónico</string>
+    <string name="settings_not_editable">No editable</string>
+    <string name="settings_error_empty_fields">El nombre y apellido no pueden estar vacíos</string>
+    <string name="settings_save_changes">Guardar cambios</string>
+    <string name="settings_discard_changes">Descartar cambios</string>
+    <string name="settings_logout">Cerrar sesión</string>
+    <string name="settings_logout_confirm_title">Cerrar sesión</string>
+    <string name="settings_logout_confirm_message">¿Estás seguro de que deseas cerrar sesión?</string>
+    <string name="error_group_name_exists">Ya existe un grupo con ese nombre. Intenta con otro nombre.</string>
+    <string name="error_session_expired">Tu sesión ha expirado. Por favor, inicia sesión nuevamente.</string>
+    <string name="error_server_internal">Error en el servidor. Intenta de nuevo más tarde.</string>
+    <string name="error_no_internet">Sin conexión a internet. Verifica tu conexión.</string>
+    <string name="error_timeout">La solicitud tardó demasiado. Intenta de nuevo.</string>
+    <string name="error_unknown_create_group">Error desconocido al crear el grupo</string>
+    <string name="error_getting_groups">Error al obtener grupos: %1$s</string>
+    <string name="error_generic_message">Error: %1$s</string>
+    <string name="join_group_success">¡Te uniste al grupo exitosamente!</string>
+    <string name="error_invalid_code">El código de invitación no es válido o el grupo no existe.</string>
+    <string name="error_already_in_group">Ya perteneces a este grupo.</string>
+    <string name="error_creator_already_in_group">Eres el creador de este grupo, ya perteneces a él.</string>
+    <string name="error_join_group">Error al unirse al grupo.</string>
+    <string name="error_session_expired_join">Tu sesión ha expirado. Inicia sesión nuevamente.</string>
+    <string name="error_server_internal_short">Error del servidor. Intenta más tarde.</string>
+    <string name="error_no_internet_join">Sin conexión a internet. Verifica tu red.</string>
+    <string name="error_timeout_join">La solicitud tardó demasiado. Intenta de nuevo.</string>
+    <string name="error_unknown_join">Error desconocido al unirse al grupo.</string>
+    <string name="exit_group_success_msg">Has salido del grupo</string>
+    <string name="error_exit_group">Error: %1$s</string>
+    <string name="error_connection_exit_group">Error de conexión: %1$s</string>
+    <string name="delete_group_success_msg">Grupo eliminado exitosamente</string>
+    <string name="error_delete_group">Error al eliminar grupo: %1$s</string>
+    <string name="error_connection_delete_group">Error de conexión: %1$s</string>
+    <string name="error_location_name_exists">Ya tienes una ubicación con este nombre</string>
+    <string name="error_network_connection">Error de conexión. Verifica tu internet</string>
+    <string name="error_server_communication">Error de comunicación con el servidor</string>
+    <string name="error_create_location">Error al crear la ubicación</string>
+    <string name="error_load_locations">No se pudieron cargar las ubicaciones</string>
+    <string name="error_load_location_id">No se pudo cargar la ubicación solicitada</string>
+    <string name="location_deleted_success_msg">Ubicación eliminada correctamente</string>
+    <string name="error_location_not_found">La ubicación no existe o ya fue eliminada</string>
+    <string name="error_delete_location">No se pudo eliminar la ubicación</string>
+
+    <string name="danger_zone_title">Zona peligrosa</string>
+    <string name="placeholder_danger_zone_name">Ej: Callejón oscuro</string>
+    <string name="label_level">Nivel</string>
+    <string name="label_type">Tipo</string>
+    <string name="label_add_notes">Agregar notas</string>
+    <string name="placeholder_notes">Detalles adicionales...</string>
+    <string name="button_mark">Marcar</string>
+    <string name="type_assault">asalto</string>
+    <string name="type_traffic">tráfico</string>
+    <string name="type_dark">oscuro</string>
+    <string name="type_other">otro</string>
+
+    <string name="error_invalid_credentials">Correo o contraseña incorrectos</string>
+    <string name="error_user_not_found">No existe una cuenta con este correo</string>
+    <string name="error_account_locked">Cuenta bloqueada. Contacta soporte</string>
+    <string name="error_invalid_credentials_short">Credenciales inválidas</string>
+    <string name="error_login_generic">Error al iniciar sesión. Inténtalo nuevamente</string>
+    <string name="error_user_already_exists">Ya existe una cuenta con este correo electrónico</string>
+    <string name="error_invalid_email">El formato del correo electrónico no es válido</string>
+    <string name="error_weak_password">La contraseña debe ser más fuerte</string>
+    <string name="error_invalid_data">Datos inválidos. Verifica la información ingresada</string>
+    <string name="error_register_generic">Error al crear la cuenta. Inténtalo nuevamente</string>
+    <string name="error_no_token">No hay token de acceso</string>
+
+    <!-- Integrantes ViewModel -->
+    <string name="error_no_active_session">No hay sesión activa</string>
+    <string name="error_no_data_received">No se recibieron datos</string>
+    <string name="error_no_permission_integrantes">No tienes permiso para ver los integrantes</string>
+    <string name="error_group_not_found">Grupo no encontrado</string>
+    <string name="error_loading_integrantes">Error al cargar integrantes: %1$d</string>
+    <string name="error_connection_integrantes">Error de conexión: %1$s</string>
+    <string name="error_obtaining_address">Error obteniendo la dirección</string>
+    <string name="error_reminder_not_found">Recordatorio no encontrado</string>
+    <string name="error_loading_reminder">Error al cargar el recordatorio</string>
+
+    <!-- Location Helper & Map Components -->
+    <string name="error_location_permission_denied">Permiso de ubicación denegado</string>
+    <string name="error_could_not_get_location">No se pudo obtener la ubicación</string>
+    <string name="error_location_permission">Error de permisos de ubicación</string>
+    <string name="error_activating_gps">Error al activar GPS: %1$s</string>
+    <string name="gps_disabled">GPS deshabilitado</string>
+    <string name="activate_location_to_continue">Activa tu ubicación para continuar</string>
+    <string name="activate">Activar</string>
+    <string name="via_format">vía %1$s</string>
+    <string name="modules_available">Módulos disponibles</string>
+    <string name="loading_dots">Cargando...</string>
+    <string name="no_user_info">No se encontró información del usuario</string>
+    <string name="error_loading_content">Ocurrió un error al cargar el contenido</string>
+    <string name="go_to_feature">Ir a %1$s</string>
+</resources>

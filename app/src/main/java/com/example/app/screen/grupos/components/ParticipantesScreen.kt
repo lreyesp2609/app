@@ -119,7 +119,7 @@ fun ParticipantesScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "No hay participantes",
+                        text = context.getString(com.example.app.R.string.participants_empty),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -154,6 +154,7 @@ fun ParticipantesTopBar(
     totalIntegrantes: Int,
     onBackClick: () -> Unit
 ) {
+    val context = LocalContext.current
     TopAppBar(
         title = {
             Column {
@@ -165,7 +166,7 @@ fun ParticipantesTopBar(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "$totalIntegrantes participantes",
+                    text = context.getString(com.example.app.R.string.participants_count, totalIntegrantes),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -192,6 +193,7 @@ fun ParticipanteItem(
     integrante: IntegranteGrupo,
     isCurrentUser: Boolean = false  // 👈 AGREGADO
 ) {
+    val context = LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -236,7 +238,7 @@ fun ParticipanteItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (isCurrentUser) "Tú" else integrante.nombre_completo,  // 👈 CAMBIADO
+                    text = if (isCurrentUser) context.getString(com.example.app.R.string.you) else integrante.nombre_completo,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
@@ -249,7 +251,7 @@ fun ParticipanteItem(
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                     ) {
                         Text(
-                            text = "Creador",
+                            text = context.getString(com.example.app.R.string.role_creator),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
@@ -267,9 +269,9 @@ fun ParticipanteItem(
                 // Rol del usuario
                 Text(
                     text = when (integrante.rol) {
-                        "admin" -> "Administrador"
-                        "moderador" -> "Moderador"
-                        else -> "Miembro"
+                        "admin" -> context.getString(com.example.app.R.string.role_admin)
+                        "moderador" -> context.getString(com.example.app.R.string.role_moderator)
+                        else -> context.getString(com.example.app.R.string.role_member)
                     },
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -279,7 +281,7 @@ fun ParticipanteItem(
                 if (!integrante.activo) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "• Inactivo",
+                        text = context.getString(com.example.app.R.string.status_inactive),
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.error
                     )

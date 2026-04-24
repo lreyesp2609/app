@@ -47,9 +47,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.app.R
 import com.example.app.models.ZonaPublicaDetectada
 import kotlinx.coroutines.delay
 
@@ -97,14 +101,14 @@ fun PublicZonesGroupedCard(
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text(
-                            "Zonas reportadas por otros usuarios",
+                            stringResource(R.string.public_zones_title),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF856404)
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            "${zones.size} zona(s) detectada(s) en esta ruta",
+                            stringResource(R.string.public_zones_detected_count, zones.size),
                             fontSize = 11.sp,
                             color = Color(0xFF856404).copy(alpha = 0.7f)
                         )
@@ -114,7 +118,7 @@ fun PublicZonesGroupedCard(
                 // Icono expandir/contraer
                 Icon(
                     if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (expanded) "Ocultar" else "Mostrar",
+                    contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
                     tint = Color(0xFFFF9800),
                     modifier = Modifier.size(24.dp)
                 )
@@ -168,7 +172,7 @@ fun PublicZonesGroupedCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        "Niveles:",
+                        stringResource(R.string.public_zones_levels_label),
                         fontSize = 11.sp,
                         color = Color(0xFF856404).copy(alpha = 0.7f)
                     )
@@ -183,7 +187,7 @@ fun PublicZonesGroupedCard(
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                "${zone.nivelPeligro}",
+                                zone.nivelPeligro.toString(),
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF856404)
@@ -249,7 +253,7 @@ private fun PublicZoneItemCompact(
                         )
                         Spacer(Modifier.width(3.dp))
                         Text(
-                            "Nivel ${zone.nivelPeligro}",
+                            stringResource(R.string.public_zones_level_value, zone.nivelPeligro),
                             fontSize = 11.sp,
                             color = Color(0xFF856404).copy(alpha = 0.8f)
                         )
@@ -292,7 +296,7 @@ private fun PublicZoneItemCompact(
                     } else {
                         Icon(
                             Icons.Default.Add,
-                            contentDescription = "Guardar zona",
+                            contentDescription = stringResource(R.string.public_zones_save_cd),
                             tint = Color(0xFFFF9800),
                             modifier = Modifier.size(20.dp)
                         )
@@ -301,7 +305,7 @@ private fun PublicZoneItemCompact(
             } else if (isGuardada) {
                 Icon(
                     Icons.Default.CheckCircle,
-                    contentDescription = "Guardada",
+                    contentDescription = stringResource(R.string.public_zones_saved_cd),
                     tint = Color(0xFF4CAF50),
                     modifier = Modifier.size(20.dp)
                 )

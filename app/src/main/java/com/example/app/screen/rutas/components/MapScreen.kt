@@ -79,7 +79,7 @@ fun MapScreen(
     defaultLat: Double = 0.0,
     defaultLon: Double = 0.0,
     onConfirmClick: () -> Unit = {},
-    mapViewModel: MapViewModel = viewModel(factory = MapViewModelFactory()),
+    mapViewModel: MapViewModel = viewModel(factory = MapViewModelFactory(LocalContext.current)),
     notificationViewModel: NotificationViewModel
 ) {
     val context = LocalContext.current
@@ -115,7 +115,7 @@ fun MapScreen(
     var zonasCreadas by remember { mutableStateOf<List<ZonaGuardada>>(emptyList()) }
 
     val ubicacionesViewModel: UbicacionesViewModel = viewModel(
-        factory = UbicacionesViewModelFactory(token)
+        factory = UbicacionesViewModelFactory(context, token)
     )
     val scope = rememberCoroutineScope()
 
@@ -206,11 +206,15 @@ fun MapScreen(
                     Log.d("MapScreen", "✅ ${zonasCreadas.size} zonas cargadas desde el backend")
 
                     if (zonasCreadas.isNotEmpty()) {
-                        notificationViewModel.showSuccess("${zonasCreadas.size} zonas peligrosas cargadas")
+                        notificationViewModel.showSuccess(
+                            context.getString(com.example.app.R.string.zones_loaded_success, zonasCreadas.size)
+                        )
                     }
                 } catch (e: Exception) {
                     Log.e("MapScreen", "Error cargando zonas: ${e.message}", e)
-                    notificationViewModel.showError("No se pudieron cargar las zonas peligrosas")
+                    notificationViewModel.showError(
+                        context.getString(com.example.app.R.string.error_loading_zones)
+                    )
                 } finally {
                     cargandoZonas = false
                 }
@@ -271,7 +275,11 @@ fun MapScreen(
                     ) {
                         Icon(
                             imageVector = if (showLocationCards) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (showLocationCards) "Ocultar info" else "Mostrar info",
+                            contentDescription = if (showLocationCards) {
+                                context.getString(com.example.app.R.string.map_hide_info)
+                            } else {
+                                context.getString(com.example.app.R.string.map_show_info)
+                            },
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -313,8 +321,8 @@ fun MapScreen(
                                 onClick = {
                                     mostrarZonasPeligrosas = !mostrarZonasPeligrosas
                                     notificationViewModel.showInfo(
-                                        if (mostrarZonasPeligrosas) "Zonas peligrosas visibles"
-                                        else "Zonas peligrosas ocultas"
+                                        if (mostrarZonasPeligrosas) context.getString(com.example.app.R.string.map_zones_visible)
+                                        else context.getString(com.example.app.R.string.map_zones_hidden)
                                     )
                                 },
                                 badge = zonasCreadas.size.toString()
@@ -355,13 +363,15 @@ fun MapScreen(
                                     mapCenterLon = lon
                                     selectedAddress = address
                                     recenterTrigger++
-                                    notificationViewModel.showSuccess("📍 Ubicación encontrada")
+                                    notificationViewModel.showSuccess(
+                                        context.getString(com.example.app.R.string.map_search_success)
+                                    )
                                 }
                             )
 
                             if (selectedAddress.isNotEmpty() && selectedAddress != currentAddress) {
                                 CompactLocationCard(
-                                    title = "Ubicación seleccionada",
+                                    title = context.getString(com.example.app.R.string.map_selected_location),
                                     location = selectedAddress,
                                     icon = Icons.Default.LocationOn,
                                     iconColor = Color(0xFFEF4444)
@@ -385,10 +395,14 @@ fun MapScreen(
                                 )
                                 ubicacionesViewModel.crearUbicacion(nuevaUbicacion) { success, error ->
                                     if (success) {
-                                        notificationViewModel.showSuccess("Destino guardado correctamente")
+                                        notificationViewModel.showSuccess(
+                                            context.getString(com.example.app.R.string.map_destination_saved)
+                                        )
                                         navController.popBackStack()
                                     } else {
-                                        notificationViewModel.showError(error ?: "Error guardando el destino")
+                                        notificationViewModel.showError(
+                                            error ?: context.getString(com.example.app.R.string.map_save_error)
+                                        )
                                     }
                                 }
                             }
@@ -411,14 +425,14 @@ fun MapScreen(
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
-                        "Obteniendo ubicación...",
+                        context.getString(com.example.app.R.string.map_getting_location),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Esto puede tardar unos segundos",
+                        context.getString(com.example.app.R.string.map_getting_location_long),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     )
@@ -445,7 +459,9 @@ fun MapScreen(
 
                                 Log.d("MapScreen", "✅ Nueva ubicación obtenida y guardada en caché")
                             } catch (e: Exception) {
-                                notificationViewModel.showError("Error obteniendo ubicación: ${e.message}")
+                                notificationViewModel.showError(
+                                    context.getString(com.example.app.R.string.map_location_error, e.message ?: "")
+                                )
                             }
                         }
                     },
@@ -561,7 +577,7 @@ fun MapScreen(
                             )
 
                             notificationViewModel.showSuccess(
-                                "Zona marcada correctamente: ${response.nombre}"
+                                context.getString(com.example.app.R.string.zone_created_success, response.nombre)
                             )
 
                             Log.d("MapScreen", "Zona creada: ID=${response.id}, Radio=${radio}m")
@@ -579,7 +595,7 @@ fun MapScreen(
 
                         } catch (e: Exception) {
                             notificationViewModel.showError(
-                                "Error al crear la zona: ${e.message}"
+                                context.getString(com.example.app.R.string.error_creating_zone, e.message ?: "")
                             )
                             Log.e("MapScreen", "Error creando zona", e)
                         }
@@ -613,6 +629,7 @@ fun CompactLocationCard(
     iconColor: Color,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -651,7 +668,7 @@ fun CompactLocationCard(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = if (location.isNotEmpty()) location else "Selecciona una ubicación",
+                    text = if (location.isNotEmpty()) location else context.getString(com.example.app.R.string.map_select_location),
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
@@ -679,6 +696,7 @@ fun BottomConfirmPanel(
     onConfirmClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val canConfirm = selectedLocation.isNotEmpty() && locationName.trim().isNotEmpty()
 
     AnimatedVisibility(
@@ -717,7 +735,7 @@ fun BottomConfirmPanel(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Nombra este destino",
+                        text = context.getString(com.example.app.R.string.map_naming_destination),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -731,8 +749,8 @@ fun BottomConfirmPanel(
                     onValueChange = { newValue ->
                         if (newValue.length <= 100) onLocationNameChange(newValue)
                     },
-                    label = "Nombre del destino",
-                    placeholder = "ej. Casa, Trabajo, Gimnasio...",
+                    label = context.getString(com.example.app.R.string.map_destination_name_label),
+                    placeholder = context.getString(com.example.app.R.string.map_destination_placeholder),
                     modifier = Modifier.fillMaxWidth(),
                     borderColor = MaterialTheme.colorScheme.primary,
                     keyboardOptions = KeyboardOptions(
@@ -742,7 +760,7 @@ fun BottomConfirmPanel(
                 )
 
                 Text(
-                    text = "${locationName.length}/100 caracteres",
+                    text = context.getString(com.example.app.R.string.map_characters_count, locationName.length),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(top = 4.dp)
@@ -751,7 +769,7 @@ fun BottomConfirmPanel(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 AppButton(
-                    text = "Guardar destino",
+                    text = context.getString(com.example.app.R.string.map_save_destination),
                     icon = Icons.Default.Check,
                     onClick = onConfirmClick,
                     modifier = Modifier.fillMaxWidth(),

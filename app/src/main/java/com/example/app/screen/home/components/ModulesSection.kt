@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.recuerdago.screens.tabs.ModuleCard
 
 @Composable
@@ -30,7 +32,7 @@ fun ModulesSection(
     ) {
         item {
             Text(
-                text = "Módulos disponibles",
+                text = stringResource(R.string.modules_available),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -40,8 +42,8 @@ fun ModulesSection(
 
         item {
             ModuleCard(
-                title = "Rutas alternas",
-                description = "Gestiona tus rutas y ubicaciones",
+                title = stringResource(R.string.nav_routes),
+                description = stringResource(R.string.feature_save_destinations_desc),
                 icon = Icons.Default.Map,
                 onClick = { onTabSelected(1) }
             )
@@ -49,8 +51,8 @@ fun ModulesSection(
 
         item {
             ModuleCard(
-                title = "Recordatorios",
-                description = "Configura alertas personalizadas",
+                title = stringResource(R.string.nav_reminders),
+                description = stringResource(R.string.feature_datetime_desc),
                 icon = Icons.Default.Notifications,
                 onClick = { onTabSelected(2) }
             )
@@ -58,8 +60,8 @@ fun ModulesSection(
 
         item {
             ModuleCard(
-                title = "Grupos colaborativos",
-                description = "Colabora con otros usuarios",
+                title = stringResource(R.string.nav_groups),
+                description = stringResource(R.string.feature_groups_desc),
                 icon = Icons.Default.Group,
                 onClick = { onTabSelected(3) }
             )

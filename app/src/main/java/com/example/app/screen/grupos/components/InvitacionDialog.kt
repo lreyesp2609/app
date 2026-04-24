@@ -41,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import kotlinx.coroutines.delay
 
 @Composable
@@ -78,7 +80,7 @@ fun InvitacionDialog(
         },
         title = {
             Text(
-                text = "Invitar a $grupoNombre",
+                text = stringResource(R.string.invite_to_group, grupoNombre),
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
@@ -89,7 +91,7 @@ fun InvitacionDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Comparte este código para que otros se unan",
+                    text = stringResource(R.string.invite_dialog_desc),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -109,7 +111,7 @@ fun InvitacionDialog(
                         .clickable {
                             clipboardManager.setText(AnnotatedString(codigoInvitacion))
                             showCopied = true
-                            Toast.makeText(context, "Código copiado", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.code_copied), Toast.LENGTH_SHORT).show()
                         }
                 ) {
                     Row(
@@ -119,7 +121,7 @@ fun InvitacionDialog(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "CÓDIGO",
+                                text = stringResource(R.string.label_code),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -156,12 +158,10 @@ fun InvitacionDialog(
                             type = "text/plain"
                             putExtra(
                                 Intent.EXTRA_TEXT,
-                                "¡Únete a mi grupo \"$grupoNombre\"! 🎉\n\n" +
-                                        "Código de invitación: $codigoInvitacion\n\n" +
-                                        "Abre la app e ingresa este código para unirte."
+                                context.getString(R.string.share_message, grupoNombre, codigoInvitacion)
                             )
                         }
-                        context.startActivity(Intent.createChooser(shareIntent, "Compartir código"))
+                        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_chooser_title)))
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -172,13 +172,13 @@ fun InvitacionDialog(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Compartir por...")
+                    Text(stringResource(R.string.share_button))
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cerrar")
+                Text(stringResource(R.string.close))
             }
         }
     )

@@ -18,7 +18,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.app.R
 import com.example.app.ui.theme.AppColors
 
 @Composable
@@ -55,7 +57,11 @@ fun MiniSwipeIndicator(
                 } else {
                     Icons.AutoMirrored.Filled.Chat
                 },
-                contentDescription = if (currentPage == 0) "Ir al mapa" else "Volver al chat",
+                contentDescription = if (currentPage == 0) {
+                    stringResource(R.string.cd_go_to_map)
+                } else {
+                    stringResource(R.string.cd_back_to_chat)
+                },
                 tint = Color.White,  // Siempre blanco para contraste
                 modifier = Modifier.size(24.dp)
             )

@@ -34,9 +34,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.app.R
 import com.example.app.models.ZonaPublicaDetectada
 import kotlinx.coroutines.delay
 
@@ -74,7 +76,7 @@ fun PublicZoneWarningCard(
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    "Zona reportada por otros usuarios",
+                    stringResource(R.string.public_zones_title),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF856404)
@@ -107,7 +109,7 @@ fun PublicZoneWarningCard(
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        "Nivel ${zone.nivelPeligro}",
+                        stringResource(R.string.public_zones_level_value, zone.nivelPeligro),
                         fontSize = 12.sp,
                         color = Color(0xFF856404).copy(alpha = 0.8f)
                     )
@@ -122,7 +124,7 @@ fun PublicZoneWarningCard(
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        "${String.format("%.1f", zone.distanciaKm)} km del destino",
+                        stringResource(R.string.public_zones_distance_from_destination, zone.distanciaKm),
                         fontSize = 12.sp,
                         color = Color(0xFF856404).copy(alpha = 0.8f)
                     )
@@ -162,7 +164,7 @@ fun PublicZoneWarningCard(
                         }
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            if (guardando) "Guardando..." else "Guardar esta zona",
+                            if (guardando) stringResource(R.string.public_zones_saving) else stringResource(R.string.public_zones_save_button),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -190,7 +192,7 @@ fun PublicZoneWarningCard(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "✓ Zona guardada en tus zonas personales",
+                        "✓ " + stringResource(R.string.public_zones_saved_success),
                         fontSize = 13.sp,
                         color = Color(0xFF2E7D32),
                         fontWeight = FontWeight.Medium

@@ -21,7 +21,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.app.R
 import com.example.app.utils.getModeDisplayName
 
 @Composable
@@ -66,7 +69,7 @@ fun RouteInfoCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "vía ${getModeDisplayName(transportMode)}",
+                    text = stringResource(R.string.via_format, getModeDisplayName(transportMode, LocalContext.current)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -81,7 +84,7 @@ fun RouteInfoCard(
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Cerrar",
+                    contentDescription = stringResource(R.string.close),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }

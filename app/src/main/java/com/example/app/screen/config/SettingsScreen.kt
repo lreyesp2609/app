@@ -15,8 +15,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.models.User
 import com.example.app.screen.components.AppButton
+import com.example.app.screen.components.LanguageSelector
 
 @Composable
 fun SettingsScreen(
@@ -45,6 +48,13 @@ fun SettingsScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            LanguageSelector(
+                modifier = Modifier.align(Alignment.TopEnd),
+                isDark = true
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         // Avatar con iniciales
@@ -82,7 +92,7 @@ fun SettingsScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Información personal",
+                stringResource(R.string.settings_personal_info),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
@@ -98,7 +108,7 @@ fun SettingsScreen(
                 nombre = it
                 saveError = null
             },
-            label = { Text("Nombre") },
+            label = { Text(stringResource(R.string.settings_label_first_name)) },
             leadingIcon = {
                 Icon(Icons.Default.Person, contentDescription = null)
             },
@@ -120,7 +130,7 @@ fun SettingsScreen(
                 apellido = it
                 saveError = null
             },
-            label = { Text("Apellido") },
+            label = { Text(stringResource(R.string.settings_label_last_name)) },
             leadingIcon = {
                 Icon(Icons.Default.Person, contentDescription = null)
             },
@@ -139,14 +149,14 @@ fun SettingsScreen(
         OutlinedTextField(
             value = correo,
             onValueChange = {},
-            label = { Text("Correo electrónico") },
+            label = { Text(stringResource(R.string.settings_label_email)) },
             leadingIcon = {
                 Icon(Icons.Default.Email, contentDescription = null)
             },
             trailingIcon = {
                 Icon(
                     Icons.Default.Lock,
-                    contentDescription = "No editable",
+                    contentDescription = stringResource(R.string.settings_not_editable),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                     modifier = Modifier.size(16.dp)
                 )
@@ -177,11 +187,12 @@ fun SettingsScreen(
 
         // Botón guardar — solo aparece si hay cambios
         if (hasChanges) {
+            val emptyFieldsError = stringResource(R.string.settings_error_empty_fields)
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
                     if (nombre.isBlank() || apellido.isBlank()) {
-                        saveError = "El nombre y apellido no pueden estar vacíos"
+                        saveError = emptyFieldsError
                         return@Button
                     }
                     isSaving = true
@@ -208,7 +219,7 @@ fun SettingsScreen(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Guardar cambios", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.settings_save_changes), fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -222,7 +233,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    "Descartar cambios",
+                    stringResource(R.string.settings_discard_changes),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
             }
@@ -232,7 +243,7 @@ fun SettingsScreen(
 
         // Botón cerrar sesión
         AppButton(
-            text = "Cerrar sesión",
+            text = stringResource(R.string.settings_logout),
             onClick = { showLogoutDialog = true },
             modifier = Modifier
                 .fillMaxWidth(0.8f)
@@ -259,8 +270,8 @@ fun SettingsScreen(
                     modifier = Modifier.size(32.dp)
                 )
             },
-            title = { Text("Cerrar sesión", fontWeight = FontWeight.Bold) },
-            text = { Text("¿Estás seguro de que deseas cerrar sesión?") },
+            title = { Text(stringResource(R.string.settings_logout_confirm_title), fontWeight = FontWeight.Bold) },
+            text = { Text(stringResource(R.string.settings_logout_confirm_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -268,12 +279,12 @@ fun SettingsScreen(
                         onLogout()
                     }
                 ) {
-                    Text("Cerrar sesión", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.settings_logout), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )

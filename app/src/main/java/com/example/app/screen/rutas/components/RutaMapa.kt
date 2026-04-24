@@ -35,33 +35,31 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.app.R
 import com.example.app.models.UbicacionUsuarioResponse
-import com.example.app.network.RetrofitClient
-import com.example.app.viewmodel.decodePolyline
-import com.example.app.viewmodel.MapViewModel
-import kotlin.collections.isNotEmpty
 import com.example.app.screen.mapa.GetCurrentLocation
 import com.example.app.screen.mapa.GpsEnableButton
 import com.example.app.screen.mapa.LocationTracker
@@ -72,8 +70,9 @@ import com.example.app.screen.mapa.calcularDistancia
 import com.example.app.utils.LocationManager
 import com.example.app.utils.getModeDisplayName
 import com.example.app.utils.getNivelPeligroColor
+import com.example.app.viewmodel.MapViewModel
 import com.example.app.viewmodel.MapViewModelFactory
-import kotlinx.coroutines.launch
+import com.example.app.viewmodel.decodePolyline
 import kotlin.math.roundToInt
 
 @Composable
@@ -82,7 +81,7 @@ fun RutaMapa(
     defaultLat: Double = 0.0,
     defaultLon: Double = 0.0,
     ubicaciones: List<UbicacionUsuarioResponse> = emptyList(),
-    viewModel: MapViewModel = viewModel(factory = MapViewModelFactory()),
+    viewModel: MapViewModel = viewModel(factory = MapViewModelFactory(LocalContext.current)),
     token: String,
     selectedLocationId: Int,
     navController: NavController,
@@ -304,7 +303,7 @@ fun RutaMapa(
                         viewModel.clearRoute()
                         showRouteInfo = false
 
-                        transportMessage = "Modo de transporte: ${getModeDisplayName(mode)}"
+                        transportMessage = context.getString(R.string.transport_mode_label, getModeDisplayName(mode, context))
                         showTransportMessage = true
                     },
                     modifier = Modifier
@@ -391,9 +390,9 @@ fun RutaMapa(
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                                 ) {
-                                    Icon(Icons.Default.Check, contentDescription = "Finalizar", tint = Color.White)
+                                    Icon(Icons.Default.Check, contentDescription = stringResource(R.string.finish), tint = Color.White)
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Finalizar", color = Color.White)
+                                    Text(stringResource(R.string.finish), color = Color.White)
                                 }
 
                                 Button(
@@ -406,9 +405,9 @@ fun RutaMapa(
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336))
                                 ) {
-                                    Icon(Icons.Default.Close, contentDescription = "Cancelar", tint = Color.White)
+                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cancel), tint = Color.White)
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Cancelar", color = Color.White)
+                                    Text(stringResource(R.string.cancel), color = Color.White)
                                 }
                             }
                         }
@@ -439,7 +438,7 @@ fun RutaMapa(
                             routeDistance = "${(alternative.distance / 1000).roundToInt()} km"
                             routeDuration = "${(alternative.duration / 60).roundToInt()} min"
 
-                            transportMessage = "Ruta ${alternative.displayName} seleccionada"
+                            transportMessage = context.getString(R.string.route_selected_message, alternative.displayName)
                             showTransportMessage = true
                         },
                         onRegenerarEvitandoZonas = {
@@ -492,7 +491,7 @@ fun RutaMapa(
                         },
                         title = {
                             Text(
-                                "⚠️ ADVERTENCIA DE SEGURIDAD",
+                                stringResource(R.string.security_warning_title),
                                 style = MaterialTheme.typography.titleLarge,
                                 color = Color.Red,
                                 fontWeight = FontWeight.Bold
@@ -503,7 +502,7 @@ fun RutaMapa(
                                 modifier = Modifier.verticalScroll(rememberScrollState())
                             ) {
                                 Text(
-                                    rutaPendiente?.mensajeSeguridad ?: "Esta ruta pasa por zonas que marcaste como peligrosas",
+                                    rutaPendiente?.mensajeSeguridad ?: stringResource(R.string.route_safe_avoiding),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -513,7 +512,7 @@ fun RutaMapa(
                                 rutaPendiente?.zonasDetectadas?.let { zonas ->
                                     if (zonas.isNotEmpty()) {
                                         Text(
-                                            "Zonas detectadas:",
+                                            stringResource(R.string.detected_zones_label),
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 14.sp
                                         )
@@ -535,11 +534,11 @@ fun RutaMapa(
                                                         fontSize = 14.sp
                                                     )
                                                     Text(
-                                                        "Nivel de riesgo: ${zona.nivelPeligro}/5",
+                                                        stringResource(R.string.risk_level_label, zona.nivelPeligro),
                                                         fontSize = 12.sp
                                                     )
                                                     Text(
-                                                        "Afecta ${zona.porcentajeRuta.toInt()}% de la ruta",
+                                                        stringResource(R.string.affects_route_percentage, zona.porcentajeRuta.toInt()),
                                                         fontSize = 12.sp,
                                                         fontStyle = FontStyle.Italic
                                                     )
@@ -552,7 +551,7 @@ fun RutaMapa(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 Text(
-                                    "¿Deseas continuar con esta ruta?",
+                                    stringResource(R.string.continue_route_question),
                                     fontStyle = FontStyle.Italic,
                                     fontSize = 13.sp
                                 )
@@ -571,14 +570,14 @@ fun RutaMapa(
                                     containerColor = Color.Red
                                 )
                             ) {
-                                Text("Aceptar Riesgo y Continuar")
+                                Text(stringResource(R.string.accept_risk_continue))
                             }
                         },
                         dismissButton = {
                             OutlinedButton(
                                 onClick = { viewModel.rechazarRutaInsegura() }
                             ) {
-                                Text("Cancelar")
+                                Text(stringResource(R.string.cancel))
                             }
                         }
                     )
@@ -588,7 +587,7 @@ fun RutaMapa(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     selectedTransportMode = selectedTransportMode,
                     showDestinationReached = destinoAlcanzado,
-                    destinationMessage = "Has llegado a tu destino",
+                    destinationMessage = stringResource(R.string.eta_arriving),
                     onDismissDestination = { destinoAlcanzado = false },
                     showTransportMessage = showTransportMessage,
                     transportMessage = transportMessage,
@@ -612,14 +611,14 @@ fun RutaMapa(
                                     transporteTexto = selectedTransportMode
                                 )
 
-                                transportMessage = "Calculando rutas alternativas..."
+                                transportMessage = context.getString(R.string.calculating_alternatives)
                                 showTransportMessage = true
                             } else {
-                                transportMessage = "Ubicación del usuario no disponible"
+                                transportMessage = context.getString(R.string.user_location_unavailable)
                                 showTransportMessage = true
                             }
                         } ?: run {
-                            transportMessage = "Selecciona un destino primero"
+                            transportMessage = context.getString(R.string.select_destination_first)
                             showTransportMessage = true
                         }
                     },
@@ -648,14 +647,14 @@ fun RutaMapa(
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
-                        "Obteniendo ubicación...",
+                        stringResource(R.string.map_getting_location),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Esto puede tardar unos segundos",
+                        stringResource(R.string.map_getting_location_long),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     )

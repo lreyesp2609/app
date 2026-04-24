@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.viewmodel.AuthViewModel
 
 
@@ -29,7 +31,7 @@ fun ErrorContent(
         modifier = Modifier.padding(16.dp)
     ) {
         Text(
-            text = "Error: $errorMessage",
+            text = stringResource(R.string.error_generic_message, errorMessage),
             color = MaterialTheme.colorScheme.error,
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyMedium
@@ -47,7 +49,7 @@ fun ErrorContent(
             )
         ) {
             Text(
-                "Reintentar",
+                stringResource(R.string.stats_retry),
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }

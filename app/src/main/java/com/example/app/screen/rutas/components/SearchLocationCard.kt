@@ -44,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.models.NominatimResponse
 import com.example.app.models.NominatimSearchResult
 import com.example.app.network.NominatimClient
@@ -104,7 +106,7 @@ fun SearchLocationCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Buscar ubicación",
+                        text = stringResource(R.string.search_location_title),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Medium
@@ -168,7 +170,7 @@ fun SearchLocationCard(
                         decorationBox = { innerTextField ->
                             if (searchQuery.isEmpty()) {
                                 Text(
-                                    text = currentAddress.ifEmpty { "Escribe una dirección..." },
+                                    text = currentAddress.ifEmpty { stringResource(R.string.search_location_placeholder) },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                     maxLines = 1,
@@ -202,7 +204,7 @@ fun SearchLocationCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Limpiar",
+                            contentDescription = stringResource(R.string.cd_clear_search),
                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             modifier = Modifier.size(16.dp)
                         )
@@ -237,7 +239,7 @@ fun SearchLocationCard(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                "Buscando...",
+                                stringResource(R.string.searching),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
@@ -291,7 +293,7 @@ fun SearchResultItem(
         Spacer(modifier = Modifier.width(12.dp))
 
         Text(
-            text = result.display_name ?: "Ubicación desconocida",
+            text = result.display_name ?: stringResource(R.string.unknown_location),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 2,

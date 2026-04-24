@@ -146,7 +146,11 @@ fun OpenStreetMap(
                             paint.isAntiAlias = true
                         }
                         title = zona.nombre
-                        snippet = "Nivel: ${DangerLevelColors.getNombreNivel(nivelUI)} • Radio: ${zona.radio}m"
+                        snippet = context.getString(
+                            R.string.map_snippet_zone,
+                            DangerLevelColors.getNombreNivel(nivelUI, context),
+                            zona.radio
+                        )
                         setOnMarkerClickListener { clickedMarker, mapView ->
                             Log.d("OpenStreetMap", "👆 Tap en zona: ${zona.nombre}")
                             onZonaClick?.invoke(zona)

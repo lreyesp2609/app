@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.models.User
 
 @Composable
@@ -27,11 +29,11 @@ fun UserWelcomeContent(userState: Any?) {
             .padding(horizontal = 24.dp, vertical = 0.dp), // ✨ Sin padding vertical
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        val userName = (userState as? User)?.let { "${it.nombre} ${it.apellido}" } ?: "Usuario"
+        val userName = (userState as? User)?.let { "${it.nombre} ${it.apellido}" } ?: stringResource(R.string.default_user_name)
 
         androidx.compose.material3.Icon(
             imageVector = androidx.compose.material.icons.Icons.Default.Person,
-            contentDescription = "User Icon",
+            contentDescription = stringResource(R.string.cd_user_icon),
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .padding(bottom = 6.dp) // ✨ Reducido a 6dp
@@ -39,7 +41,7 @@ fun UserWelcomeContent(userState: Any?) {
         )
 
         Text(
-            text = "¡Bienvenido, $userName!",
+            text = stringResource(R.string.welcome_user, userName),
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
@@ -49,7 +51,7 @@ fun UserWelcomeContent(userState: Any?) {
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "Nos alegra tenerte de vuelta.\nExplora las nuevas rutas y disfruta tu experiencia.",
+            text = stringResource(R.string.welcome_back_message),
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,

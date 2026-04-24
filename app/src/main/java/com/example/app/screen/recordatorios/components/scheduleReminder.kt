@@ -72,15 +72,22 @@ private fun calculateNextOccurrence(dayName: String?, time: String?): Long? {
         return null
     }
 
-    // Mapeo de nombres de días a valores Calendar
+    // Map of day names to Calendar values
     val dayMap = mapOf(
         "Lunes" to Calendar.MONDAY,
+        "Monday" to Calendar.MONDAY,
         "Martes" to Calendar.TUESDAY,
+        "Tuesday" to Calendar.TUESDAY,
         "Miércoles" to Calendar.WEDNESDAY,
+        "Wednesday" to Calendar.WEDNESDAY,
         "Jueves" to Calendar.THURSDAY,
+        "Thursday" to Calendar.THURSDAY,
         "Viernes" to Calendar.FRIDAY,
+        "Friday" to Calendar.FRIDAY,
         "Sábado" to Calendar.SATURDAY,
-        "Domingo" to Calendar.SUNDAY
+        "Saturday" to Calendar.SATURDAY,
+        "Domingo" to Calendar.SUNDAY,
+        "Sunday" to Calendar.SUNDAY
     )
 
     val targetDayOfWeek = dayMap[dayName.trim()]

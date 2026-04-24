@@ -1,9 +1,475 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ✨ NOMBRE DE LA APP -->
     <string name="app_name">RememberGo</string>
+    <string name="notification_channel_name">RememberGo Reminders</string>
+    <string name="notification_channel_description">Location-based reminder notifications</string>
 
-    <!-- Otros strings que puedas necesitar -->
-    <string name="notification_channel_name">Recordatorios RememberGo</string>
-    <string name="notification_channel_description">Notificaciones de recordatorios basados en ubicación</string>
+    <!-- Welcome Screen -->
+    <string name="welcome_user">Welcome, %1$s!</string>
+    <string name="welcome_back_message">We\'re glad to have you back.\nExplore new routes and enjoy your experience.</string>
+    <string name="default_user_name">User</string>
+    <string name="cd_user_icon">User Icon</string>
+
+    <!-- Reminders Screen -->
+    <string name="reminders_title">Reminders</string>
+    <string name="create_reminder">Create reminder</string>
+    <string name="loading_reminders">Loading reminders...</string>
+    <string name="no_reminders_title">You have no reminders</string>
+    <string name="no_reminders_description">Create your first reminder by tapping the button above</string>
+    <string name="cd_no_reminders">No reminders</string>
+    <string name="empty_state_help_title">What can you do?</string>
+
+    <string name="feature_location_title">Location reminders</string>
+    <string name="feature_location_desc">Receive alerts when entering or leaving a place</string>
+    <string name="feature_datetime_title">Date and time alerts</string>
+    <string name="feature_datetime_desc">Schedule reminders at specific times</string>
+    <string name="feature_map_title">Map selection</string>
+    <string name="feature_map_desc">Choose locations easily</string>
+
+    <string name="stat_total">Total</string>
+    <string name="stat_location">Location</string>
+    <string name="stat_datetime">Date/Time</string>
+
+    <string name="delete_reminder_title">Delete reminder</string>
+    <string name="delete_reminder_confirmation">Are you sure you want to delete \"%1$s\"?</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="edit">Edit</string>
+    <string name="vibration">Vibration</string>
+    <string name="sound">Sound</string>
+
+    <string name="type_location">Location</string>
+    <string name="type_datetime">Date and time</string>
+    <string name="type_both">Location and date</string>
+
+    <string name="trigger_enter">On entry</string>
+    <string name="trigger_exit">On exit</string>
+    <string name="trigger_both">On entry or exit</string>
+    <string name="radius_label">Radius: %1$dm</string>
+    <string name="collapse">Collapse</string>
+    <string name="expand">Expand</string>
+    <!-- Auth Screens -->
+    <string name="login_title">Log in to continue</string>
+    <string name="label_email">Email</string>
+    <string name="placeholder_email">you@email.com</string>
+    <string name="label_password">Password</string>
+    <string name="placeholder_password">Your password</string>
+    <string name="logging_in">Logging in...</string>
+    <string name="login_button">Log In</string>
+    <string name="error_empty_fields">Please complete all fields</string>
+    <string name="error_empty_email">Enter your email</string>
+    <string name="error_empty_password">Enter your password</string>
+    <string name="login_success">Welcome back!</string>
+    <string name="create_new_account">Create new account</string>
+    <string name="cd_location">Location</string>
+    <string name="cd_alarm">Alarm</string>
+
+    <string name="register_title">Create your account</string>
+    <string name="register_subtitle">Complete the information to start</string>
+    <string name="label_first_name">First Name</string>
+    <string name="placeholder_first_name">Your first name</string>
+    <string name="label_last_name">Last Name</string>
+    <string name="placeholder_last_name">Your last name</string>
+    <string name="placeholder_password_min">Minimum 6 characters</string>
+    <string name="label_confirm_password">Confirm Password</string>
+    <string name="placeholder_confirm_password">Repeat your password</string>
+    <string name="error_passwords_dont_match">Passwords don\'t match</string>
+    <string name="creating_account">Creating account...</string>
+    <string name="register_button">Create Account</string>
+    <string name="error_fill_all_fields">Complete all fields</string>
+    <string name="error_password_too_short">Password must be at least 6 characters</string>
+    <string name="register_success">Account created! Logging in...</string>
+    <string name="close">Close</string>
+
+    <!-- Battery Optimization -->
+    <string name="battery_opt_success">Perfect! RememberGo will work better in the background</string>
+    <string name="battery_opt_rationale">We recommend enabling this option for reminders to work better</string>
+    <string name="battery_opt_error">Could not request battery optimization exclusion</string>
+
+    <!-- Permission Messages -->
+    <string name="notifications_enabled">Notifications enabled</string>
+    <string name="profile_updated_success">Profile updated</string>
+
+    <!-- Permission Dialog -->
+    <string name="notifications_disabled_title">Notifications disabled</string>
+    <string name="location_disabled_title">Location disabled</string>
+    <string name="notifications_disabled_message">To receive reminders, you need to enable notifications in your device settings.\n\nGo to: Settings → Apps → RememberGo → Notifications</string>
+    <string name="location_disabled_message">To use location-based reminders, you need to enable location permissions.\n\nGo to: Settings → Apps → RememberGo → Permissions → Location</string>
+    <string name="go_to_settings">Go to settings</string>
+    <string name="not_now">Not now</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_routes">Alternate routes</string>
+    <string name="nav_reminders">Reminders</string>
+    <string name="nav_groups">Collaborative groups</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Groups Screen -->
+    <string name="groups_title">My groups</string>
+    <string name="create_group">Create group</string>
+    <string name="join_with_code">Join with code</string>
+    <string name="loading_groups">Loading groups...</string>
+    <string name="no_groups_title">You have no groups</string>
+    <string name="no_groups_description">Create a group to share with trusted people</string>
+    <string name="group_created_success">Group created successfully</string>
+    <string name="join_group_title">Join a group</string>
+    <string name="join_group_description">Enter the group\'s invitation code</string>
+    <string name="invitation_code_label">Invitation code</string>
+    <string name="invitation_code_placeholder">Ex: C6FB334B</string>
+    <string name="code_length_requirement">The code must be 8 characters long</string>
+    <string name="join_button">Join</string>
+    <string name="enter_code_error">Enter a code</string>
+    <string name="code_length_error">The code must have 8 characters</string>
+    <string name="code_copied">Code copied</string>
+
+    <string name="map_group_name_prefix">Group %1$d</string>
+    <string name="map_you">You</string>
+
+    <string name="feature_groups_title">Create trusted groups</string>
+    <string name="feature_groups_desc">Share with friends, family, or colleagues</string>
+    <string name="feature_chat_title">Real-time chat</string>
+    <string name="feature_chat_desc">Communicate instantly with your contacts</string>
+    <string name="feature_invite_title">Invite with codes</string>
+    <string name="feature_invite_desc">Share codes securely</string>
+
+    <!-- Create Group Screen -->
+    <string name="create_group_title">Create Group</string>
+    <string name="group_name_label">Group name</string>
+    <string name="group_name_field_label">Name</string>
+    <string name="group_name_placeholder">Ex: Family, Friends, Work...</string>
+    <string name="group_description_label">Description (optional)</string>
+    <string name="group_description_field_label">Description</string>
+    <string name="group_description_placeholder">Describe the purpose of the group...</string>
+    <string name="creating_group">Creating...</string>
+    <string name="error_empty_group_name">Group name cannot be empty</string>
+    <string name="warning_creating_group">Wait, creating group...</string>
+    <string name="create_group_info">You will be able to invite members after creating the group</string>
+
+    <!-- Chat Screen -->
+    <string name="chat_type_message">Type a message...</string>
+    <string name="chat_no_messages">No messages yet.\nBe the first to write! 💬</string>
+    <string name="chat_location_shared">📍 Shared location: %1$s</string>
+    <string name="chat_error_sending">Could not send. Tap to retry.</string>
+    <string name="chat_header_today">Today</string>
+    <string name="chat_header_yesterday">Yesterday</string>
+    <string name="cd_open_map">Open map</string>
+    <string name="cd_send">Send</string>
+    <string name="cd_emoji">Emoji</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_error_sending">Error sending</string>
+    <string name="cd_read_by">Read by %1$s</string>
+    <string name="cd_delivered">Delivered</string>
+    <string name="cd_go_to_map">Go to map</string>
+    <string name="cd_back_to_chat">Back to chat</string>
+
+    <string name="cd_chat">Chat</string>
+    <string name="cd_map">Map</string>
+
+    <string name="chat_header_today_label">Today</string>
+    <string name="chat_header_yesterday_label">Yesterday</string>
+
+    <!-- Group Detail Screen -->
+    <string name="group_info_title">Group Information</string>
+    <string name="group_id_label">Group #%1$d</string>
+    <string name="group_option_participants">Participants</string>
+    <string name="group_option_participants_sub">See all group members</string>
+    <string name="group_option_invite">Invite people</string>
+    <string name="group_option_invite_sub">Share group code or link</string>
+    <string name="group_option_delete">Delete group</string>
+    <string name="group_option_delete_sub">This action cannot be undone</string>
+    <string name="group_option_exit">Leave group</string>
+    <string name="group_option_exit_sub">You will no longer receive messages from this group</string>
+    <string name="delete_group_dialog_title">Delete group?</string>
+    <string name="delete_group_dialog_message">This action will delete the group \"%1$s\" permanently and cannot be undone. All members will lose access.</string>
+    <string name="exit_group_success">You left the group</string>
+    <string name="cd_sent">Sent</string>
+    <string name="delete_group_success">Group deleted successfully</string>
+    <string name="group_exit_success">You left the group</string>
+    <string name="group_deleted_success">Group deleted successfully</string>
+
+    <!-- Participants Screen -->
+    <string name="participants_empty">No participants</string>
+    <string name="participants_count">%1$d participants</string>
+    <string name="you">You</string>
+    <string name="role_creator">Creator</string>
+    <string name="role_admin">Administrator</string>
+    <string name="role_moderator">Moderator</string>
+    <string name="role_member">Member</string>
+    <string name="status_inactive">• Inactive</string>
+
+    <!-- Invitation Dialog -->
+    <string name="invite_to_group">Invite to %1$s</string>
+    <string name="invite_dialog_desc">Share this code so others can join</string>
+    <string name="label_code">CODE</string>
+    <string name="share_message">Join my group \"%1$s\"! 🎉\n\nInvitation code: %2$s\n\nOpen the app and enter this code to join.</string>
+    <string name="share_chooser_title">Share code</string>
+    <string name="share_button">Share via…</string>
+
+    <string name="cd_groups">Groups</string>
+
+
+    <!-- Routes Screen -->
+    <string name="routes_title">My Destinations</string>
+    <string name="new_destination">New destination</string>
+    <string name="zones">Zones</string>
+    <string name="loading_destinations">Loading destinations...</string>
+    <string name="no_destinations_title">You have no saved destinations</string>
+    <string name="no_destinations_description">Add your favorite places to generate routes quickly</string>
+    <string name="destinations_count">My destinations (%1$d)</string>
+
+    <string name="feature_save_destinations_title">Save frequent destinations</string>
+    <string name="feature_save_destinations_desc">Quickly access your favorite places</string>
+    <string name="feature_route_options_title">Get 3 route options</string>
+    <string name="feature_route_options_desc">AI helps you vary your usual routes</string>
+    <string name="feature_stats_title">Check your statistics</string>
+    <string name="feature_stats_desc">Review your trip history</string>
+
+    <string name="generate_route">Generate route</string>
+    <string name="data">Data</string>
+    <string name="delete_destination_title">Delete destination?</string>
+    <string name="delete_destination_confirmation">\"%1$s\" and all its trip history will be deleted. This action cannot be undone.</string>
+
+    <string name="cd_routes">Alternate routes</string>
+
+    <!-- Map Screen (Routes) -->
+    <string name="map_search_success">📍 Location found</string>
+    <string name="map_hide_info">Hide info</string>
+    <string name="map_show_info">Show info</string>
+    <string name="map_zones_visible">Dangerous zones visible</string>
+    <string name="map_zones_hidden">Dangerous zones hidden</string>
+    <string name="map_selected_location">Selected location</string>
+    <string name="map_naming_destination">Name this destination</string>
+    <string name="map_destination_name_label">Destination name</string>
+    <string name="map_destination_placeholder">ex. Home, Work, Gym...</string>
+    <string name="map_characters_count">%1$d/100 characters</string>
+    <string name="map_save_destination">Save destination</string>
+    <string name="map_select_location">Select a location</string>
+    <string name="generic_error">Error: %1$s</string>
+    <string name="map_destination_saved">Destination saved successfully</string>
+    <string name="map_save_error">Error saving destination</string>
+    <string name="map_getting_location">Obtaining location...</string>
+    <string name="map_getting_location_long">This may take a few seconds</string>
+    <string name="finish">Finish</string>
+    <string name="my_zones_title">Dangerous zones</string>
+    <string name="zones_loaded_success">%1$d zone(s) loaded</string>
+    <string name="error_loading_zones">Error loading dangerous zones</string>
+    <string name="delete_zone_title">Delete zone?</string>
+    <string name="delete_zone_confirmation">You are about to delete:</string>
+    <string name="cannot_be_undone_warning">This action cannot be undone.</string>
+    <string name="error_zone_no_id">Error: Zone without ID</string>
+    <string name="zone_deleted_success">Zone deleted successfully</string>
+    <string name="registered_zones_title">Registered zones</string>
+    <string name="zones_count_label">%1$d zone(s)</string>
+    <string name="no_zones_registered">No zones registered</string>
+    <string name="long_press_map_to_add">Long press the map to add</string>
+    <string name="danger_zone_label">Dangerous zone</string>
+    <string name="radius_label_simple">Radius</string>
+    <string name="meters_unit">meters</string>
+    <string name="risk_level_label_simple">Risk level</string>
+    <string name="risk_level_format">%1$s (level %2$d/3)</string>
+    <string name="coordinates_label">Coordinates</string>
+    <string name="delete_zone_button">Delete zone</string>
+    <string name="suggested_zones_nearby">Suggested zones nearby</string>
+    <string name="zones_reported_by_others">%1$d zone(s) reported by others</string>
+    <string name="view_suggestions">View suggestions</string>
+    <string name="zone_created_success">Zone created: %1$s</string>
+    <string name="error_creating_zone">Error creating zone: %1$s</string>
+    <string name="map_location_error">Location error: %1$s</string>
+    <!-- Statistics Screen -->
+    <string name="stats_loading">Loading statistics...</string>
+    <string name="stats_retry">Retry</string>
+    <string name="stats_title_label">Statistics</string>
+    <string name="stats_summary_title">General Summary</string>
+    <string name="stats_total_routes">Total routes</string>
+    <string name="stats_completed_vs_cancelled">Completed vs Cancelled</string>
+    <string name="stats_completed_cancelled_count">%1$d completed / %2$d cancelled</string>
+    <string name="stats_avg_time_title">Average time by route type</string>
+    <string name="stats_most_used_title">Most used route</string>
+    <string name="stats_route_label">Route: %1$s</string>
+    <string name="stats_time_format_min_sec">%1$d min %2$d sec</string>
+    <string name="stats_time_format_sec">%1$d sec</string>
+
+    <!-- Route Selection Dialog -->
+    <string name="route_dialog_title">Select your route</string>
+    <string name="route_safe_avoiding">Routes avoiding dangerous zones</string>
+    <string name="route_generating_safe">Generating safe routes...</string>
+    <string name="route_generate_avoiding">Generate avoiding %1$d dangerous zone(s)</string>
+    <string name="route_confirm">Confirm</string>
+    <string name="route_danger_detected">%1$d risk zone(s) detected</string>
+
+    <string name="security_warning_title">⚠️ SECURITY WARNING</string>
+    <string name="detected_zones_label">Detected zones:</string>
+    <string name="risk_level_label">Risk level: %1$d/5</string>
+    <string name="affects_route_percentage">Affects %1$d%% of the route</string>
+    <string name="continue_route_question">Do you want to continue with this route?</string>
+    <string name="accept_risk_continue">Accept Risk and Continue</string>
+
+    <string name="transport_mode_label">Transport mode: %1$s</string>
+    <string name="route_selected_message">Route %1$s selected</string>
+    <string name="calculating_alternatives">Calculating alternative routes...</string>
+    <string name="user_location_unavailable">User location unavailable</string>
+    <string name="select_destination_first">Select a destination first</string>
+
+    <string name="alternate_route">Alternate route</string>
+    <string name="cd_calculate_alternate_route">Calculate alternate route</string>
+    <string name="cd_close_alert">Close alert</string>
+    <string name="cd_close_notification">Close notification</string>
+
+    <string name="mode_walking">Walking</string>
+    <string name="mode_driving">Driving</string>
+    <string name="mode_cycling">Cycling</string>
+    <string name="cd_back_arrow">Back</string>
+
+    <!-- Search Location Card -->
+    <string name="search_location_title">Search location</string>
+    <string name="search_location_placeholder">Type an address...</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="searching">Searching...</string>
+    <string name="unknown_location">Unknown location</string>
+
+    <!-- Suggested Zones Dialog -->
+    <string name="reported_zones_title">Zones reported by others</string>
+    <string name="zones_near_you">%1$d zone(s) near you</string>
+    <string name="view_on_map">View on map</string>
+    <string name="discard">Discard</string>
+    <string name="save">Save</string>
+    <string name="zone_saved">Zone saved</string>
+    <string name="risk_low">Low</string>
+    <string name="risk_medium">Medium</string>
+    <string name="risk_high">High</string>
+    <string name="distance_near_you">%1$s • %2$.1f km from you</string>
+    <string name="map_snippet_zone">Level: %1$s • Radius: %2$dm</string>
+    <string name="map_snippet_zone_level">Level: %1$s</string>
+    <string name="map_snippet_type">Type: %1$s</string>
+    <string name="map_your_location">Your location</string>
+    <string name="zone_level_tag">Level %1$d/3</string>
+
+    <!-- Public Zones Grouped Card -->
+    <string name="public_zones_title">Zones reported by other users</string>
+    <string name="public_zones_detected_count">%1$d zone(s) detected on this route</string>
+    <string name="public_zones_levels_label">Levels:</string>
+    <string name="public_zones_level_value">Level %1$d</string>
+    <string name="public_zones_save_cd">Save zone</string>
+    <string name="public_zones_save_button">Save this zone</string>
+    <string name="public_zones_saving">Saving...</string>
+    <string name="public_zones_saved_success">Zone saved to your personal zones</string>
+    <string name="public_zones_distance_from_destination">%1$.1f km from destination</string>
+    <string name="public_zones_saved_cd">Saved</string>
+
+    <string name="route_ml_badge">🤖 ML</string>
+    <string name="route_safe_badge">SAFE</string>
+    <string name="route_risk_badge">RISK</string>
+    <string name="route_distance_km_format">📏 %1$d km</string>
+    <string name="route_duration_min_format">⏱ %1$d min</string>
+
+    <string name="pref_fastest">Fastest</string>
+    <string name="pref_shortest">Shortest</string>
+    <string name="pref_recommended">Recommended</string>
+
+    <string name="map_help_title">💡 Tip</string>
+    <string name="map_help_message">Long press the map to mark dangerous zones</string>
+
+    <string name="eta_arriving">Arriving...</string>
+    <string name="eta_less_than_min">&lt; 1 min</string>
+    <string name="eta_mins_format">%1$d min</string>
+    <string name="eta_hours_mins_format">%1$dh %2$dmin</string>
+    <string name="eta_meters_format">%1$.0f m</string>
+    <string name="eta_km_format">%1$.2f km</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_personal_info">Personal information</string>
+    <string name="settings_label_first_name">First Name</string>
+    <string name="settings_label_last_name">Last Name</string>
+    <string name="settings_label_email">Email</string>
+    <string name="settings_not_editable">Not editable</string>
+    <string name="settings_error_empty_fields">First and last name cannot be empty</string>
+    <string name="settings_save_changes">Save changes</string>
+    <string name="settings_discard_changes">Discard changes</string>
+    <string name="settings_logout">Log out</string>
+    <string name="settings_logout_confirm_title">Log out</string>
+    <string name="settings_logout_confirm_message">Are you sure you want to log out?</string>
+    <string name="error_group_name_exists">A group with that name already exists. Try another name.</string>
+    <string name="error_session_expired">Your session has expired. Please log in again.</string>
+    <string name="error_server_internal">Server error. Please try again later.</string>
+    <string name="error_no_internet">No internet connection. Check your connection.</string>
+    <string name="error_timeout">The request took too long. Try again.</string>
+    <string name="error_unknown_create_group">Unknown error while creating group</string>
+    <string name="error_getting_groups">Error getting groups: %1$s</string>
+    <string name="error_generic_message">Error: %1$s</string>
+    <string name="join_group_success">You joined the group successfully!</string>
+    <string name="error_invalid_code">The invitation code is not valid or the group does not exist.</string>
+    <string name="error_already_in_group">You already belong to this group.</string>
+    <string name="error_creator_already_in_group">You are the creator of this group, you already belong to it.</string>
+    <string name="error_join_group">Error joining group.</string>
+    <string name="error_session_expired_join">Your session has expired. Log in again.</string>
+    <string name="error_server_internal_short">Server error. Try later.</string>
+    <string name="error_no_internet_join">No internet connection. Check your network.</string>
+    <string name="error_timeout_join">The request took too long. Try again.</string>
+    <string name="error_unknown_join">Unknown error while joining the group.</string>
+    <string name="exit_group_success_msg">You have left the group</string>
+    <string name="error_exit_group">Error: %1$s</string>
+    <string name="error_connection_exit_group">Connection error: %1$s</string>
+    <string name="delete_group_success_msg">Group deleted successfully</string>
+    <string name="error_delete_group">Error deleting group: %1$s</string>
+    <string name="error_connection_delete_group">Connection error: %1$s</string>
+    <string name="error_location_name_exists">You already have a location with this name</string>
+    <string name="error_network_connection">Connection error. Check your internet</string>
+    <string name="error_server_communication">Server communication error</string>
+    <string name="error_create_location">Error creating location</string>
+    <string name="error_load_locations">Could not load locations</string>
+    <string name="error_load_location_id">Could not load requested location</string>
+    <string name="location_deleted_success_msg">Location deleted successfully</string>
+    <string name="error_location_not_found">Location does not exist or was already deleted</string>
+    <string name="error_delete_location">Could not delete location</string>
+
+    <string name="danger_zone_title">Dangerous zone</string>
+    <string name="placeholder_danger_zone_name">Ex: Dark alley</string>
+    <string name="label_level">Level</string>
+    <string name="label_type">Type</string>
+    <string name="label_add_notes">Add notes</string>
+    <string name="placeholder_notes">Additional details...</string>
+    <string name="button_mark">Mark</string>
+    <string name="type_assault">assault</string>
+    <string name="type_traffic">traffic</string>
+    <string name="type_dark">dark</string>
+    <string name="type_other">other</string>
+
+    <string name="error_invalid_credentials">Incorrect email or password</string>
+    <string name="error_user_not_found">An account with this email does not exist</string>
+    <string name="error_account_locked">Account locked. Contact support</string>
+    <string name="error_invalid_credentials_short">Invalid credentials</string>
+    <string name="error_login_generic">Error logging in. Please try again</string>
+    <string name="error_user_already_exists">An account with this email already exists</string>
+    <string name="error_invalid_email">Invalid email format</string>
+    <string name="error_weak_password">Password must be stronger</string>
+    <string name="error_invalid_data">Invalid data. Please check your information</string>
+    <string name="error_register_generic">Error creating account. Please try again</string>
+    <string name="error_no_token">No access token</string>
+
+    <!-- Integrantes ViewModel -->
+    <string name="error_no_active_session">No active session</string>
+    <string name="error_no_data_received">No data received</string>
+    <string name="error_no_permission_integrantes">You don\'t have permission to see participants</string>
+    <string name="error_group_not_found">Group not found</string>
+    <string name="error_loading_integrantes">Error loading participants: %1$d</string>
+    <string name="error_connection_integrantes">Connection error: %1$s</string>
+    <string name="error_obtaining_address">Error obtaining address</string>
+    <string name="error_reminder_not_found">Reminder not found</string>
+    <string name="error_loading_reminder">Error loading reminder</string>
+
+    <!-- Location Helper & Map Components -->
+    <string name="error_location_permission_denied">Location permission denied</string>
+    <string name="error_could_not_get_location">Could not obtain location</string>
+    <string name="error_location_permission">Location permission error</string>
+    <string name="error_activating_gps">Error activating GPS: %1$s</string>
+    <string name="gps_disabled">GPS disabled</string>
+    <string name="activate_location_to_continue">Activate your location to continue</string>
+    <string name="activate">Activate</string>
+    <string name="via_format">via %1$s</string>
+    <string name="modules_available">Available modules</string>
+    <string name="loading_dots">Loading...</string>
+    <string name="no_user_info">No user information found</string>
+    <string name="error_loading_content">An error occurred while loading content</string>
+    <string name="go_to_feature">Go to %1$s</string>
 </resources>

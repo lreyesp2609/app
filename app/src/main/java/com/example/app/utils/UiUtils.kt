@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.DialogProperties
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,13 +118,13 @@ fun DialogoCrearZonaPeligrosa(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                "Zona peligrosa",
+                                stringResource(com.example.app.R.string.danger_zone_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                         IconButton(onClick = onCancelar, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Close, "Cerrar", modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.Close, stringResource(com.example.app.R.string.close), modifier = Modifier.size(20.dp))
                         }
                     }
 
@@ -133,8 +134,8 @@ fun DialogoCrearZonaPeligrosa(
                     OutlinedTextField(
                         value = nombre,
                         onValueChange = { if (it.length <= 50) nombre = it },
-                        label = { Text("Nombre", fontSize = 13.sp) },
-                        placeholder = { Text("Ej: Callejón oscuro", fontSize = 13.sp) },
+                        label = { Text(stringResource(com.example.app.R.string.group_name_field_label), fontSize = 13.sp) },
+                        placeholder = { Text(stringResource(com.example.app.R.string.placeholder_danger_zone_name), fontSize = 13.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(10.dp),
@@ -155,9 +156,9 @@ fun DialogoCrearZonaPeligrosa(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Radio", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(com.example.app.R.string.radius_label_simple), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 Text(
-                                    "$radio m",
+                                    "$radio ${stringResource(com.example.app.R.string.meters_unit).first()}",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
@@ -185,7 +186,7 @@ fun DialogoCrearZonaPeligrosa(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Nivel", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(com.example.app.R.string.label_level), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 Box(
                                     modifier = Modifier
                                         .background(
@@ -220,18 +221,19 @@ fun DialogoCrearZonaPeligrosa(
 
                     // Tipo de peligro - chips horizontales compactos
                     Column {
-                        Text("Tipo", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(com.example.app.R.string.label_type), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             listOf(
-                                "asalto" to "🔪",
-                                "trafico" to "🚗",
-                                "oscuro" to "🌙",
-                                "otro" to "⚠️"
-                            ).forEach { (t, emoji) ->
+                                "asalto" to "🔪" to com.example.app.R.string.type_assault,
+                                "trafico" to "🚗" to com.example.app.R.string.type_traffic,
+                                "oscuro" to "🌙" to com.example.app.R.string.type_dark,
+                                "otro" to "⚠️" to com.example.app.R.string.type_other
+                            ).forEach { (pair, resId) ->
+                                val (t, emoji) = pair
                                 FilterChip(
                                     selected = tipo == t,
                                     onClick = { tipo = t },
@@ -242,7 +244,7 @@ fun DialogoCrearZonaPeligrosa(
                                         ) {
                                             Text(emoji, fontSize = 14.sp)
                                             Text(
-                                                t.replaceFirstChar { it.uppercase() },
+                                                stringResource(resId).replaceFirstChar { it.uppercase() },
                                                 fontSize = 11.sp
                                             )
                                         }
@@ -265,7 +267,7 @@ fun DialogoCrearZonaPeligrosa(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Agregar notas",
+                            stringResource(com.example.app.R.string.label_add_notes),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -284,7 +286,7 @@ fun DialogoCrearZonaPeligrosa(
                             OutlinedTextField(
                                 value = notas,
                                 onValueChange = { if (it.length <= 200) notas = it },
-                                placeholder = { Text("Detalles adicionales...", fontSize = 12.sp) },
+                                placeholder = { Text(stringResource(com.example.app.R.string.placeholder_notes), fontSize = 12.sp) },
                                 modifier = Modifier.fillMaxWidth(),
                                 minLines = 2,
                                 maxLines = 2,
@@ -314,7 +316,7 @@ fun DialogoCrearZonaPeligrosa(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text("Cancelar", fontSize = 14.sp)
+                            Text(stringResource(com.example.app.R.string.cancel), fontSize = 14.sp)
                         }
 
                         Button(
@@ -328,7 +330,7 @@ fun DialogoCrearZonaPeligrosa(
                             ),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text("Marcar", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(stringResource(com.example.app.R.string.button_mark), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
                 }
@@ -347,11 +349,11 @@ fun getNivelPeligroColor(nivel: Int): Color = when {
 /**
  * Devuelve el nombre legible del modo de transporte
  */
-fun getModeDisplayName(mode: String): String {
+fun getModeDisplayName(mode: String, context: android.content.Context): String {
     return when (mode) {
-        "foot-walking" -> "Caminar"
-        "driving-car" -> "Carro"
-        "cycling-regular" -> "Bicicleta"
-        else -> "Caminar"
+        "foot-walking" -> context.getString(com.example.app.R.string.mode_walking)
+        "driving-car" -> context.getString(com.example.app.R.string.mode_driving)
+        "cycling-regular" -> context.getString(com.example.app.R.string.mode_cycling)
+        else -> context.getString(com.example.app.R.string.mode_walking)
     }
 }

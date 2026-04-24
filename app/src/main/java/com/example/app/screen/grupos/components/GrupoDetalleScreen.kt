@@ -56,6 +56,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -80,7 +82,7 @@ fun GrupoDetalleScreen(
     var showInviteDialog by remember { mutableStateOf(false) }
 
     val grupoViewModel: GrupoViewModel = viewModel(
-        factory = GrupoViewModelFactory(grupoRepository)
+        factory = GrupoViewModelFactory(context, grupoRepository)
     )
 
     val viewModel: IntegrantesViewModel = viewModel(
@@ -116,7 +118,7 @@ fun GrupoDetalleScreen(
 
     LaunchedEffect(mensajeSalida) {
         mensajeSalida?.let { mensaje ->
-            Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, R.string.group_exit_success, Toast.LENGTH_SHORT).show()
             grupoViewModel.resetMensajeSalida()
             navController.navigate("home?tab=3") {
                 popUpTo("home") {
@@ -130,7 +132,7 @@ fun GrupoDetalleScreen(
     // ✅ Agregar LaunchedEffect para eliminar grupo
     LaunchedEffect(mensajeEliminacion) {
         mensajeEliminacion?.let { mensaje ->
-            Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, R.string.group_deleted_success, Toast.LENGTH_SHORT).show()
             grupoViewModel.resetMensajeEliminacion()
             navController.navigate("home?tab=3") {
                 popUpTo("home") {
@@ -147,12 +149,12 @@ fun GrupoDetalleScreen(
             onDismissRequest = { showDeleteDialog = false },
             title = {
                 Text(
-                    text = "¿Eliminar grupo?",
+                    text = stringResource(R.string.delete_group_dialog_title),
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
-                Text("Esta acción eliminará el grupo \"$grupoNombre\" permanentemente y no se puede deshacer. Todos los miembros perderán el acceso.")
+                Text(stringResource(R.string.delete_group_dialog_message, grupoNombre))
             },
             confirmButton = {
                 TextButton(
@@ -164,12 +166,12 @@ fun GrupoDetalleScreen(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Eliminar")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -231,7 +233,7 @@ fun GrupoDetalleScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Grupo #$grupoId",
+                    text = stringResource(R.string.group_id_label, grupoId),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -245,8 +247,8 @@ fun GrupoDetalleScreen(
             // Opciones del grupo
             GrupoOpcion(
                 icon = Icons.Default.People,
-                titulo = "Participantes",
-                subtitulo = "Ver todos los miembros del grupo",
+                titulo = stringResource(R.string.group_option_participants),
+                subtitulo = stringResource(R.string.group_option_participants_sub),
                 onClick = {
                     navController.navigate("participantes/$grupoId/$grupoNombre")
                 }
@@ -254,8 +256,8 @@ fun GrupoDetalleScreen(
 
             GrupoOpcion(
                 icon = Icons.Default.PersonAdd,
-                titulo = "Invitar personas",
-                subtitulo = "Comparte el código o link del grupo",
+                titulo = stringResource(R.string.group_option_invite),
+                subtitulo = stringResource(R.string.group_option_invite_sub),
                 onClick = { showInviteDialog = true }
             )
 
@@ -288,16 +290,16 @@ fun GrupoDetalleScreen(
                 if (isCreator) {
                     GrupoOpcion(
                         icon = Icons.Default.Delete,
-                        titulo = "Eliminar grupo",
-                        subtitulo = "Esta acción no se puede deshacer",
+                        titulo = stringResource(R.string.group_option_delete),
+                        subtitulo = stringResource(R.string.group_option_delete_sub),
                         onClick = { showDeleteDialog = true }, // ✅ Mostrar diálogo
                         isDestructive = true
                     )
                 } else {
                     GrupoOpcion(
                         icon = Icons.Default.ExitToApp,
-                        titulo = "Salir del grupo",
-                        subtitulo = "Ya no recibirás mensajes de este grupo",
+                        titulo = stringResource(R.string.group_option_exit),
+                        subtitulo = stringResource(R.string.group_option_exit_sub),
                         onClick = {
                             grupoViewModel.salirDelGrupo(token, grupoId)
                         },
@@ -319,7 +321,7 @@ fun GrupoDetalleTopBar(
     TopAppBar(
         title = {
             Text(
-                text = "Información del grupo",
+                text = stringResource(R.string.group_info_title),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium
             )

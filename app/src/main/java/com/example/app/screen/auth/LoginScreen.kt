@@ -20,8 +20,11 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.screen.components.AppButton
 import com.example.app.screen.components.AppTextField
+import com.example.app.screen.components.LanguageSelector
 import com.example.app.ui.theme.getBackgroundGradient
 import com.example.app.viewmodel.AuthViewModel
 import com.example.app.viewmodel.NotificationViewModel
@@ -65,19 +68,25 @@ fun LoginScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(60.dp))
+        Box(modifier = Modifier.fillMaxWidth()) {
+            LanguageSelector(
+                modifier = Modifier.align(Alignment.TopEnd)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(30.dp))
 
         // Logo sin caja - solo los íconos
         Box(modifier = Modifier.size(100.dp), contentAlignment = Alignment.TopEnd) {
             Icon(
                 imageVector = Icons.Default.LocationOn,
-                contentDescription = "Ubicación",
+                contentDescription = stringResource(R.string.cd_location),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.fillMaxSize()
             )
             Icon(
                 imageVector = Icons.Default.AccessAlarm,
-                contentDescription = "Alarma",
+                contentDescription = stringResource(R.string.cd_alarm),
                 tint = Color(0xFFFF6B6B),
                 modifier = Modifier
                     .size(36.dp)
@@ -94,7 +103,7 @@ fun LoginScreen(
         )
 
         Text(
-            text = "Inicia sesión para continuar",
+            text = stringResource(R.string.login_title),
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             modifier = Modifier.padding(bottom = 32.dp)
@@ -104,8 +113,8 @@ fun LoginScreen(
         AppTextField(
             value = email,
             onValueChange = { email = it },
-            label = "Correo electrónico",
-            placeholder = "tu@email.com",
+            label = stringResource(R.string.label_email),
+            placeholder = stringResource(R.string.placeholder_email),
             leadingIcon = {
                 Icon(
                     Icons.Default.Email,
@@ -124,8 +133,8 @@ fun LoginScreen(
         AppTextField(
             value = password,
             onValueChange = { password = it },
-            label = "Contraseña",
-            placeholder = "Tu contraseña",
+            label = stringResource(R.string.label_password),
+            placeholder = stringResource(R.string.placeholder_password),
             leadingIcon = {
                 Icon(
                     Icons.Default.Lock,
@@ -145,23 +154,23 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         AppButton(
-            text = if (authViewModel.isLoading) "Iniciando sesión..." else "Iniciar sesión",
+            text = if (authViewModel.isLoading) stringResource(R.string.logging_in) else stringResource(R.string.login_button),
             isLoading = authViewModel.isLoading,
             onClick = {
                 when {
                     email.isBlank() && password.isBlank() -> {
-                        notificationViewModel.showError("Por favor completa todos los campos")
+                        notificationViewModel.showError(context.getString(R.string.error_empty_fields))
                     }
                     email.isBlank() -> {
-                        notificationViewModel.showError("Ingresa tu correo electrónico")
+                        notificationViewModel.showError(context.getString(R.string.error_empty_email))
                     }
                     password.isBlank() -> {
-                        notificationViewModel.showError("Ingresa tu contraseña")
+                        notificationViewModel.showError(context.getString(R.string.error_empty_password))
                     }
                     else -> {
                         authViewModel.login(email, password) { loginExitoso ->
                             if (loginExitoso) {
-                                notificationViewModel.showSuccess("¡Bienvenido de nuevo!")
+                                notificationViewModel.showSuccess(context.getString(R.string.login_success))
                             }
                         }
                     }
@@ -173,7 +182,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.weight(1f))
 
         AppButton(
-            text = "Crear cuenta nueva",
+            text = stringResource(R.string.create_new_account),
             icon = Icons.Default.PersonAdd,
             outlined = true,
             onClick = { navController.navigate("register") },

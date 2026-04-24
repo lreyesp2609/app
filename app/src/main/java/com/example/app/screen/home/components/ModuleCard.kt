@@ -41,6 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
+
 @Composable
 fun ModuleCard(
     title: String,
@@ -89,7 +92,7 @@ fun ModuleCard(
 
             Icon(
                 imageVector = Icons.Default.ArrowForward,
-                contentDescription = "Ir a $title",
+                contentDescription = stringResource(R.string.go_to_feature, title),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)
             )

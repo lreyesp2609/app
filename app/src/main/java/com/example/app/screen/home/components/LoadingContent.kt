@@ -14,6 +14,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
+
 @Composable
 fun LoadingContent() {
     Column(
@@ -27,7 +30,7 @@ fun LoadingContent() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Cargando...",
+            text = stringResource(R.string.loading_dots),
             color = MaterialTheme.colorScheme.onBackground,
             style = MaterialTheme.typography.bodyMedium
         )

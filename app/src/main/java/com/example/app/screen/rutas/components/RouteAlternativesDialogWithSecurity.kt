@@ -46,11 +46,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.app.R
 import com.example.app.models.RouteAlternative
 import com.example.app.models.ValidarRutasResponse
 import com.example.app.ui.theme.SecurityColors
@@ -77,7 +79,7 @@ fun RouteAlternativesDialogWithSecurity(
         title = {
             Column {
                 Text(
-                    "Selecciona tu ruta",
+                    stringResource(R.string.route_dialog_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -102,7 +104,7 @@ fun RouteAlternativesDialogWithSecurity(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            "Rutas evitando zonas peligrosas",
+                            stringResource(R.string.route_safe_avoiding),
                             fontSize = 13.sp,
                             color = SecurityColors.getSafeColor(isDarkTheme),
                             fontWeight = FontWeight.SemiBold
@@ -185,7 +187,7 @@ fun RouteAlternativesDialogWithSecurity(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                "Generando rutas seguras...",
+                                stringResource(R.string.route_generating_safe),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp
                             )
@@ -197,7 +199,7 @@ fun RouteAlternativesDialogWithSecurity(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                "Generar evitando ${validacionSeguridad.totalZonasUsuario} zona(s) peligrosa(s)",
+                                stringResource(R.string.route_generate_avoiding, validacionSeguridad.totalZonasUsuario),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center
@@ -232,7 +234,7 @@ fun RouteAlternativesDialogWithSecurity(
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Confirmar", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.route_confirm), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -241,7 +243,7 @@ fun RouteAlternativesDialogWithSecurity(
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(
-                    "Cancelar",
+                    stringResource(R.string.cancel),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium
                 )
@@ -453,7 +455,7 @@ fun RouteChipCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            "${zonas.size} zona(s) de riesgo detectada(s)",
+                            stringResource(R.string.route_danger_detected, zonas.size),
                             fontSize = 12.sp,
                             color = SecurityColors.getDangerColor(isDarkTheme),
                             fontWeight = FontWeight.SemiBold

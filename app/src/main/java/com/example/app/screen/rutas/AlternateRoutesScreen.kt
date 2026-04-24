@@ -63,12 +63,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.app.R
 import com.example.app.models.UbicacionUsuarioResponse
 import com.example.app.screen.components.AppButton
 import com.example.app.ui.theme.AppColors
 import com.example.app.ui.theme.SecurityColors
 import com.example.app.viewmodel.NotificationViewModel
 import com.example.app.viewmodel.UbicacionesViewModel
+import com.example.app.viewmodel.UbicacionesViewModelFactory
 import kotlinx.coroutines.delay
 
 @Composable
@@ -78,7 +83,10 @@ fun AlternateRoutesScreen(
     navController: NavController,
     notificationViewModel: NotificationViewModel
 ) {
-    val viewModel = remember { UbicacionesViewModel(token) }
+    val context = LocalContext.current
+    val viewModel: UbicacionesViewModel = viewModel(
+        factory = UbicacionesViewModelFactory(context, token)
+    )
     val isDarkTheme = isSystemInDarkTheme()
 
     var showContent by remember { mutableStateOf(false) }
@@ -117,13 +125,13 @@ fun AlternateRoutesScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Route,
-                            contentDescription = "Rutas alternas",
+                            contentDescription = stringResource(R.string.cd_routes),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(28.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Mis Destinos",
+                            text = stringResource(R.string.routes_title),
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
@@ -157,7 +165,7 @@ fun AlternateRoutesScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                "Nuevo destino",
+                                stringResource(R.string.new_destination),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
                             )
@@ -185,7 +193,7 @@ fun AlternateRoutesScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                "Zonas",
+                                stringResource(R.string.zones),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
                             )
@@ -218,7 +226,7 @@ fun AlternateRoutesScreen(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    text = "Cargando destinos...",
+                                    text = stringResource(R.string.loading_destinations),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
@@ -264,7 +272,7 @@ fun AlternateRoutesScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Map,
-                                    contentDescription = "Sin destinos",
+                                    contentDescription = stringResource(R.string.cd_no_reminders),
                                     tint = MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier.size(72.dp)
                                 )
@@ -273,7 +281,7 @@ fun AlternateRoutesScreen(
                             Spacer(modifier = Modifier.height(24.dp))
 
                             Text(
-                                text = "No tienes destinos guardados",
+                                text = stringResource(R.string.no_destinations_title),
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onBackground,
@@ -283,7 +291,7 @@ fun AlternateRoutesScreen(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
-                                text = "Agrega tus lugares favoritos para generar rutas rápidamente",
+                                text = stringResource(R.string.no_destinations_description),
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 textAlign = TextAlign.Center,
@@ -317,7 +325,7 @@ fun AlternateRoutesScreen(
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = "¿Qué puedes hacer?",
+                                            text = stringResource(R.string.empty_state_help_title),
                                             fontSize = 16.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
@@ -327,24 +335,24 @@ fun AlternateRoutesScreen(
                                     // Características
                                     FeatureRow(
                                         icon = Icons.Default.Place,
-                                        title = "Guarda tus destinos frecuentes",
-                                        description = "Accede rápidamente a tus lugares favoritos"
+                                        title = stringResource(R.string.feature_save_destinations_title),
+                                        description = stringResource(R.string.feature_save_destinations_desc)
                                     )
 
                                     Spacer(modifier = Modifier.height(12.dp))
 
                                     FeatureRow(
                                         icon = Icons.Default.Route,
-                                        title = "Recibe 3 opciones de ruta",
-                                        description = "La IA te ayuda a variar tus trayectos habituales"
+                                        title = stringResource(R.string.feature_route_options_title),
+                                        description = stringResource(R.string.feature_route_options_desc)
                                     )
 
                                     Spacer(modifier = Modifier.height(12.dp))
 
                                     FeatureRow(
                                         icon = Icons.Default.Analytics,
-                                        title = "Consulta tus estadísticas",
-                                        description = "Revisa el historial de tus viajes"
+                                        title = stringResource(R.string.feature_stats_title),
+                                        description = stringResource(R.string.feature_stats_desc)
                                     )
                                 }
                             }
@@ -366,7 +374,7 @@ fun AlternateRoutesScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Mis destinos (${ubicaciones.size})",
+                                    text = stringResource(R.string.destinations_count, ubicaciones.size),
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onBackground
@@ -539,13 +547,13 @@ fun UbicacionCard(
             ) {
                 Icon(
                     imageVector = Icons.Default.Directions,
-                    contentDescription = "Generar ruta",
+                    contentDescription = stringResource(R.string.generate_route),
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "Generar ruta",
+                    text = stringResource(R.string.generate_route),
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
@@ -582,12 +590,12 @@ fun UbicacionCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Analytics,
-                        contentDescription = "Estadísticas",
+                        contentDescription = stringResource(R.string.data),
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Datos",
+                        text = stringResource(R.string.data),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -609,12 +617,12 @@ fun UbicacionCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar",
+                        contentDescription = stringResource(R.string.delete),
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Eliminar",
+                        text = stringResource(R.string.delete),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -637,13 +645,13 @@ fun UbicacionCard(
             },
             title = {
                 Text(
-                    "¿Eliminar destino?",
+                    stringResource(R.string.delete_destination_title),
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
-                    "Se eliminará \"${ubicacion.nombre}\" y todo su historial de viajes. Esta acción no se puede deshacer.",
+                    stringResource(R.string.delete_destination_confirmation, ubicacion.nombre),
                     lineHeight = 20.sp
                 )
             },
@@ -657,12 +665,12 @@ fun UbicacionCard(
                         containerColor = AppColors.Danger
                     )
                 ) {
-                    Text("Eliminar", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.delete), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.cancel))
                 }
             },
             containerColor = MaterialTheme.colorScheme.surface,

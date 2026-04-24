@@ -28,6 +28,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.screen.components.AppBackButton
 import com.example.app.screen.components.AppButton
 import com.example.app.screen.components.AppTextField
@@ -93,13 +95,13 @@ fun RegisterScreen(
                 Box(modifier = Modifier.size(80.dp), contentAlignment = Alignment.TopEnd) {
                     Icon(
                         imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Ubicación",
+                        contentDescription = stringResource(R.string.cd_location),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.fillMaxSize()
                     )
                     Icon(
                         imageVector = Icons.Default.AccessAlarm,
-                        contentDescription = "Alarma",
+                        contentDescription = stringResource(R.string.cd_alarm),
                         tint = Color(0xFFFF6B6B),
                         modifier = Modifier
                             .size(28.dp)
@@ -116,14 +118,14 @@ fun RegisterScreen(
                 )
 
                 Text(
-                    text = "Crea tu cuenta",
+                    text = stringResource(R.string.register_title),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary
                 )
 
                 Text(
-                    text = "Completa la información para comenzar",
+                    text = stringResource(R.string.register_subtitle),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
@@ -141,8 +143,8 @@ fun RegisterScreen(
                     AppTextField(
                         value = nombre,
                         onValueChange = { nombre = it },
-                        label = "Nombre",
-                        placeholder = "Tu nombre",
+                        label = stringResource(R.string.label_first_name),
+                        placeholder = stringResource(R.string.placeholder_first_name),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Words,
                             imeAction = ImeAction.Next
@@ -154,8 +156,8 @@ fun RegisterScreen(
                     AppTextField(
                         value = apellido,
                         onValueChange = { apellido = it },
-                        label = "Apellido",
-                        placeholder = "Tu apellido",
+                        label = stringResource(R.string.label_last_name),
+                        placeholder = stringResource(R.string.placeholder_last_name),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Words,
                             imeAction = ImeAction.Next
@@ -169,8 +171,8 @@ fun RegisterScreen(
                 AppTextField(
                     value = correo,
                     onValueChange = { correo = it },
-                    label = "Correo electrónico",
-                    placeholder = "tu@email.com",
+                    label = stringResource(R.string.label_email),
+                    placeholder = stringResource(R.string.placeholder_email),
                     leadingIcon = {
                         Icon(
                             Icons.Default.Email,
@@ -190,8 +192,8 @@ fun RegisterScreen(
                 AppTextField(
                     value = contrasenia,
                     onValueChange = { contrasenia = it },
-                    label = "Contraseña",
-                    placeholder = "Mínimo 6 caracteres",
+                    label = stringResource(R.string.label_password),
+                    placeholder = stringResource(R.string.placeholder_password_min),
                     leadingIcon = {
                         Icon(
                             Icons.Default.Lock,
@@ -212,8 +214,8 @@ fun RegisterScreen(
                 AppTextField(
                     value = confirmarContrasenia,
                     onValueChange = { confirmarContrasenia = it },
-                    label = "Confirmar contraseña",
-                    placeholder = "Repite tu contraseña",
+                    label = stringResource(R.string.label_confirm_password),
+                    placeholder = stringResource(R.string.placeholder_confirm_password),
                     leadingIcon = {
                         Icon(
                             Icons.Default.LockReset,
@@ -259,7 +261,7 @@ fun RegisterScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Las contraseñas no coinciden",
+                                text = stringResource(R.string.error_passwords_dont_match),
                                 color = Color(0xFFFF5722),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium
@@ -274,19 +276,19 @@ fun RegisterScreen(
 
             // Botón de registro
             AppButton(
-                text = if (authViewModel.isLoading) "Creando cuenta..." else "Crear cuenta",
+                text = if (authViewModel.isLoading) stringResource(R.string.creating_account) else stringResource(R.string.register_button),
                 isLoading = authViewModel.isLoading,
                 onClick = {
                     when {
                         nombre.isBlank() || apellido.isBlank() || correo.isBlank() ||
                                 contrasenia.isBlank() || confirmarContrasenia.isBlank() -> {
-                            notificationViewModel.showError("Completa todos los campos")
+                            notificationViewModel.showError(context.getString(R.string.error_fill_all_fields))
                         }
                         contrasenia != confirmarContrasenia -> {
-                            notificationViewModel.showError("Las contraseñas no coinciden")
+                            notificationViewModel.showError(context.getString(R.string.error_passwords_dont_match))
                         }
                         contrasenia.length < 6 -> {
-                            notificationViewModel.showError("La contraseña debe tener al menos 6 caracteres")
+                            notificationViewModel.showError(context.getString(R.string.error_password_too_short))
                         }
                         else -> {
                             authViewModel.registerUser(
@@ -296,7 +298,7 @@ fun RegisterScreen(
                                 contrasenia
                             ) { registroExitoso ->
                                 if (registroExitoso) {
-                                    notificationViewModel.showSuccess("¡Cuenta creada! Iniciando sesión...")
+                                    notificationViewModel.showSuccess(context.getString(R.string.register_success))
 
                                     authViewModel.login(correo, contrasenia) {
                                         navController.navigate("home") {
@@ -367,7 +369,7 @@ fun RegisterScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Cerrar",
+                                contentDescription = stringResource(R.string.close),
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -422,7 +424,7 @@ fun RegisterScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Cerrar",
+                                contentDescription = stringResource(R.string.close),
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )

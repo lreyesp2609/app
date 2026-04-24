@@ -29,6 +29,7 @@ import com.example.app.services.UnifiedLocationService
 import com.example.app.utils.PermissionUtils
 import com.example.app.utils.SessionManager
 import com.google.firebase.messaging.FirebaseMessaging
+import com.example.app.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -164,25 +165,25 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                         isLoading = false
                         errorMessage = when {
                             exception.message?.contains("INVALID_CREDENTIALS") == true -> {
-                                "Correo o contraseña incorrectos"
+                                context.getString(R.string.error_invalid_credentials)
                             }
                             exception.message?.contains("USER_NOT_FOUND") == true -> {
-                                "No existe una cuenta con este correo"
+                                context.getString(R.string.error_user_not_found)
                             }
                             exception.message?.contains("ACCOUNT_LOCKED") == true -> {
-                                "Cuenta bloqueada. Contacta soporte"
+                                context.getString(R.string.error_account_locked)
                             }
                             exception.message?.contains("NETWORK_ERROR") == true -> {
-                                "Error de conexión. Verifica tu internet"
+                                context.getString(R.string.error_no_internet)
                             }
                             exception.message?.contains("401") == true -> {
-                                "Credenciales inválidas"
+                                context.getString(R.string.error_invalid_credentials_short)
                             }
                             exception.message?.contains("500") == true -> {
-                                "Error del servidor. Inténtalo más tarde"
+                                context.getString(R.string.error_server_internal)
                             }
                             else -> {
-                                "Error al iniciar sesión. Inténtalo nuevamente"
+                                context.getString(R.string.error_login_generic)
                             }
                         }
                         onResult(false)
@@ -399,7 +400,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
             user = null
             isLoggedIn = false
             sessionManager.saveLoginState(false)
-            errorMessage = "No hay token de acceso"
+            errorMessage = context.getString(R.string.error_no_token)
             isLoading = false
             isRestoringSession = false  // 🔥 AGREGAR ESTO también aquí
         }
@@ -623,29 +624,29 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                     // Manejar diferentes tipos de errores del backend
                     errorMessage = when {
                         exception.message?.contains("USER_ALREADY_EXISTS") == true -> {
-                            "Ya existe una cuenta con este correo electrónico"
+                            context.getString(R.string.error_user_already_exists)
                         }
                         exception.message?.contains("INVALID_EMAIL") == true -> {
-                            "El formato del correo electrónico no es válido"
+                            context.getString(R.string.error_invalid_email)
                         }
                         exception.message?.contains("WEAK_PASSWORD") == true -> {
-                            "La contraseña debe ser más fuerte"
+                            context.getString(R.string.error_weak_password)
                         }
                         exception.message?.contains("NETWORK_ERROR") == true -> {
-                            "Error de conexión. Verifica tu internet"
+                            context.getString(R.string.error_no_internet)
                         }
                         exception.message?.contains("SERVER_ERROR") == true -> {
-                            "Error del servidor. Inténtalo más tarde"
+                            context.getString(R.string.error_server_internal)
                         }
                         exception.message?.contains("400") == true -> {
-                            "Datos inválidos. Verifica la información ingresada"
+                            context.getString(R.string.error_invalid_data)
                         }
                         exception.message?.contains("500") == true -> {
-                            "Error interno del servidor. Inténtalo más tarde"
+                            context.getString(R.string.error_server_internal)
                         }
                         else -> {
                             // Mensaje genérico amigable
-                            "Error al crear la cuenta. Inténtalo nuevamente"
+                            context.getString(R.string.error_register_generic)
                         }
                     }
 

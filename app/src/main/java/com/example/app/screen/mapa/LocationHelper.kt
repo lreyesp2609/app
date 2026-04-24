@@ -46,13 +46,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
 import kotlinx.coroutines.delay
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 
 @Composable
 fun GetCurrentLocation(
@@ -89,7 +89,7 @@ fun GetCurrentLocation(
             shouldRetryLocation = true
             gpsDisabled = false
         } else {
-            onError("Permiso de ubicación denegado")
+            onError(context.getString(R.string.error_location_permission_denied))
         }
     }
 
@@ -133,7 +133,7 @@ fun GetCurrentLocation(
                 if (location != null) {
                     onLocationResult(location.latitude, location.longitude)
                 } else {
-                    onError("No se pudo obtener la ubicación")
+                    onError(context.getString(R.string.error_could_not_get_location))
                 }
                 client.removeLocationUpdates(this)
             }
@@ -142,7 +142,7 @@ fun GetCurrentLocation(
         try {
             client.requestLocationUpdates(request, callback, Looper.getMainLooper())
         } catch (e: SecurityException) {
-            onError("Error de permisos de ubicación")
+            onError(context.getString(R.string.error_location_permission))
         }
     }
 
@@ -174,7 +174,7 @@ fun GetCurrentLocation(
                     val intentSenderRequest = IntentSenderRequest.Builder(exception.resolution).build()
                     gpsLauncher.launch(intentSenderRequest)
                 } catch (sendEx: Exception) {
-                    onError("Error al activar GPS: ${sendEx.message}")
+                    onError(context.getString(R.string.error_activating_gps, sendEx.message ?: ""))
                 }
             } else {
                 gpsDisabled = true
@@ -244,7 +244,7 @@ fun GpsEnableButton(
                     ) {
                         Icon(
                             imageVector = Icons.Default.LocationOff,
-                            contentDescription = "GPS deshabilitado",
+                            contentDescription = stringResource(R.string.gps_disabled),
                             modifier = Modifier
                                 .padding(12.dp)
                                 .size(24.dp),
@@ -259,14 +259,14 @@ fun GpsEnableButton(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "GPS deshabilitado",
+                            text = stringResource(R.string.gps_disabled),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Activa tu ubicación para continuar",
+                            text = stringResource(R.string.activate_location_to_continue),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
@@ -294,7 +294,7 @@ fun GpsEnableButton(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Activar",
+                            text = stringResource(R.string.activate),
                             color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.labelLarge
                         )

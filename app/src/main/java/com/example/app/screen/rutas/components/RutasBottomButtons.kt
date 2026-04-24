@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.navigation.NavController
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.screen.components.AppBackButton
 import com.example.app.viewmodel.MapViewModel
 import kotlinx.coroutines.delay
@@ -126,7 +128,7 @@ fun RutasBottomButtons(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Cerrar alerta",
+                                contentDescription = stringResource(R.string.cd_close_alert),
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -182,7 +184,7 @@ fun RutasBottomButtons(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Cerrar notificación",
+                                contentDescription = stringResource(R.string.cd_close_notification),
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -242,7 +244,7 @@ fun RutasBottomButtons(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Cerrar",
+                                contentDescription = stringResource(R.string.close),
                                 tint = Color.White,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -261,8 +263,8 @@ fun RutasBottomButtons(
             ) {
                 ActionButton(
                     icon = Icons.Default.AltRoute,
-                    label = "Ruta alterna",
-                    description = "Calcular ruta alternativa",
+                    label = stringResource(R.string.alternate_route),
+                    description = stringResource(R.string.cd_calculate_alternate_route),
                     onClick = onRutasClick,
                     containerColor = Color(0xFF6200EA), // Morado oscuro
                     contentColor = Color.White

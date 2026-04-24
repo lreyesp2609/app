@@ -61,6 +61,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import androidx.compose.ui.res.stringResource
+import com.example.app.R
 import com.example.app.screen.config.SettingsScreen
 import com.example.app.screen.home.components.HomeTabContent
 import com.example.app.screen.home.components.PlaceholderTab
@@ -145,7 +147,7 @@ fun HomeScreen(
                 Log.d("HomeScreen", "✅ Usuario ACEPTÓ la exclusión de batería")
                 Toast.makeText(
                     context,
-                    "¡Perfecto! RememberGo funcionará mejor en segundo plano",
+                    context.getString(R.string.battery_opt_success),
                     Toast.LENGTH_SHORT
                 ).show()
             } else if (!isNowIgnoring) {
@@ -153,7 +155,7 @@ fun HomeScreen(
                 Log.d("HomeScreen", "⚠️ Usuario RECHAZÓ la exclusión de batería")
                 Toast.makeText(
                     context,
-                    "Recomendamos activar esta opción para que los recordatorios funcionen mejor",
+                    context.getString(R.string.battery_opt_rationale),
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -168,7 +170,7 @@ fun HomeScreen(
 
         if (isGranted) {
             Log.d("HomeScreen", "✅ Permiso de notificaciones concedido")
-            Toast.makeText(context, "Notificaciones activadas", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.notifications_enabled), Toast.LENGTH_SHORT).show()
 
             scope.launch {
                 delay(500)
@@ -261,7 +263,7 @@ fun HomeScreen(
                         Log.e("HomeScreen", "❌ Error solicitando exclusión: ${e.message}")
                         Toast.makeText(
                             context,
-                            "No se pudo solicitar exclusión de batería",
+                            context.getString(R.string.battery_opt_error),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -377,20 +379,18 @@ fun HomeScreen(
             title = {
                 Text(
                     text = if (permissionType == "notification")
-                        "Notificaciones desactivadas"
+                        stringResource(R.string.notifications_disabled_title)
                     else
-                        "Ubicación desactivada",
+                        stringResource(R.string.location_disabled_title),
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
                     if (permissionType == "notification") {
-                        "Para recibir recordatorios, necesitas activar las notificaciones en la configuración de tu dispositivo.\n\n" +
-                                "Ve a: Ajustes → Apps → RememberGo → Notificaciones"
+                        stringResource(R.string.notifications_disabled_message)
                     } else {
-                        "Para usar recordatorios basados en ubicación, necesitas activar los permisos de ubicación.\n\n" +
-                                "Ve a: Ajustes → Apps → RememberGo → Permisos → Ubicación"
+                        stringResource(R.string.location_disabled_message)
                     }
                 )
             },
@@ -404,12 +404,12 @@ fun HomeScreen(
                         context.startActivity(intent)
                     }
                 ) {
-                    Text("Ir a ajustes")
+                    Text(stringResource(R.string.go_to_settings))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPermissionDialog = false }) {
-                    Text("Ahora no")
+                    Text(stringResource(R.string.not_now))
                 }
             }
         )
@@ -433,7 +433,7 @@ fun HomeScreen(
                         icon = {
                             Icon(
                                 Icons.Default.Home,
-                                contentDescription = "Inicio",
+                                contentDescription = stringResource(R.string.nav_home),
                                 tint = if (pagerState.currentPage == 0)
                                     MaterialTheme.colorScheme.primary
                                 else
@@ -451,7 +451,7 @@ fun HomeScreen(
                         icon = {
                             Icon(
                                 Icons.Default.Map,
-                                contentDescription = "Rutas alternas",
+                                contentDescription = stringResource(R.string.nav_routes),
                                 tint = if (pagerState.currentPage == 1)
                                     MaterialTheme.colorScheme.primary
                                 else
@@ -469,7 +469,7 @@ fun HomeScreen(
                         icon = {
                             Icon(
                                 Icons.Default.Notifications,
-                                contentDescription = "Recordatorios",
+                                contentDescription = stringResource(R.string.nav_reminders),
                                 tint = if (pagerState.currentPage == 2)
                                     MaterialTheme.colorScheme.primary
                                 else
@@ -487,7 +487,7 @@ fun HomeScreen(
                         icon = {
                             Icon(
                                 Icons.Default.Group,
-                                contentDescription = "Grupos colaborativos",
+                                contentDescription = stringResource(R.string.nav_groups),
                                 tint = if (pagerState.currentPage == 3)
                                     MaterialTheme.colorScheme.primary
                                 else
@@ -505,7 +505,7 @@ fun HomeScreen(
                         icon = {
                             Icon(
                                 Icons.Default.Settings,
-                                contentDescription = "Configuración",
+                                contentDescription = stringResource(R.string.nav_settings),
                                 tint = if (pagerState.currentPage == 4)
                                     MaterialTheme.colorScheme.primary
                                 else
@@ -540,13 +540,13 @@ fun HomeScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.LocationOn,
-                                contentDescription = "Ubicación",
+                                contentDescription = stringResource(R.string.cd_location),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(50.dp)
                             )
                             Icon(
                                 imageVector = Icons.Default.AccessAlarm,
-                                contentDescription = "Alarma",
+                                contentDescription = stringResource(R.string.cd_alarm),
                                 tint = accentColor,
                                 modifier = Modifier
                                     .size(20.dp)
@@ -565,7 +565,7 @@ fun HomeScreen(
                             )
                         ) {
                             Text(
-                                text = "RememberGo",
+                                text = stringResource(R.string.app_name),
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -617,7 +617,7 @@ fun HomeScreen(
                                 },
                                 onProfileUpdated = { nuevoNombre, nuevoApellido ->
                                     authViewModel.actualizarPerfil(nuevoNombre, nuevoApellido)
-                                    notificationViewModel.showSuccess("Perfil actualizado")
+                                    notificationViewModel.showSuccess(context.getString(R.string.profile_updated_success))
                                 }
                             )
                         }

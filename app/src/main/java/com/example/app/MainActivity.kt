@@ -9,7 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,7 +34,7 @@ import com.example.app.viewmodel.MapViewModel
 import com.example.app.viewmodel.MapViewModelFactory
 import com.example.app.websocket.testWebSocketPing
 import kotlinx.coroutines.delay
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private var navController: NavHostController? = null
     private var pendingNavigation: PendingNavigation? = null
@@ -130,7 +130,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val mapViewModel: MapViewModel = viewModel(
-                        factory = MapViewModelFactory()
+                        factory = MapViewModelFactory(this@MainActivity)
                     )
 
                     val localNavController = rememberNavController()

@@ -1,11 +1,13 @@
 package com.example.app.screen.grupos.components
 
+import android.content.Context
+import com.example.app.R
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-fun formatearFechaHeader(fechaIso: String): String {
+fun formatearFechaHeader(fechaIso: String, context: Context): String {
     return try {
         // Parsear la fecha del mensaje en UTC
         val formatoIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply {
@@ -35,8 +37,8 @@ fun formatearFechaHeader(fechaIso: String): String {
                 ayerUTC.get(Calendar.DAY_OF_YEAR) == calMensajeUTC.get(Calendar.DAY_OF_YEAR)
 
         when {
-            mismoDia -> "Hoy"
-            diaAnterior -> "Ayer"
+            mismoDia -> context.getString(R.string.chat_header_today_label)
+            diaAnterior -> context.getString(R.string.chat_header_yesterday_label)
             // Mostrar en formato local
             else -> SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(calMensajeLocal.time)
         }

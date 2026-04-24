@@ -31,6 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.app.viewmodel.NotificationType
@@ -50,8 +51,9 @@ fun GlobalNotification(
         exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
     ) {
         notificationState?.let { state ->
+            val messageText = state.messageRes?.let { stringResource(it) } ?: state.message ?: ""
             NotificationCard(
-                message = state.message,
+                message = messageText,
                 type = state.type,
                 onDismiss = { notificationViewModel.dismiss() }
             )

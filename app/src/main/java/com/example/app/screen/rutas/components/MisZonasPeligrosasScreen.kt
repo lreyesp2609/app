@@ -68,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.app.R
 import com.example.app.models.ZonaGuardada
 import com.example.app.models.ZonaPeligrosaCreate
 import com.example.app.models.ZonaSugerida
@@ -87,13 +88,7 @@ import com.example.app.viewmodel.NotificationViewModel
 import com.example.app.viewmodel.ZonasSugeridasViewModel
 import kotlinx.coroutines.launch
 
-// ─── Helper: nombre legible para cada nivel ───────────────────────────────────
-fun getNombreNivel(nivel: Int): String = when (nivel) {
-    1    -> "Bajo"
-    2    -> "Medio"
-    3    -> "Alto"
-    else -> "Alto"   // valores legacy 4 o 5 del backend → "Alto"
-}
+// ─── MisZonasPeligrosasScreen ──────────────────────────────────────────────────
 
 @Composable
 fun MisZonasPeligrosasScreen(
@@ -206,11 +201,11 @@ fun MisZonasPeligrosasScreen(
                     Log.d("ZonasPeligrosas", "✅ ${zonasCreadas.size} zonas cargadas")
 
                     if (zonasCreadas.isNotEmpty()) {
-                        notificationViewModel.showSuccess("${zonasCreadas.size} zona(s) cargada(s)")
+                        notificationViewModel.showSuccess(context.getString(R.string.zones_loaded_success, zonasCreadas.size))
                     }
                 } catch (e: Exception) {
                     Log.e("ZonasPeligrosas", "Error cargando zonas: ${e.message}", e)
-                    notificationViewModel.showError("Error al cargar zonas peligrosas")
+                    notificationViewModel.showError(context.getString(R.string.error_loading_zones))
                 } finally {
                     cargandoZonas = false
                 }
@@ -286,7 +281,7 @@ fun MisZonasPeligrosasScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Zonas peligrosas",
+                            context.getString(R.string.my_zones_title),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -326,7 +321,7 @@ fun MisZonasPeligrosasScreen(
                                 onClick = {
                                     mostrarZonasPeligrosas = !mostrarZonasPeligrosas
                                     notificationViewModel.showInfo(
-                                        if (mostrarZonasPeligrosas) "Zonas visibles" else "Zonas ocultas"
+                                        if (mostrarZonasPeligrosas) context.getString(R.string.map_zones_visible) else context.getString(R.string.map_zones_hidden)
                                     )
                                 },
                                 badge = zonasCreadas.size.toString()
@@ -360,7 +355,7 @@ fun MisZonasPeligrosasScreen(
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
-                        "Obteniendo ubicación...",
+                        context.getString(R.string.map_getting_location),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -405,7 +400,7 @@ fun MisZonasPeligrosasScreen(
                                 )
                                 flyToZona(centro.lat, centro.lon)
                             }
-                            notificationViewModel.showSuccess("Zona guardada: ${zonaAdoptada.nombre}")
+                            notificationViewModel.showSuccess(context.getString(R.string.zone_saved) + ": ${zonaAdoptada.nombre}")
                         },
                         onError = { error -> notificationViewModel.showError(error) }
                     )
@@ -443,7 +438,7 @@ fun MisZonasPeligrosasScreen(
                                 zona = request
                             )
 
-                            notificationViewModel.showSuccess("Zona creada: ${response.nombre}")
+                            notificationViewModel.showSuccess(context.getString(R.string.zone_created_success, response.nombre))
 
                             zonasCreadas = zonasCreadas + ZonaGuardada(
                                 lat = coordenadasZonaSeleccionada!!.first,
@@ -458,7 +453,7 @@ fun MisZonasPeligrosasScreen(
                             radioPreview = 200
 
                         } catch (e: Exception) {
-                            notificationViewModel.showError("Error al crear zona: ${e.message}")
+                            notificationViewModel.showError(context.getString(R.string.error_creating_zone, e.message ?: ""))
                             Log.e("ZonasPeligrosas", "Error", e)
                         }
                     }
@@ -494,10 +489,10 @@ fun MisZonasPeligrosasScreen(
                         modifier = Modifier.size(32.dp)
                     )
                 },
-                title = { Text("¿Eliminar zona?", fontWeight = FontWeight.Bold) },
+                title = { Text(context.getString(R.string.delete_zone_title), fontWeight = FontWeight.Bold) },
                 text = {
                     Column {
-                        Text("Estás a punto de eliminar:")
+                        Text(context.getString(R.string.delete_zone_confirmation))
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             "\"${zonaSeleccionadaParaEditar!!.nombre}\"",
@@ -506,7 +501,7 @@ fun MisZonasPeligrosasScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Esta acción no se puede deshacer.",
+                            context.getString(R.string.cannot_be_undone_warning),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
@@ -519,7 +514,7 @@ fun MisZonasPeligrosasScreen(
                             val zonaId = zonaSeleccionadaParaEditar?.id
 
                             if (zonaId == null) {
-                                notificationViewModel.showError("Error: Zona sin ID")
+                                notificationViewModel.showError(context.getString(R.string.error_zone_no_id))
                                 showDeleteDialog = false
                                 return@Button
                             }
@@ -535,20 +530,20 @@ fun MisZonasPeligrosasScreen(
 
                                     if (response.isSuccessful) {
                                         zonasCreadas = zonasCreadas.filter { it.id != zonaId }
-                                        notificationViewModel.showSuccess("Zona eliminada correctamente")
+                                        notificationViewModel.showSuccess(context.getString(R.string.zone_deleted_success))
                                         mapViewModel.cargarZonasPeligrosas(token)
                                         showDeleteDialog = false
                                         showBottomSheet = false
                                         zonaSeleccionadaParaEditar = null
                                         Log.d("ZonasScreen", "✅ Zona eliminada correctamente")
                                     } else {
-                                        val errorMsg = "Error ${response.code()}: ${response.message()}"
+                                        val errorMsg = context.getString(R.string.generic_error, "${response.code()}: ${response.message()}")
                                         notificationViewModel.showError(errorMsg)
                                         Log.e("ZonasScreen", "❌ $errorMsg")
                                     }
                                 } catch (e: Exception) {
                                     val errorMsg = e.message ?: "Error desconocido"
-                                    notificationViewModel.showError("Error: $errorMsg")
+                                    notificationViewModel.showError(context.getString(R.string.generic_error, errorMsg))
                                     Log.e("ZonasScreen", "❌ Error: $errorMsg", e)
                                 }
                             }
@@ -557,11 +552,11 @@ fun MisZonasPeligrosasScreen(
                     ) {
                         Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Eliminar", fontWeight = FontWeight.Bold)
+                        Text(context.getString(R.string.delete), fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) { Text("Cancelar") }
+                    TextButton(onClick = { showDeleteDialog = false }) { Text(context.getString(R.string.cancel)) }
                 },
                 containerColor = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(20.dp)
@@ -583,6 +578,7 @@ fun BottomZonasPanel(
     onZonaClick: (ZonaGuardada) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val isDarkTheme = isSystemInDarkTheme()
 
     Card(
@@ -613,7 +609,7 @@ fun BottomZonasPanel(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "Zonas registradas",
+                        context.getString(R.string.registered_zones_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -621,7 +617,7 @@ fun BottomZonasPanel(
 
                 if (zonas.isNotEmpty()) {
                     Text(
-                        "${zonas.size} zona(s)",
+                        context.getString(R.string.zones_count_label, zonas.size),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         fontWeight = FontWeight.Medium
@@ -657,13 +653,13 @@ fun BottomZonasPanel(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "No hay zonas registradas",
+                            context.getString(R.string.no_zones_registered),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            "Mantén presionado el mapa para agregar",
+                            context.getString(R.string.long_press_map_to_add),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )
@@ -693,6 +689,7 @@ fun ZonaListItem(
     onClick: () -> Unit,
     isDarkTheme: Boolean
 ) {
+    val context = LocalContext.current
     val nivelUI    = DangerLevelColors.clampNivel(zona.nivel)
     val nivelColor = DangerLevelColors.getColor(nivelUI, isDarkTheme)
     val nivelBg    = DangerLevelColors.getBackground(nivelUI, isDarkTheme)
@@ -736,7 +733,7 @@ fun ZonaListItem(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    "Radio: ${zona.radio}m • ${getNombreNivel(nivelUI)}",
+                    "${context.getString(R.string.radius_label_simple)}: ${zona.radio}${context.getString(R.string.meters_unit).first()} • ${DangerLevelColors.getNombreNivel(nivelUI, context)}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
@@ -762,6 +759,7 @@ fun ZonaDetailBottomSheet(
     onEliminar: () -> Unit,
     isDarkTheme: Boolean
 ) {
+    val context = LocalContext.current
     val nivelUI    = DangerLevelColors.clampNivel(zona.nivel)
     val nivelColor = DangerLevelColors.getColor(nivelUI, isDarkTheme)
     val nivelBg    = DangerLevelColors.getBackground(nivelUI, isDarkTheme)
@@ -803,7 +801,7 @@ fun ZonaDetailBottomSheet(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "Zona peligrosa",
+                        context.getString(R.string.danger_zone_label),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -814,8 +812,8 @@ fun ZonaDetailBottomSheet(
 
             DetailRow(
                 icon = Icons.Default.RadioButtonChecked,
-                label = "Radio",
-                value = "${zona.radio} metros"
+                label = context.getString(R.string.radius_label_simple),
+                value = "${zona.radio} ${context.getString(R.string.meters_unit)}"
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -823,15 +821,15 @@ fun ZonaDetailBottomSheet(
             // Nivel con nombre descriptivo y color — sin estrellas ni "/5"
             DetailRow(
                 icon = Icons.Default.Warning,
-                label = "Nivel de peligro",
-                value = "${getNombreNivel(nivelUI)} (nivel $nivelUI/3)"
+                label = context.getString(R.string.risk_level_label_simple),
+                value = context.getString(R.string.risk_level_format, DangerLevelColors.getNombreNivel(nivelUI, context), nivelUI)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
             DetailRow(
                 icon = Icons.Default.LocationOn,
-                label = "Coordenadas",
+                label = context.getString(R.string.coordinates_label),
                 value = "${String.format("%.5f", zona.lat)}, ${String.format("%.5f", zona.lon)}"
             )
 
@@ -845,7 +843,7 @@ fun ZonaDetailBottomSheet(
             ) {
                 Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Eliminar zona", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(context.getString(R.string.delete_zone_button), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }
@@ -898,6 +896,7 @@ fun BannerZonasSugeridas(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -925,13 +924,13 @@ fun BannerZonasSugeridas(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            "Zonas sugeridas cerca",
+                            context.getString(R.string.suggested_zones_nearby),
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            "${zonasSugeridas.size} zona(s) reportada(s) por otros usuarios",
+                            context.getString(R.string.zones_reported_by_others, zonasSugeridas.size),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
@@ -941,7 +940,7 @@ fun BannerZonasSugeridas(
                 IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
                     Icon(
                         Icons.Default.Close,
-                        contentDescription = "Cerrar",
+                        contentDescription = context.getString(R.string.close),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(20.dp)
                     )
@@ -958,7 +957,7 @@ fun BannerZonasSugeridas(
             ) {
                 Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Ver sugerencias", fontWeight = FontWeight.Bold)
+                Text(context.getString(R.string.view_suggestions), fontWeight = FontWeight.Bold)
             }
         }
     }

@@ -37,9 +37,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.app.R
 import com.example.app.models.ZonaSugerida
 import com.example.app.ui.theme.DangerLevelColors
 
@@ -77,12 +80,12 @@ fun DialogoZonasSugeridas(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Zonas reportadas por otros",
+                        stringResource(R.string.reported_zones_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "${zonas.size} zona(s) cerca de ti",
+                        stringResource(R.string.zones_near_you, zonas.size),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -118,7 +121,7 @@ fun DialogoZonasSugeridas(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Cerrar")
+                Text(stringResource(R.string.close))
             }
         }
     }
@@ -132,6 +135,7 @@ fun ZonaSugeridaItem(
     onVerEnMapa: () -> Unit,
     isDarkTheme: Boolean
 ) {
+    val context = LocalContext.current
     // Color dinámico según el nivel de peligro de la zona (1=turquesa, 2=naranja, 3=rojo)
     val nivelUI    = DangerLevelColors.clampNivel(zona.zonaOriginal.nivelPeligro)
     val nivelColor = DangerLevelColors.getColor(nivelUI, isDarkTheme)
@@ -182,7 +186,11 @@ fun ZonaSugeridaItem(
                     Spacer(modifier = Modifier.height(4.dp))
                     // Nivel con nombre descriptivo en lugar de estrellas
                     Text(
-                        "${getNombreNivel(nivelUI)} • ${String.format("%.1f", zona.distanciaKm)} km de ti",
+                        stringResource(
+                            R.string.distance_near_you,
+                            DangerLevelColors.getNombreNivel(nivelUI, context),
+                            zona.distanciaKm
+                        ),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -204,7 +212,7 @@ fun ZonaSugeridaItem(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Ver en mapa", fontSize = 13.sp)
+                    Text(stringResource(R.string.view_on_map), fontSize = 13.sp)
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -224,7 +232,7 @@ fun ZonaSugeridaItem(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Descartar", fontSize = 13.sp)
+                        Text(stringResource(R.string.discard), fontSize = 13.sp)
                     }
 
                     Button(
@@ -241,7 +249,7 @@ fun ZonaSugeridaItem(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Guardar", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.save), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             } else {
@@ -255,7 +263,7 @@ fun ZonaSugeridaItem(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        "Zona guardada",
+                        stringResource(R.string.zone_saved),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.primary

@@ -2,6 +2,8 @@ package com.example.app.screen.rutas.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import com.example.app.R
 import calcularDistancia
 import calcularDistanciaSobreRuta
 import org.osmdroid.util.GeoPoint
@@ -28,6 +30,8 @@ fun CalculadorETADinamico(
     transportMode: String,
     onETACalculado: (distancia: String, duracion: String) -> Unit
 ) {
+    val context = LocalContext.current
+
     LaunchedEffect(userLat, userLon, rutaEstado.activa) {
         if (!rutaEstado.activa || rutaEstado.rutaOriginal.isEmpty()) return@LaunchedEffect
 
@@ -91,19 +95,19 @@ fun CalculadorETADinamico(
         val duracionMinutos = (duracionEstimada / 60.0).toInt()
 
         val distanciaTexto = when {
-            distanciaRestanteMetros < 50 -> "Llegando..."
-            distanciaKm < 1.0 -> String.format("%.0f m", distanciaRestanteMetros)
-            else -> String.format("%.2f km", distanciaKm)
+            distanciaRestanteMetros < 50 -> context.getString(R.string.eta_arriving)
+            distanciaKm < 1.0 -> context.getString(R.string.eta_meters_format, distanciaRestanteMetros)
+            else -> context.getString(R.string.eta_km_format, distanciaKm)
         }
 
         val duracionTexto = when {
-            distanciaRestanteMetros < 50 -> "Llegando..."
-            duracionMinutos < 1 -> "< 1 min"
-            duracionMinutos < 60 -> "${duracionMinutos} min"
+            distanciaRestanteMetros < 50 -> context.getString(R.string.eta_arriving)
+            duracionMinutos < 1 -> context.getString(R.string.eta_less_than_min)
+            duracionMinutos < 60 -> context.getString(R.string.eta_mins_format, duracionMinutos)
             else -> {
                 val horas = duracionMinutos / 60
                 val minutos = duracionMinutos % 60
-                "${horas}h ${minutos}min"
+                context.getString(R.string.eta_hours_mins_format, horas, minutos)
             }
         }
 

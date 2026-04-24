@@ -1,5 +1,6 @@
 package com.example.app.viewmodel
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +19,7 @@ import org.osmdroid.util.GeoPoint
 import kotlin.math.roundToInt
 
 class MapViewModel(
+    private val context: Context,
     private val rutasRepository: RutasRepository
 ) : ViewModel() {
 
@@ -152,7 +154,7 @@ class MapViewModel(
 
                             RouteAlternative(
                                 type = preference,
-                                displayName = getPreferenceDisplayName(preference),
+                                displayName = getPreferenceDisplayName(context, preference),
                                 response = response.copy(profile = currentMode),
                                 distance = (route?.summary?.distance ?: 0.0) * 1000,
                                 duration = route?.summary?.duration ?: 0.0,
@@ -707,7 +709,7 @@ class MapViewModel(
 
                             RouteAlternative(
                                 type = preference,
-                                displayName = getPreferenceDisplayName(preference),
+                                displayName = getPreferenceDisplayName(context, preference),
                                 response = response.copy(profile = currentMode),
                                 distance = (route?.summary?.distance ?: 0.0) * 1000,
                                 duration = route?.summary?.duration ?: 0.0,

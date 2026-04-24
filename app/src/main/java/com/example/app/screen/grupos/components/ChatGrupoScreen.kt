@@ -26,7 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.example.app.R
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
@@ -157,7 +159,7 @@ fun ChatGrupoScreen(
                             onLocationSelected = { lat, lon, address ->
                                 viewModel.enviarMensaje(
                                     grupoId,
-                                    "📍 Ubicación compartida: $address"
+                                    context.getString(R.string.chat_location_shared, address)
                                 )
                                 coroutineScope.launch {
                                     pagerState.animateScrollToPage(0)
@@ -285,7 +287,7 @@ fun ChatInputBar(
             ) {
                 Icon(
                     imageVector = Icons.Default.Map,
-                    contentDescription = "Abrir mapa",
+                    contentDescription = stringResource(R.string.cd_open_map),
                     tint = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
@@ -304,7 +306,7 @@ fun ChatInputBar(
                 ) {
                     Icon(
                         imageVector = Icons.Default.EmojiEmotions,
-                        contentDescription = "Emoji",
+                        contentDescription = stringResource(R.string.cd_emoji),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .size(24.dp)
@@ -324,7 +326,7 @@ fun ChatInputBar(
                         decorationBox = { innerTextField ->
                             if (mensaje.isEmpty()) {
                                 Text(
-                                    text = "Escribe un mensaje...",
+                                    text = stringResource(R.string.chat_type_message),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                 )
@@ -364,7 +366,7 @@ fun ChatInputBar(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Enviar",
+                    contentDescription = stringResource(R.string.cd_send),
                     tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
@@ -378,6 +380,7 @@ fun ChatMessageList(
     onMensajeVisible: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val listState = rememberLazyListState()
 
     LaunchedEffect(mensajes.size) {
@@ -402,7 +405,7 @@ fun ChatMessageList(
 
         if (mensajes.isEmpty()) {
             Text(
-                text = "No hay mensajes aún.\n¡Sé el primero en escribir! 💬",
+                text = stringResource(R.string.chat_no_messages),
                 modifier = Modifier.align(Alignment.Center),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -418,7 +421,7 @@ fun ChatMessageList(
                 var fechaAnterior: String? = null
 
                 mensajes.forEachIndexed { index, mensaje ->
-                    val fechaActual = formatearFechaHeader(mensaje.fechaCreacion)
+                    val fechaActual = formatearFechaHeader(mensaje.fechaCreacion, context)
 
                     if (fechaActual != fechaAnterior) {
                         fechaAnterior = fechaActual
@@ -520,7 +523,7 @@ fun MensajeBubble(
                             EstadoMensaje.ERROR -> {
                                 Icon(
                                     imageVector = Icons.Default.ErrorOutline,
-                                    contentDescription = "Error al enviar",
+                                    contentDescription = stringResource(R.string.cd_error_sending),
                                     tint = Color(0xFFE57373),
                                     modifier = Modifier
                                         .size(16.dp)
@@ -533,7 +536,7 @@ fun MensajeBubble(
                             EstadoMensaje.LEIDO -> {
                                 Icon(
                                     imageVector = Icons.Default.DoneAll,
-                                    contentDescription = "Leído por ${mensaje.leidoPor}",
+                                    contentDescription = stringResource(R.string.cd_read_by, mensaje.leidoPor ?: ""),
                                     tint = Color(0xFF34B7F1),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -542,7 +545,7 @@ fun MensajeBubble(
                             EstadoMensaje.ENTREGADO -> {
                                 Icon(
                                     imageVector = Icons.Default.DoneAll,
-                                    contentDescription = "Entregado",
+                                    contentDescription = stringResource(R.string.cd_delivered),
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -551,7 +554,7 @@ fun MensajeBubble(
                             EstadoMensaje.ENVIADO -> {
                                 Icon(
                                     imageVector = Icons.Default.Done,
-                                    contentDescription = "Enviado",
+                                    contentDescription = stringResource(R.string.cd_sent),
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -564,7 +567,7 @@ fun MensajeBubble(
 
         if (mensaje.estado == EstadoMensaje.ERROR) {
             Text(
-                text = "No se pudo enviar. Toca para reintentar.",
+                text = stringResource(R.string.chat_error_sending),
                 fontSize = 10.sp,
                 color = Color(0xFFE57373),
                 modifier = Modifier
