@@ -1,0 +1,203 @@
+package com.rutai.app.screen.mapa
+
+import android.content.Context
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
+import org.osmdroid.config.Configuration
+import org.osmdroid.events.MapListener
+import org.osmdroid.events.ScrollEvent
+import org.osmdroid.events.ZoomEvent
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import android.util.Log
+import com.rutai.app.models.MiembroUbicacion
+import com.rutai.app.screen.grupos.components.MarkerColors
+import com.rutai.app.screen.grupos.components.UserMarker
+import com.rutai.app.screen.grupos.components.UserMarkerOverlay
+import com.rutai.app.screen.grupos.components.getInitial
+import androidx.compose.ui.res.stringResource
+import com.rutai.app.R
+/**
+ * Componente de mapa exclusivo para grupos
+ * Muestra marcadores con iniciales de los miembros
+ */
+@Composable
+fun GrupoOpenStreetMap(
+    modifier: Modifier = Modifier,
+    latitude: Double = 0.0,
+    longitude: Double = 0.0,
+    zoom: Double = 16.0,
+    recenterTrigger: Int = 0,
+    zoomInTrigger: Int = 0,     // 🆕
+    zoomOutTrigger: Int = 0,    // 🆕
+    context: Context = LocalContext.current,
+    miembrosGrupo: List<MiembroUbicacion> = emptyList(),
+    currentUserId: Int = 0,
+    currentUserName: String = stringResource(R.string.you),
+    onLocationSelected: (lat: Double, lon: Double) -> Unit = { _, _ -> }
+) {
+    val mapView = rememberMapViewForGrupo(context, zoom)
+    val youLabel = stringResource(R.string.you)
+
+    LaunchedEffect(Unit) {
+        Configuration.getInstance().load(
+            context,
+            context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
+        )
+    }
+
+    // Log para verificar datos
+    LaunchedEffect(miembrosGrupo) {
+        Log.d("GrupoMap", "═══════════════════════════════════════")
+        Log.d("GrupoMap", "🗺️ ACTUALIZANDO MARCADORES EN EL MAPA")
+        Log.d("GrupoMap", "═══════════════════════════════════════")
+        Log.d("GrupoMap", "📍 Mi ubicación: ($latitude, $longitude)")
+        Log.d("GrupoMap", "👤 Mi ID: $currentUserId")
+        Log.d("GrupoMap", "👥 Miembros recibidos: ${miembrosGrupo.size}")
+
+        miembrosGrupo.forEachIndexed { index, miembro ->
+            Log.d("GrupoMap", "   [$index] ID:${miembro.usuarioId} - ${miembro.nombre} en (${miembro.lat}, ${miembro.lon})")
+        }
+        Log.d("GrupoMap", "═══════════════════════════════════════")
+    }
+
+    AndroidView(
+        modifier = modifier.fillMaxSize(),
+        factory = { mapView },
+        update = { map ->
+            map.overlays.clear()
+
+            val userMarkers = mutableListOf<UserMarker>()
+
+            // Agregar TU marcador (usuario actual)
+            userMarkers.add(
+                UserMarker(
+                    position = GeoPoint(latitude, longitude),
+                    name = youLabel,
+                    initial = currentUserName.getInitial(),
+                    backgroundColor = MarkerColors.CURRENT_USER_BG,
+                    textColor = MarkerColors.CURRENT_USER_TEXT,
+                    borderColor = MarkerColors.CURRENT_USER_BORDER,
+                    isCurrentUser = true,
+                    showName = true
+                )
+            )
+
+            Log.d("GrupoMap", "✅ Marcador propio agregado: $youLabel en ($latitude, $longitude)")
+
+            // Agregar marcadores de OTROS miembros
+            if (miembrosGrupo.isNotEmpty()) {
+                Log.d("GrupoMap", "📍 Agregando ${miembrosGrupo.size} marcadores de otros miembros")
+
+                miembrosGrupo.forEachIndexed { index, miembro ->
+                    if (miembro.usuarioId == currentUserId) {
+                        Log.w("GrupoMap", "⚠️ ADVERTENCIA: Se intentó agregar el propio usuario (ID: ${miembro.usuarioId})")
+                        return@forEachIndexed
+                    }
+
+                    val backgroundColor = if (miembro.esCreador) {
+                        MarkerColors.CREATOR_BG
+                    } else {
+                        MarkerColors.getMemberColor(index)
+                    }
+
+                    val borderColor = if (miembro.esCreador) {
+                        MarkerColors.CREATOR_BORDER
+                    } else {
+                        MarkerColors.getDarkerShade(backgroundColor)
+                    }
+
+                    userMarkers.add(
+                        UserMarker(
+                            position = GeoPoint(miembro.lat, miembro.lon),
+                            name = miembro.nombre,
+                            initial = miembro.nombre.getInitial(),
+                            backgroundColor = backgroundColor,
+                            textColor = android.graphics.Color.WHITE,
+                            borderColor = borderColor,
+                            isCurrentUser = false,
+                            showName = true
+                        )
+                    )
+
+                    Log.d("GrupoMap", "   ✅ Agregado: ${miembro.nombre} (ID:${miembro.usuarioId}) en (${miembro.lat}, ${miembro.lon})")
+                }
+            } else {
+                Log.w("GrupoMap", "⚠️ Lista de miembros está vacía - solo se muestra el usuario actual")
+            }
+
+            Log.d("GrupoMap", "📊 Total de marcadores en el mapa: ${userMarkers.size}")
+
+            if (userMarkers.isNotEmpty()) {
+                map.overlays.add(UserMarkerOverlay(context, userMarkers))
+                Log.d("GrupoMap", "✅ Overlay agregado al mapa con ${userMarkers.size} marcadores")
+            }
+
+            map.invalidate()
+        }
+    )
+
+    // Recentrar mapa
+    LaunchedEffect(recenterTrigger) {
+        if (recenterTrigger > 0) {
+            Log.d("GrupoMap", "🎯 Recentrando mapa en ($latitude, $longitude)")
+            mapView.controller.animateTo(GeoPoint(latitude, longitude))
+        }
+    }
+
+    // 🆕 ZOOM IN
+    LaunchedEffect(zoomInTrigger) {
+        if (zoomInTrigger > 0) {
+            val currentZoom = mapView.zoomLevelDouble
+            val newZoom = (currentZoom + 1.0).coerceAtMost(21.0)
+            Log.d("GrupoMap", "🔍 Zoom in: $currentZoom → $newZoom")
+            mapView.controller.setZoom(newZoom)
+        }
+    }
+
+    // 🆕 ZOOM OUT
+    LaunchedEffect(zoomOutTrigger) {
+        if (zoomOutTrigger > 0) {
+            val currentZoom = mapView.zoomLevelDouble
+            val newZoom = (currentZoom - 1.0).coerceAtLeast(2.0)
+            Log.d("GrupoMap", "🔍 Zoom out: $currentZoom → $newZoom")
+            mapView.controller.setZoom(newZoom)
+        }
+    }
+
+    DisposableEffect(mapView) {
+        val listener = object : MapListener {
+            override fun onScroll(event: ScrollEvent?): Boolean {
+                event?.source?.mapCenter?.let { center ->
+                    onLocationSelected(center.latitude, center.longitude)
+                }
+                return true
+            }
+
+            override fun onZoom(event: ZoomEvent?): Boolean {
+                event?.source?.mapCenter?.let { center ->
+                    onLocationSelected(center.latitude, center.longitude)
+                }
+                return true
+            }
+        }
+        mapView.addMapListener(listener)
+        onDispose { mapView.removeMapListener(listener) }
+    }
+}
+
+@Composable
+fun rememberMapViewForGrupo(context: Context, zoom: Double = 16.0): MapView {
+    return remember {
+        MapView(context).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(true)
+            controller.setZoom(zoom)
+            setBuiltInZoomControls(false)
+        }
+    }
+}

@@ -1,0 +1,194 @@
+package com.rutai.app.screen.grupos.components
+
+import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.rutai.app.screen.mapa.GetCurrentLocation
+import com.rutai.app.screen.mapa.GpsEnableButton
+import com.rutai.app.screen.mapa.GrupoOpenStreetMap
+import com.rutai.app.screen.mapa.LocationTracker
+import com.rutai.app.screen.mapa.MapControlButton
+import com.rutai.app.services.LocationTrackingService
+import com.rutai.app.utils.LocationManager
+import com.rutai.app.utils.SessionManager
+import com.rutai.app.viewmodel.LocationGrupoViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+@Composable
+fun GrupoMapScreen(
+    navController: NavController,
+    grupoId: Int,
+    onLocationSelected: (lat: Double, lon: Double, address: String) -> Unit,
+    onBackToChat: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val locationManager = remember { LocationManager.getInstance() }
+
+    val sessionManager = SessionManager.getInstance(context)
+    val currentUser = sessionManager.getUser()
+    val currentUserId = currentUser?.id ?: 0
+    val currentUserName = currentUser?.nombre ?: context.getString(com.rutai.app.R.string.map_you)
+
+    val locationViewModel: LocationGrupoViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return LocationGrupoViewModel(context) as T
+            }
+        }
+    )
+
+    var currentLat by remember { mutableStateOf(0.0) }
+    var currentLon by remember { mutableStateOf(0.0) }
+    var locationObtained by remember { mutableStateOf(false) }
+    var showGpsButton by remember { mutableStateOf(false) }
+    var recenterTrigger by remember { mutableStateOf(0) }
+    var zoomInTrigger by remember { mutableStateOf(0) }
+    var zoomOutTrigger by remember { mutableStateOf(0) }
+
+    val ubicacionesMiembros by locationViewModel.ubicacionesMiembros.collectAsState()
+
+    LaunchedEffect(grupoId) {
+        Log.d("ReminderMapScreen", "🚀 INICIANDO RASTREO AUTOMÁTICO")
+        val grupoNombre = context.getString(com.rutai.app.R.string.map_group_name_prefix, grupoId)
+        LocationTrackingService.startTracking(
+            context = context,
+            grupoId = grupoId,
+            grupoNombre = grupoNombre
+        )
+        delay(2000)
+        locationViewModel.suscribirseAUbicaciones(grupoId)
+    }
+
+    LaunchedEffect(locationObtained) {
+        if (locationObtained) {
+            recenterTrigger++
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            scope.launch {
+                locationViewModel.desuscribirse()
+            }
+        }
+    }
+
+    if (locationObtained) {
+        LocationTracker { lat, lon ->
+            currentLat = lat
+            currentLon = lon
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val cachedLocation = locationManager.getLastKnownLocation()
+        if (cachedLocation != null) {
+            Log.d("GrupoMapScreen", "⚡ Usando ubicación en caché")
+            currentLat = cachedLocation.latitude
+            currentLon = cachedLocation.longitude
+            locationObtained = true
+        }
+    }
+
+    // 🔥 Box principal que contiene todo
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            locationObtained -> {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    GrupoOpenStreetMap(
+                        latitude = currentLat,
+                        longitude = currentLon,
+                        miembrosGrupo = ubicacionesMiembros,
+                        currentUserId = currentUserId,
+                        currentUserName = currentUserName,
+                        recenterTrigger = recenterTrigger,
+                        zoomInTrigger = zoomInTrigger,
+                        zoomOutTrigger = zoomOutTrigger,
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    // 🔥 ELIMINADO: AppBackButton
+                    // El usuario puede hacer swipe para volver al chat
+
+                    // 🎮 Controles del mapa (derecha)
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        MapControlButton(icon = Icons.Default.Add, onClick = { zoomInTrigger++ })
+                        MapControlButton(icon = Icons.Default.Remove, onClick = { zoomOutTrigger++ })
+                        MapControlButton(icon = Icons.Default.MyLocation, onClick = { recenterTrigger++ })
+                    }
+                }
+            }
+
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = context.getString(com.rutai.app.R.string.map_getting_location),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
+                GetCurrentLocation(
+                    onLocationResult = { lat, lon ->
+                        currentLat = lat
+                        currentLon = lon
+                        locationObtained = true
+                        locationManager.updateLocation(lat, lon)
+                    },
+                    onError = { /* Manejar error */ },
+                    onGpsDisabled = { showGpsButton = true }
+                )
+            }
+        }
+
+        // 🔥 GPS BUTTON SE SUPERPONE - SIEMPRE AL FINAL
+        if (showGpsButton) {
+            GpsEnableButton(onEnableGps = { showGpsButton = false })
+        }
+    }
+}

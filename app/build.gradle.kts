@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.app"
+    namespace = "com.rutai.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.app"
+        applicationId = "com.rutai.app"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
