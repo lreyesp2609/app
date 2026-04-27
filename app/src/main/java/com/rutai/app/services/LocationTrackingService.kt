@@ -115,6 +115,12 @@ class LocationTrackingService : Service() {
     private val grupoNombres = mutableMapOf<Int, String>()
     private var locationUpdatesStarted = false
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val tokenChangeListener: (String) -> Unit = { _ ->
+        Log.d(TAG, "🔄 Token actualizado en SessionManager, reconectando grupos activos")
+        mainHandler.post { reconnectAllGroupSockets("token actualizado") }
+    }
+
     // 🆕 Listeners locales para broadcast a ViewModels
     private val messageListeners = mutableListOf<(String) -> Unit>()
 
@@ -126,6 +132,7 @@ class LocationTrackingService : Service() {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         sessionManager = SessionManager.getInstance(this)
+        sessionManager.addTokenChangeListener(tokenChangeListener)
 
         createNotificationChannel()
         setupLocationCallback()
@@ -277,6 +284,14 @@ class LocationTrackingService : Service() {
             override fun onMessage(webSocket: WebSocket, text: String) {
                 Log.v(TAG, "📨 Mensaje recibido del grupo $grupoId: ${text.take(100)}")
 
+                if (isTokenExpiredMessage(text)) {
+                    Log.w(TAG, "🔒 Token expirado detectado en grupo $grupoId, reconectando")
+                    mainHandler.postDelayed({
+                        reconnectGroupSocket(grupoId, "token expirado")
+                    }, 1000)
+                    return
+                }
+
                 // ✅ Solo notificar a listeners de ESTE grupo específico
                 listenersByGroup[grupoId]?.forEach { listener ->
                     try {
@@ -374,11 +389,48 @@ class LocationTrackingService : Service() {
             val webSocket = webSocketsByGroup[grupoId]
             if (webSocket != null) {
                 val sent = webSocket.send(message)
-                if (sent) successCount++
+                if (sent) {
+                    successCount++
+                } else {
+                    Log.w(TAG, "⚠️ Envío fallido al grupo $grupoId, forzando reconexión")
+                    reconnectGroupSocket(grupoId, "send=false")
+                }
             }
         }
 
         Log.v(TAG, "📤 Ubicación enviada a $successCount/${activeGroups.size} grupos")
+    }
+
+    private fun reconnectAllGroupSockets(reason: String) {
+        if (activeGroups.isEmpty()) return
+        Log.d(TAG, "🔄 Reconectando ${activeGroups.size} grupos - razón: $reason")
+        activeGroups.forEach { grupoId ->
+            reconnectGroupSocket(grupoId, reason)
+        }
+    }
+
+    private fun reconnectGroupSocket(grupoId: Int, reason: String) {
+        if (!activeGroups.contains(grupoId)) return
+
+        val grupoNombre = grupoNombres[grupoId] ?: "Grupo $grupoId"
+        Log.d(TAG, "🔁 Reconnecting grupo $grupoId ($grupoNombre) - razón: $reason")
+        connectWebSocketForGroup(grupoId, grupoNombre)
+    }
+
+    private fun isTokenExpiredMessage(text: String): Boolean {
+        return try {
+            val json = JSONObject(text)
+            val type = json.optString("type")
+            val message = json.optString("message").lowercase()
+            type == "error" && (
+                    message.contains("token inválido") ||
+                            message.contains("token invalido") ||
+                            message.contains("signature has expired") ||
+                            message.contains("token expired")
+                    )
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**
@@ -480,6 +532,7 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        sessionManager.removeTokenChangeListener(tokenChangeListener)
 
         // Si hay grupos activos, significa que fue destruido inesperadamente
         if (activeGroups.isNotEmpty()) {

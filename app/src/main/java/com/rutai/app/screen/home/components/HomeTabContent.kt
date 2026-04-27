@@ -40,11 +40,11 @@ fun HomeTabContent(
             ) + fadeIn()
         ) {
             when {
-                isLoading -> {
-                    LoadingContent()
-                }
                 userState != null -> {
                     UserWelcomeContent(userState)
+                }
+                isLoading -> {
+                    LoadingContent()
                 }
                 errorMessage != null -> {
                     ErrorContent(errorMessage, authViewModel)
