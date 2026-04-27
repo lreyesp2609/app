@@ -88,6 +88,12 @@ fun AppNavigation(
     // Conectar WebSocket de Notificaciones
     val isRestoringSession = authViewModel.isRestoringSession
     LaunchedEffect(isLoggedIn, accessToken, isRestoringSession) {
+
+        if (isRestoringSession) {
+            Log.d("AppNavigation", "⏳ Restaurando sesión, no se tocan WebSockets todavía")
+            return@LaunchedEffect
+        }
+
         if (isLoggedIn && accessToken != null && !isRestoringSession) {
             val baseUrl = BuildConfig.BASE_URL.removeSuffix("/")
 

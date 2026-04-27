@@ -263,11 +263,6 @@ object WebSocketLocationManager {
         // Marcar como desconectado
         isWebSocketConnected = false
 
-        // Desregistrar listener de tokens
-        tokenChangeListener?.let { listener ->
-            sessionManager?.removeTokenChangeListener(listener)
-            Log.d(TAG, "➖ Listener de tokens desregistrado")
-        }
         tokenChangeListener = null
         sessionManager = null
 
@@ -279,7 +274,7 @@ object WebSocketLocationManager {
         client?.dispatcher?.executorService?.shutdown()
         client = null
 
-        Log.d(TAG, "✅ WebSocket cerrado y recursos liberados")
+        Log.d(TAG, "✅ WebSocket cerrado (listener de tokens preservado)")
     }
 
     fun getCurrentToken(): String? = currentToken
