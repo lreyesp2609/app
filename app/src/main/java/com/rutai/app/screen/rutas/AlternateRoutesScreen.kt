@@ -1,5 +1,6 @@
 package com.rutai.app.screen.rutas
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -84,9 +85,12 @@ fun AlternateRoutesScreen(
 
     var showContent by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        delay(200)
+    LaunchedEffect(token) {        delay(200)
         showContent = true
+        if (token.isBlank()) {
+            Log.w("AlternateRoutesScreen", "⚠️ Token vacío, esperando refresh de sesión para cargar rutas")
+            return@LaunchedEffect
+        }
         viewModel.cargarUbicaciones()
     }
 

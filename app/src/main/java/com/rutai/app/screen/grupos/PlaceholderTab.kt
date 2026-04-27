@@ -1,6 +1,7 @@
 package com.rutai.app.screen.grupos
 
 import android.net.Uri
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -120,7 +121,11 @@ fun CollaborativeGroupsScreen(
         ?.getStateFlow("refresh_grupos", false)
         ?.collectAsState()
 
-    LaunchedEffect(Unit, grupoCreado?.value, volviendoDelChat?.value) {
+    LaunchedEffect(token, grupoCreado?.value, volviendoDelChat?.value) {
+        if (token.isBlank()) {
+            Log.w("CollaborativeGroupsScreen", "⚠️ Token vacío, esperando restauración para cargar grupos")
+            return@LaunchedEffect
+        }
         viewModel.listarGrupos(token)
         delay(200)
         showContent = true

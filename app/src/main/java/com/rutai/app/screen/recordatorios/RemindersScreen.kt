@@ -2,6 +2,7 @@ package com.rutai.app.screen.recordatorios
 
 import android.media.RingtoneManager
 import android.net.Uri
+import android.util.Log
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -57,9 +58,13 @@ fun RemindersScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(token) {
         delay(200)
         showContent = true
+        if (token.isBlank()) {
+            Log.w("RemindersScreen", "⚠️ Token vacío, esperando refresh de sesión para cargar recordatorios")
+            return@LaunchedEffect
+        }
         viewModel.fetchReminders(token)
         delay(400)
         showStats = true
