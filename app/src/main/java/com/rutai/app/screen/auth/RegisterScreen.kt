@@ -111,7 +111,7 @@ fun RegisterScreen(
 
                 // Títulos
                 Text(
-                    text = "RememberGo",
+                    text = "RutAI",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground

@@ -156,7 +156,7 @@ class UnifiedLocationService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setContentTitle("RememberGo activo")
+            .setContentTitle("RutAI activo")
             .setContentText("Monitoreando ubicación")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)

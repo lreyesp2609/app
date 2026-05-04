@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RememberGo</string>
-    <string name="notification_channel_name">RememberGo Reminders</string>
+    <string name="app_name">RutAI</string>
+    <string name="notification_channel_name">RutAI Reminders</string>
     <string name="notification_channel_description">Location-based reminder notifications</string>
 
     <!-- Welcome Screen -->
@@ -82,7 +82,7 @@
     <string name="close">Close</string>
 
     <!-- Battery Optimization -->
-    <string name="battery_opt_success">Perfect! RememberGo will work better in the background</string>
+    <string name="battery_opt_success">Perfect! RutAI will work better in the background</string>
     <string name="battery_opt_rationale">We recommend enabling this option for reminders to work better</string>
     <string name="battery_opt_error">Could not request battery optimization exclusion</string>
 
@@ -93,8 +93,8 @@
     <!-- Permission Dialog -->
     <string name="notifications_disabled_title">Notifications disabled</string>
     <string name="location_disabled_title">Location disabled</string>
-    <string name="notifications_disabled_message">To receive reminders, you need to enable notifications in your device settings.\n\nGo to: Settings → Apps → RememberGo → Notifications</string>
-    <string name="location_disabled_message">To use location-based reminders, you need to enable location permissions.\n\nGo to: Settings → Apps → RememberGo → Permissions → Location</string>
+    <string name="notifications_disabled_message">To receive reminders, you need to enable notifications in your device settings.\n\nGo to: Settings → Apps → RutAI → Notifications</string>
+    <string name="location_disabled_message">To use location-based reminders, you need to enable location permissions.\n\nGo to: Settings → Apps → RutAI → Permissions → Location</string>
     <string name="go_to_settings">Go to settings</string>
     <string name="not_now">Not now</string>
 

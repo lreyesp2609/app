@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RememberGo</string>
-    <string name="notification_channel_name">Recordatorios RememberGo</string>
+    <string name="app_name">RutAI</string>
+    <string name="notification_channel_name">Recordatorios RutAI</string>
     <string name="notification_channel_description">Notificaciones de recordatorios basados en ubicación</string>
 
     <!-- Welcome Screen -->
@@ -82,7 +82,7 @@
     <string name="close">Cerrar</string>
 
     <!-- Battery Optimization -->
-    <string name="battery_opt_success">¡Perfecto! RememberGo funcionará mejor en segundo plano</string>
+    <string name="battery_opt_success">¡Perfecto! RutAI funcionará mejor en segundo plano</string>
     <string name="battery_opt_rationale">Recomendamos activar esta opción para que los recordatorios funcionen mejor</string>
     <string name="battery_opt_error">No se pudo solicitar exclusión de batería</string>
 
@@ -93,8 +93,8 @@
     <!-- Permission Dialog -->
     <string name="notifications_disabled_title">Notificaciones desactivadas</string>
     <string name="location_disabled_title">Ubicación desactivada</string>
-    <string name="notifications_disabled_message">Para recibir recordatorios, necesitas activar las notificaciones en la configuración de tu dispositivo.\n\nVe a: Ajustes → Apps → RememberGo → Notificaciones</string>
-    <string name="location_disabled_message">Para usar recordatorios basados en ubicación, necesitas activar los permisos de ubicación.\n\nVe a: Ajustes → Apps → RememberGo → Permisos → Ubicación</string>
+    <string name="notifications_disabled_message">Para recibir recordatorios, necesitas activar las notificaciones en la configuración de tu dispositivo.\n\nVe a: Ajustes → Apps → RutAI → Notificaciones</string>
+    <string name="location_disabled_message">Para usar recordatorios basados en ubicación, necesitas activar los permisos de ubicación.\n\nVe a: Ajustes → Apps → RutAI → Permisos → Ubicación</string>
     <string name="go_to_settings">Ir a ajustes</string>
     <string name="not_now">Ahora no</string>
 

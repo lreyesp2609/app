@@ -93,7 +93,7 @@ fun LoginScreen(
         }
 
         Text(
-            text = "RememberGo",
+            text = "RutAI",
             fontSize = 36.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
