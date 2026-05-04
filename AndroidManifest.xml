@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.rutai">
+
+    <application
+        android:allowBackup="true"
+        android:label="RutAI"
+        android:icon="@mipmap/ic_launcher">
+        
+        <!-- Other application components -->
+    </application>
+
+</manifest>
