@@ -229,8 +229,23 @@ fun MapScreen(
                         centerLon = mapCenterLon,
                         isDarkTheme = isDarkTheme,          // <-- ADD THIS
                         onLocationSelected = { lat, lon ->
-                            // ... existing code unchanged
-                        },
+                            mapCenterLat = lat
+                            mapCenterLon = lon
+
+                            job?.cancel()
+                            job = scope.launch {
+                                delay(500)
+                                try {
+                                    val response = NominatimClient.apiService.reverseGeocode(
+                                        lat = lat,
+                                        lon = lon
+                                    )
+                                    selectedAddress = response.display_name ?: ""
+                                } catch (e: Exception) {
+                                    Log.e("MapScreen", "Error obteniendo dirección del pin: ${e.message}", e)
+                                    selectedAddress = context.getString(com.rutai.app.R.string.error_obtaining_address)
+                                }
+                            }                        },
                         onLocationLongPress = { lat, lon ->
                             coordenadasZonaSeleccionada = Pair(lat, lon)
                             mostrarDialogoZona = true

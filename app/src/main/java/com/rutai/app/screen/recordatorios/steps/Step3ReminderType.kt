@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -55,10 +56,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.rutai.app.screen.components.AppButton
 import com.rutai.app.screen.components.AppSlider
+import com.rutai.app.screen.components.AppTextField
 import com.rutai.app.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
@@ -567,6 +570,16 @@ fun LocationProximityConfig(
     onProximityRadiusChange: (Float) -> Unit,
     onTriggerTypeChange: (String) -> Unit
 ) {
+    val minRadius = 20f
+    val maxRadius = 5000f
+    var radiusInput by remember { mutableStateOf(proximityRadius.toInt().toString()) }
+
+    LaunchedEffect(proximityRadius) {
+        val currentRadiusText = proximityRadius.toInt().toString()
+        if (radiusInput != currentRadiusText) {
+            radiusInput = currentRadiusText
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             text = "Configuración de proximidad",
@@ -624,10 +637,30 @@ fun LocationProximityConfig(
 
                 AppSlider(
                     value = proximityRadius,
-                    onValueChange = onProximityRadiusChange,
-                    valueRange = 100f..5000f,
-                    steps = 19,
+                    onValueChange = { newValue ->
+                        val roundedValue = newValue.toInt().toFloat()
+                        radiusInput = roundedValue.toInt().toString()
+                        onProximityRadiusChange(roundedValue)
+                    },
+                    valueRange = minRadius..maxRadius,
+                    steps = 0,
                     label = "Radio de proximidad",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                AppTextField(
+                    value = radiusInput,
+                    onValueChange = { newValue ->
+                        val digitsOnly = newValue.filter { it.isDigit() }
+                        radiusInput = digitsOnly
+
+                        val parsedValue = digitsOnly.toIntOrNull() ?: return@AppTextField
+                        val normalizedValue = parsedValue.coerceIn(minRadius.toInt(), maxRadius.toInt()).toFloat()
+                        onProximityRadiusChange(normalizedValue)
+                    },
+                    label = "Radio en metros",
+                    placeholder = "Ejemplo: 20",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
 

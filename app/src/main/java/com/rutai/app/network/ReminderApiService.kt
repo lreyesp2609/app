@@ -2,6 +2,8 @@ package com.rutai.app.network
 
 import com.rutai.app.models.ReminderRequest
 import com.rutai.app.models.ReminderResponse
+import com.rutai.app.models.GeofenceTriggerRequest
+import com.rutai.app.models.GeofenceTriggerResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -43,4 +45,10 @@ interface ReminderApiService {
         @Path("reminder_id") reminderId: Int,
         @Body reminder: ReminderRequest  // 🔥 Cambiar
     ): Response<ReminderResponse>
+
+    @POST("/reminders/geofence-trigger")
+    suspend fun createGeofenceTrigger(
+        @Header("Authorization") token: String,
+        @Body geofenceTrigger: GeofenceTriggerRequest
+    ): Response<GeofenceTriggerResponse>
 }

@@ -39,7 +39,7 @@ import java.util.*
 import com.rutai.app.network.VerificarUbicacionRequest
 import com.rutai.app.network.VerificarUbicacionResponse
 import com.rutai.app.network.ZonaPeligrosaDetectada
-
+import com.rutai.app.models.GeofenceTriggerRequest
 class UnifiedLocationService : Service() {
 
     // ════════════════════════════════════════
@@ -467,12 +467,14 @@ class UnifiedLocationService : Service() {
                         inside && !wasInside -> {
                             activeGeofences.add(reminder.id)
                             if (reminder.trigger_type == "enter" || reminder.trigger_type == "both") {
+                                reportGeofenceTrigger(reminder, lat, lon)
                                 triggerReminderNotification(reminder, "Entraste en la zona")
                             }
                         }
                         !inside && wasInside -> {
                             activeGeofences.remove(reminder.id)
                             if (reminder.trigger_type == "exit" || reminder.trigger_type == "both") {
+                                reportGeofenceTrigger(reminder, lat, lon)
                                 triggerReminderNotification(reminder, "Saliste de la zona")
                             }
                         }
@@ -518,6 +520,40 @@ class UnifiedLocationService : Service() {
 
         val notificationId = Random.nextInt(1000, 9999)
         getSystemService(NotificationManager::class.java).notify(notificationId, builder.build())
+    }
+
+    private suspend fun reportGeofenceTrigger(
+        reminder: ReminderEntity,
+        lat: Double,
+        lon: Double
+    ) {
+        try {
+            val token = sessionManager.getAccessToken()
+            if (token.isNullOrBlank()) {
+                Log.w(TAG, "⚠️ No se pudo reportar geofence trigger: token no disponible")
+                return
+            }
+
+            val request = GeofenceTriggerRequest(
+                reminder_id = reminder.id,
+                radio_m = (reminder.radius ?: 100f).toInt(),
+                gps_lat = lat,
+                gps_lon = lon
+            )
+
+            val response = RetrofitClient.reminderService.createGeofenceTrigger(
+                token = "Bearer $token",
+                geofenceTrigger = request
+            )
+
+            if (response.isSuccessful) {
+                Log.d(TAG, "✅ Geofence trigger reportado: reminder_id=${reminder.id}")
+            } else {
+                Log.w(TAG, "⚠️ Error reportando geofence trigger: HTTP ${response.code()}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error reportando geofence trigger: ${e.message}")
+        }
     }
 
     // ════════════════════════════════════════

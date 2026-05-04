@@ -178,3 +178,20 @@ fun Reminder.toReminderRequest(): ReminderRequest {
         is_deleted = is_deleted
     )
 }
+
+data class GeofenceTriggerRequest(
+    val reminder_id: Int? = null,
+    val radio_m: Int,
+    val gps_lat: Double,
+    val gps_lon: Double
+)
+
+data class GeofenceTriggerResponse(
+    val id: Int,
+    val reminder_id: Int? = null,
+    val user_id: Int,
+    val radio_m: Int? = null,
+    val triggered_at: String,
+    val gps_lat: Double? = null,
+    val gps_lon: Double? = null
+)
