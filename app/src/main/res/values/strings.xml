@@ -19,7 +19,7 @@
     <string name="cd_no_reminders">No reminders</string>
     <string name="empty_state_help_title">What can you do?</string>
 
-    <string name="feature_location_title">Location reminders</string>
+    <stri0ng name="feature_location_title">Location reminders</stri0ng>
     <string name="feature_location_desc">Receive alerts when entering or leaving a place</string>
     <string name="feature_datetime_title">Date and time alerts</string>
     <string name="feature_datetime_desc">Schedule reminders at specific times</string>
@@ -401,6 +401,7 @@
     <string name="error_invalid_code">The invitation code is not valid or the group does not exist.</string>
     <string name="error_already_in_group">You already belong to this group.</string>
     <string name="error_creator_already_in_group">You are the creator of this group, you already belong to it.</string>
+    <string name="error_creator_cannot_leave">The creator cannot leave the group</string>
     <string name="error_join_group">Error joining group.</string>
     <string name="error_session_expired_join">Your session has expired. Log in again.</string>
     <string name="error_server_internal_short">Server error. Try later.</string>
@@ -420,8 +421,35 @@
     <string name="error_load_locations">Could not load locations</string>
     <string name="error_load_location_id">Could not load requested location</string>
     <string name="location_deleted_success_msg">Location deleted successfully</string>
-    <string name="error_location_not_found">Location does not exist or was already deleted</string>
+    <string name="error_location_not_found">Location not found</string>
     <string name="error_delete_location">Could not delete location</string>
+
+    <string name="error_zone_not_found">Zone not found</string>
+    <string name="error_invalid_coordinates">Invalid coordinates</string>
+    <string name="error_zone_already_owned">You already own this zone</string>
+    <string name="error_zone_name_exists">You already have a zone with that name</string>
+    <string name="error_zone_not_found_or_forbidden">Zone not found or permission denied</string>
+    <string name="error_zone_mark">Error marking dangerous zone</string>
+    <string name="error_zones_fetch">Error fetching dangerous zones</string>
+    <string name="error_zone_update">Error updating zone</string>
+    <string name="error_zone_delete">Error deleting zone</string>
+    <string name="success_zone_status_updated">Zone status updated</string>
+    <string name="error_zone_status_change">Error changing zone status</string>
+    <string name="error_zone_adopt">Error adopting zone</string>
+    <string name="error_suggested_zones_fetch">Error fetching suggested zones</string>
+    <string name="error_suggested_zone_not_found">Suggested zone not found</string>
+    <string name="error_not_in_group">You do not belong to this group</string>
+    <string name="success_group_left">You have left the group</string>
+    <string name="success_group_deleted">Group deleted successfully</string>
+    <string name="error_only_creator_can_delete">Only the creator can delete the group</string>
+    <string name="error_reminder_duplicate">Reminder title already exists</string>
+    <string name="error_reminder_create">Error creating reminder</string>
+    <string name="error_reminder_update">Error updating reminder</string>
+    <string name="success_reminder_deleted">Reminder deleted</string>
+    <string name="error_invalid_transport">Invalid transport type</string>
+    <string name="error_route_not_found">Route not found</string>
+    <string name="success_fcm_updated">FCM token updated</string>
+    <string name="error_fcm_not_found">FCM token not found</string>
 
     <string name="danger_zone_title">Dangerous zone</string>
     <string name="placeholder_danger_zone_name">Ex: Dark alley</string>

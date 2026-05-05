@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.rutai.app.models.GrupoCreate
 import com.rutai.app.models.GrupoResponse
 import com.rutai.app.repository.GrupoRepository
+import com.rutai.app.utils.BackendErrorMapper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 sealed class GrupoState {
     object Idle : GrupoState()
@@ -41,26 +43,14 @@ class GrupoViewModel(
                             message = context.getString(com.rutai.app.R.string.group_created_success)
                         )
                     }
-                    response.code() == 400 -> {
-                        _grupoState.value = GrupoState.Error(
-                            context.getString(com.rutai.app.R.string.error_group_name_exists)
-                        )
-                    }
-                    response.code() == 401 -> {
-                        _grupoState.value = GrupoState.Error(
-                            context.getString(com.rutai.app.R.string.error_session_expired)
-                        )
-                    }
-                    response.code() == 500 -> {
-                        _grupoState.value = GrupoState.Error(
-                            context.getString(com.rutai.app.R.string.error_server_internal)
-                        )
-                    }
                     else -> {
                         val errorBody = response.errorBody()?.string()
-                        _grupoState.value = GrupoState.Error(
-                            errorBody ?: "Error desconocido: ${response.code()}"
-                        )
+                        val detail = try {
+                            JSONObject(errorBody ?: "{}").optString("detail", errorBody ?: "")
+                        } catch (e: Exception) { errorBody ?: "" }
+                        
+                        val mensaje = BackendErrorMapper.resolve(context, detail)
+                        _grupoState.value = GrupoState.Error(mensaje)
                     }
                 }
             } catch (e: Exception) {
@@ -117,39 +107,16 @@ class GrupoViewModel(
                             message = context.getString(com.rutai.app.R.string.join_group_success)
                         )
                     }
-                    response.code() == 404 -> {
-                        _grupoState.value = GrupoState.Error(
-                            context.getString(com.rutai.app.R.string.error_invalid_code)
-                        )
-                    }
-                    response.code() == 400 -> {
-                        val errorBody = response.errorBody()?.string()
-                        val errorMessage = when {
-                            errorBody?.contains("Ya perteneces") == true ->
-                                context.getString(com.rutai.app.R.string.error_already_in_group)
-                            errorBody?.contains("creador") == true ->
-                                context.getString(com.rutai.app.R.string.error_creator_already_in_group)
-                            else ->
-                                errorBody ?: context.getString(com.rutai.app.R.string.error_join_group)
-                        }
-                        _grupoState.value = GrupoState.Error(errorMessage)
-                    }
-                    response.code() == 401 -> {
-                        _grupoState.value = GrupoState.Error(
-                            context.getString(com.rutai.app.R.string.error_session_expired_join)
-                        )
-                        shouldReloadList = false
-                    }
-                    response.code() == 500 -> {
-                        _grupoState.value = GrupoState.Error(
-                            context.getString(com.rutai.app.R.string.error_server_internal_short)
-                        )
-                    }
                     else -> {
+                        if (response.code() == 401) shouldReloadList = false
+                        
                         val errorBody = response.errorBody()?.string()
-                        _grupoState.value = GrupoState.Error(
-                            errorBody ?: "Error desconocido: ${response.code()}"
-                        )
+                        val detail = try {
+                            JSONObject(errorBody ?: "{}").optString("detail", errorBody ?: "")
+                        } catch (e: Exception) { errorBody ?: "" }
+                        
+                        val mensaje = BackendErrorMapper.resolve(context, detail)
+                        _grupoState.value = GrupoState.Error(mensaje)
                     }
                 }
             } catch (e: Exception) {
@@ -184,7 +151,11 @@ class GrupoViewModel(
                 if (response.isSuccessful) {
                     _mensajeSalida.value = response.body()?.message ?: context.getString(com.rutai.app.R.string.exit_group_success_msg)
                 } else {
-                    _mensajeSalida.value = context.getString(com.rutai.app.R.string.error_exit_group, response.errorBody()?.string())
+                    val errorBody = response.errorBody()?.string()
+                    val detail = try {
+                        JSONObject(errorBody ?: "{}").optString("detail", errorBody ?: "")
+                    } catch (e: Exception) { errorBody ?: "" }
+                    _mensajeSalida.value = BackendErrorMapper.resolve(context, detail)
                 }
             } catch (e: Exception) {
                 _mensajeSalida.value = context.getString(com.rutai.app.R.string.error_connection_exit_group, e.localizedMessage)
@@ -206,7 +177,11 @@ class GrupoViewModel(
                 if (response.isSuccessful) {
                     _mensajeEliminacion.value = response.body()?.message ?: context.getString(com.rutai.app.R.string.delete_group_success_msg)
                 } else {
-                    _mensajeEliminacion.value = context.getString(com.rutai.app.R.string.error_delete_group, response.errorBody()?.string())
+                    val errorBody = response.errorBody()?.string()
+                    val detail = try {
+                        JSONObject(errorBody ?: "{}").optString("detail", errorBody ?: "")
+                    } catch (e: Exception) { errorBody ?: "" }
+                    _mensajeEliminacion.value = BackendErrorMapper.resolve(context, detail)
                 }
             } catch (e: Exception) {
                 _mensajeEliminacion.value = context.getString(com.rutai.app.R.string.error_connection_delete_group, e.localizedMessage)

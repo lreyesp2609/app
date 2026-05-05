@@ -401,6 +401,7 @@
     <string name="error_invalid_code">El código de invitación no es válido o el grupo no existe.</string>
     <string name="error_already_in_group">Ya perteneces a este grupo.</string>
     <string name="error_creator_already_in_group">Eres el creador de este grupo, ya perteneces a él.</string>
+    <string name="error_creator_cannot_leave">El creador no puede abandonar el grupo</string>
     <string name="error_join_group">Error al unirse al grupo.</string>
     <string name="error_session_expired_join">Tu sesión ha expirado. Inicia sesión nuevamente.</string>
     <string name="error_server_internal_short">Error del servidor. Intenta más tarde.</string>
@@ -420,8 +421,35 @@
     <string name="error_load_locations">No se pudieron cargar las ubicaciones</string>
     <string name="error_load_location_id">No se pudo cargar la ubicación solicitada</string>
     <string name="location_deleted_success_msg">Ubicación eliminada correctamente</string>
-    <string name="error_location_not_found">La ubicación no existe o ya fue eliminada</string>
+    <string name="error_location_not_found">Ubicación no encontrada</string>
     <string name="error_delete_location">No se pudo eliminar la ubicación</string>
+
+    <string name="error_zone_not_found">Zona no encontrada</string>
+    <string name="error_invalid_coordinates">Coordenadas inválidas</string>
+    <string name="error_zone_already_owned">Esta zona ya es tuya</string>
+    <string name="error_zone_name_exists">Ya tienes una zona con ese nombre</string>
+    <string name="error_zone_not_found_or_forbidden">Zona no encontrada o sin permiso</string>
+    <string name="error_zone_mark">Error al marcar zona peligrosa</string>
+    <string name="error_zones_fetch">Error al obtener zonas peligrosas</string>
+    <string name="error_zone_update">Error al actualizar zona</string>
+    <string name="error_zone_delete">Error al eliminar zona</string>
+    <string name="success_zone_status_updated">Estado de zona actualizado</string>
+    <string name="error_zone_status_change">Error al cambiar estado de zona</string>
+    <string name="error_zone_adopt">Error al adoptar zona</string>
+    <string name="error_suggested_zones_fetch">Error al obtener zonas sugeridas</string>
+    <string name="error_suggested_zone_not_found">Zona sugerida no encontrada</string>
+    <string name="error_not_in_group">No perteneces a este grupo</string>
+    <string name="success_group_left">Has abandonado el grupo</string>
+    <string name="success_group_deleted">Grupo eliminado correctamente</string>
+    <string name="error_only_creator_can_delete">Solo el creador puede eliminar el grupo</string>
+    <string name="error_reminder_duplicate">Ya existe un recordatorio con ese título</string>
+    <string name="error_reminder_create">Error al crear recordatorio</string>
+    <string name="error_reminder_update">Error al actualizar recordatorio</string>
+    <string name="success_reminder_deleted">Recordatorio eliminado</string>
+    <string name="error_invalid_transport">Tipo de transporte inválido</string>
+    <string name="error_route_not_found">Ruta no encontrada</string>
+    <string name="success_fcm_updated">Token FCM actualizado</string>
+    <string name="error_fcm_not_found">Token FCM no encontrado</string>
 
     <string name="danger_zone_title">Zona peligrosa</string>
     <string name="placeholder_danger_zone_name">Ej: Callejón oscuro</string>
