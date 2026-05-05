@@ -59,6 +59,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.res.stringResource
+import com.rutai.app.R
 import com.rutai.app.screen.components.AppButton
 import com.rutai.app.screen.components.AppSlider
 import com.rutai.app.screen.components.AppTextField
@@ -112,12 +114,12 @@ fun Step3ReminderType(
                     showTimePicker = false
                     showTimeError = false
                 }) {
-                    Text("Aceptar", color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.ok), color = MaterialTheme.colorScheme.primary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showTimePicker = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.cancel))
                 }
             },
             text = {
@@ -136,7 +138,7 @@ fun Step3ReminderType(
         StepIndicator(
             currentStep = 3,
             totalSteps = 4,
-            stepTitle = "Configuración del recordatorio"
+            stepTitle = stringResource(R.string.step3_title)
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -149,7 +151,7 @@ fun Step3ReminderType(
         ) {
             // Tipo de recordatorio
             Text(
-                text = "Tipo de recordatorio",
+                text = stringResource(R.string.label_reminder_type),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -160,7 +162,7 @@ fun Step3ReminderType(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 AppButton(
-                    text = "Ubicación",
+                    text = stringResource(R.string.type_location_short),
                     onClick = {
                         onReminderTypeChange("location")
                         showDaysError = false
@@ -171,7 +173,7 @@ fun Step3ReminderType(
                 )
 
                 AppButton(
-                    text = "Hora",
+                    text = stringResource(R.string.type_time_short),
                     onClick = {
                         onReminderTypeChange("datetime")
                     },
@@ -180,7 +182,7 @@ fun Step3ReminderType(
                 )
 
                 AppButton(
-                    text = "Ambos",
+                    text = stringResource(R.string.type_both_short),
                     onClick = {
                         onReminderTypeChange("both")
                     },
@@ -210,9 +212,9 @@ fun Step3ReminderType(
                     )
                     Text(
                         text = when (reminderType) {
-                            "location" -> "Se activará cuando llegues al lugar"
-                            "datetime" -> "Se activará en los días y hora seleccionados"
-                            "both" -> "Se activará cuando llegues al lugar en los días y hora seleccionados"
+                            "location" -> stringResource(R.string.desc_location_trigger)
+                            "datetime" -> stringResource(R.string.desc_datetime_trigger)
+                            "both" -> stringResource(R.string.desc_both_trigger)
                             else -> ""
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -288,14 +290,14 @@ fun Step3ReminderType(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             AppButton(
-                text = "Atrás",
+                text = stringResource(R.string.back),
                 leadingIcon = { Icon(Icons.Default.ArrowBack, contentDescription = null) },
                 onClick = onBackClick,
                 modifier = Modifier.weight(1f),
                 outlined = true
             )
             AppButton(
-                text = "Siguiente",
+                text = stringResource(R.string.next),
                 icon = Icons.Default.ArrowForward,
                 onClick = {
                     var hasError = false
@@ -307,12 +309,12 @@ fun Step3ReminderType(
                             scope.launch {
                                 scrollState.animateScrollTo(scrollState.maxValue)
                             }
-                            notificationViewModel.showError("Debes seleccionar al menos un día")
+                            notificationViewModel.showError(context.getString(R.string.error_select_at_least_one_day))
                         }
                         if (selectedTime == null) {
                             showTimeError = true
                             hasError = true
-                            notificationViewModel.showError("Debes seleccionar una hora")
+                            notificationViewModel.showError(context.getString(R.string.error_select_time))
                         }
                     }
 
@@ -338,7 +340,7 @@ fun DaysAndTimeSelector(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "Días de la semana *",
+            text = stringResource(R.string.label_days_of_week),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
@@ -358,9 +360,14 @@ fun DaysAndTimeSelector(
             )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                val daysOfWeek = listOf(
-                    "Lunes", "Martes", "Miércoles", "Jueves",
-                    "Viernes", "Sábado", "Domingo"
+                val daysOfWeekMap = mapOf(
+                    "Lunes" to R.string.day_monday,
+                    "Martes" to R.string.day_tuesday,
+                    "Miércoles" to R.string.day_wednesday,
+                    "Jueves" to R.string.day_thursday,
+                    "Viernes" to R.string.day_friday,
+                    "Sábado" to R.string.day_saturday,
+                    "Domingo" to R.string.day_sunday
                 )
 
                 // Botones rápidos
@@ -369,14 +376,14 @@ fun DaysAndTimeSelector(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedButton(
-                        onClick = { onSelectedDaysChange(daysOfWeek.toSet()) },
+                        onClick = { onSelectedDaysChange(daysOfWeekMap.keys) },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.primary
                         ),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("Todos")
+                        Text(stringResource(R.string.all_days))
                     }
                     OutlinedButton(
                         onClick = { onSelectedDaysChange(emptySet()) },
@@ -386,17 +393,15 @@ fun DaysAndTimeSelector(
                         ),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
-                        Text("Limpiar")
+                        Text(stringResource(R.string.clear))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Días individuales
-                daysOfWeek.forEachIndexed { index, day ->
-                    if (index > 0) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
+                daysOfWeekMap.forEach { (dayKey, dayResId) ->
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Surface(
                         modifier = Modifier
@@ -404,14 +409,14 @@ fun DaysAndTimeSelector(
                             .clip(RoundedCornerShape(12.dp))
                             .clickable {
                                 onSelectedDaysChange(
-                                    if (selectedDays.contains(day)) {
-                                        selectedDays - day
+                                    if (selectedDays.contains(dayKey)) {
+                                        selectedDays - dayKey
                                     } else {
-                                        selectedDays + day
+                                        selectedDays + dayKey
                                     }
                                 )
                             },
-                        color = if (selectedDays.contains(day))
+                        color = if (selectedDays.contains(dayKey))
                             MaterialTheme.colorScheme.primaryContainer
                         else
                             MaterialTheme.colorScheme.surfaceVariant,
@@ -423,19 +428,19 @@ fun DaysAndTimeSelector(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = day,
+                                text = stringResource(dayResId),
                                 style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = if (selectedDays.contains(day))
+                                fontWeight = if (selectedDays.contains(dayKey))
                                     FontWeight.SemiBold
                                 else
                                     FontWeight.Normal,
-                                color = if (selectedDays.contains(day))
+                                color = if (selectedDays.contains(dayKey))
                                     MaterialTheme.colorScheme.onSurface
                                 else
                                     MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Checkbox(
-                                checked = selectedDays.contains(day),
+                                checked = selectedDays.contains(dayKey),
                                 onCheckedChange = null,
                                 colors = CheckboxDefaults.colors(
                                     checkedColor = MaterialTheme.colorScheme.primary,
@@ -459,7 +464,7 @@ fun DaysAndTimeSelector(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "Debes seleccionar al menos un día",
+                            text = stringResource(R.string.error_select_at_least_one_day),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -470,7 +475,7 @@ fun DaysAndTimeSelector(
 
         // Selector de hora
         Text(
-            text = "Hora *",
+            text = stringResource(R.string.label_time),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
@@ -518,7 +523,7 @@ fun DaysAndTimeSelector(
                         Text(
                             text = if (selectedTime != null) {
                                 String.format("%02d:%02d", selectedTime.first, selectedTime.second)
-                            } else "Seleccionar hora",
+                            } else stringResource(R.string.select_time_prompt),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = if (selectedTime != null) FontWeight.SemiBold else FontWeight.Normal,
                             color = if (selectedTime != null)
@@ -549,7 +554,7 @@ fun DaysAndTimeSelector(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "Debes seleccionar una hora",
+                        text = stringResource(R.string.error_select_time),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -582,7 +587,7 @@ fun LocationProximityConfig(
     }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "Configuración de proximidad",
+            text = stringResource(R.string.label_proximity_config),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
@@ -644,7 +649,7 @@ fun LocationProximityConfig(
                     },
                     valueRange = minRadius..maxRadius,
                     steps = 0,
-                    label = "Radio de proximidad",
+                    label = stringResource(R.string.label_proximity_radius),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -658,8 +663,8 @@ fun LocationProximityConfig(
                         val normalizedValue = parsedValue.coerceIn(minRadius.toInt(), maxRadius.toInt()).toFloat()
                         onProximityRadiusChange(normalizedValue)
                     },
-                    label = "Radio en metros",
-                    placeholder = "Ejemplo: 20",
+                    label = stringResource(R.string.label_radius_meters),
+                    placeholder = stringResource(R.string.placeholder_radius),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -667,7 +672,7 @@ fun LocationProximityConfig(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "Activar cuando:",
+                    text = stringResource(R.string.label_activate_when),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -680,13 +685,13 @@ fun LocationProximityConfig(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     AppButton(
-                        text = "Entre",
+                        text = stringResource(R.string.trigger_enter_short),
                         onClick = { onTriggerTypeChange("enter") },
                         modifier = Modifier.weight(1f),
                         outlined = triggerType != "enter"
                     )
                     AppButton(
-                        text = "Salga",
+                        text = stringResource(R.string.trigger_exit_short),
                         onClick = { onTriggerTypeChange("exit") },
                         modifier = Modifier.weight(1f),
                         outlined = triggerType != "exit"
@@ -696,7 +701,7 @@ fun LocationProximityConfig(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 AppButton(
-                    text = "Entre o salga",
+                    text = stringResource(R.string.trigger_both_short),
                     onClick = { onTriggerTypeChange("both") },
                     modifier = Modifier.fillMaxWidth(),
                     outlined = triggerType != "both"

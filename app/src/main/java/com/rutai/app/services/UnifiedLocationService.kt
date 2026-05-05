@@ -13,6 +13,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.rutai.app.MainActivity
+import com.rutai.app.R
 import com.rutai.app.models.ReminderEntity
 import com.rutai.app.network.AppDatabase
 import com.rutai.app.utils.NotificationHelper
@@ -156,8 +157,8 @@ class UnifiedLocationService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setContentTitle("RutAI activo")
-            .setContentText("Monitoreando ubicación")
+            .setContentTitle(getString(R.string.service_active_title))
+            .setContentText(getString(R.string.monitoring_location))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setContentIntent(pendingIntent)
@@ -286,10 +287,10 @@ class UnifiedLocationService : Service() {
         NotificationHelper.wakeUpDevice(applicationContext)
 
         val titulo = when (zona.nivel_peligro) {
-            5 -> "🚨 ZONA MUY PELIGROSA"
-            4 -> "⚠️ ZONA PELIGROSA"
-            3 -> "⚠️ ZONA DE RIESGO"
-            else -> "ℹ️ Zona Marcada"
+            5 -> getString(R.string.danger_very_high)
+            4 -> getString(R.string.danger_high)
+            3 -> getString(R.string.danger_medium)
+            else -> getString(R.string.danger_low)
         }
 
         val descripcion = mensajeAlerta ?: zona.nombre
@@ -310,8 +311,11 @@ class UnifiedLocationService : Service() {
             .setContentTitle(titulo)
             .setContentText(descripcion)
             .setStyle(NotificationCompat.BigTextStyle().bigText(
-                "$descripcion\n\nDistancia: ${zona.distancia_al_centro.toInt()}m\n" +
-                        "Nivel de peligro: ${zona.nivel_peligro}/5"
+                "$descripcion\n\n" + getString(
+                    R.string.notification_danger_detail,
+                    zona.distancia_al_centro.toInt(),
+                    zona.nivel_peligro
+                )
             ))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -468,14 +472,14 @@ class UnifiedLocationService : Service() {
                             activeGeofences.add(reminder.id)
                             if (reminder.trigger_type == "enter" || reminder.trigger_type == "both") {
                                 reportGeofenceTrigger(reminder, lat, lon)
-                                triggerReminderNotification(reminder, "Entraste en la zona")
+                                triggerReminderNotification(reminder, getString(R.string.trigger_enter))
                             }
                         }
                         !inside && wasInside -> {
                             activeGeofences.remove(reminder.id)
                             if (reminder.trigger_type == "exit" || reminder.trigger_type == "both") {
                                 reportGeofenceTrigger(reminder, lat, lon)
-                                triggerReminderNotification(reminder, "Saliste de la zona")
+                                triggerReminderNotification(reminder, getString(R.string.trigger_exit))
                             }
                         }
                     }

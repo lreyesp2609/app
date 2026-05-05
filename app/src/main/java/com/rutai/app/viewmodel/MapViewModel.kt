@@ -13,7 +13,6 @@ import com.rutai.app.repository.RutasRepository
 import com.rutai.app.screen.rutas.components.getPreferenceDisplayName
 import com.rutai.app.ui.theme.DangerLevelColors
 import com.rutai.app.utils.BackendErrorMapper
-import com.rutai.app.utils.toLocalISOString
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
@@ -193,7 +192,10 @@ class MapViewModel(
                             rutas = rutasParaValidar,
                             ubicacionId = ubicacionId
                         )
-                    )
+                    ).let { valResponse ->
+                        // Traducir el mensaje global de la respuesta (advertenciaGeneral)
+                        valResponse.copy(advertenciaGeneral = resolverMensajeAlerta(valResponse.advertenciaGeneral))
+                    }
 
                     _validacionSeguridad.value = validacion
 
@@ -227,8 +229,11 @@ class MapViewModel(
                             esSegura = validacionRuta.esSegura,
                             nivelRiesgo = validacionRuta.nivelRiesgo,
                             zonasDetectadas = validacionRuta.zonasDetectadas,
-                            mensajeSeguridad = validacionRuta.mensaje,
-                            // 🚀 NUEVO: Agregar zonas públicas detectadas
+                            mensajeSeguridad = when (validacionRuta.mensaje) {
+                                "SAFE_ROUTE_AVAILABLE" -> resolverMensajeAlerta(validacionRuta.mensaje, route.displayName)
+                                "PUBLIC_ZONES_DETECTED" -> resolverMensajeAlerta(validacionRuta.mensaje, validacionRuta.zonasPublicasDetectadas?.size ?: 0)
+                                else -> resolverMensajeAlerta(validacionRuta.mensaje)
+                            },
                             zonasPublicasDetectadas = validacionRuta.zonasPublicasDetectadas
                         )
 
@@ -571,7 +576,7 @@ class MapViewModel(
                     if (response.alerta_desobediencia && response.mensaje_alerta != null) {
                         Log.d("MapViewModel", "🚨 ALERTA DESOBEDIENCIA: ${response.mensaje_alerta}")
                         _mostrarAlertaDesobediencia.value = true
-                        _mensajeAlertaDesobediencia.value = response.mensaje_alerta
+                        _mensajeAlertaDesobediencia.value = resolverMensajeAlerta(response.mensaje_alerta)
                     }
 
                     _mostrarOpcionesFinalizar.value = false
@@ -757,7 +762,10 @@ class MapViewModel(
                             rutas = rutasParaValidar,
                             ubicacionId = ubicacionId
                         )
-                    )
+                    ).let { valResponse ->
+                        // Traducir el mensaje global de la respuesta (advertenciaGeneral)
+                        valResponse.copy(advertenciaGeneral = resolverMensajeAlerta(valResponse.advertenciaGeneral))
+                    }
 
                     _validacionSeguridad.value = validacion
 
@@ -773,8 +781,11 @@ class MapViewModel(
                             esSegura = validacionRuta.esSegura,
                             nivelRiesgo = validacionRuta.nivelRiesgo,
                             zonasDetectadas = validacionRuta.zonasDetectadas,
-                            mensajeSeguridad = validacionRuta.mensaje,
-                            // 🚀 NUEVO: Agregar zonas públicas detectadas
+                            mensajeSeguridad = when (validacionRuta.mensaje) {
+                                "SAFE_ROUTE_AVAILABLE" -> resolverMensajeAlerta(validacionRuta.mensaje, route.displayName)
+                                "PUBLIC_ZONES_DETECTED" -> resolverMensajeAlerta(validacionRuta.mensaje, validacionRuta.zonasPublicasDetectadas?.size ?: 0)
+                                else -> resolverMensajeAlerta(validacionRuta.mensaje)
+                            },
                             zonasPublicasDetectadas = validacionRuta.zonasPublicasDetectadas
                         )
                     }
@@ -966,5 +977,20 @@ class MapViewModel(
     override fun onCleared() {
         super.onCleared()
         _zonasPeligrosas.value = emptyList()
+    }
+
+    private fun resolverMensajeAlerta(codigoOMensaje: String?, vararg args: Any): String? {
+        if (codigoOMensaje == null) return null
+        val resourceName = codigoOMensaje.lowercase()
+        val resId = context.resources.getIdentifier(resourceName, "string", context.packageName)
+        return if (resId != 0) {
+            try {
+                context.getString(resId, *args)
+            } catch (e: Exception) {
+                context.getString(resId)
+            }
+        } else {
+            codigoOMensaje
+        }
     }
 }

@@ -246,11 +246,10 @@ class LocationTrackingService : Service() {
      * 🆕 Conectar WebSocket para un grupo específico
      */
     private fun connectWebSocketForGroup(grupoId: Int, grupoNombre: String) {
-        // ✅ Verificar si ya existe conexión para este grupo
+        // ✅ Verificar si ya existe conexión ACTIVA para este grupo
         if (webSocketsByGroup.containsKey(grupoId)) {
-            Log.d(TAG, "⚠️ Ya existe WebSocket para grupo $grupoId, cerrando anterior")
-            webSocketsByGroup[grupoId]?.close(1000, "Reconectando")
-            webSocketsByGroup.remove(grupoId)
+            Log.d(TAG, "ℹ️ Ya existe una conexión de WebSocket para el grupo $grupoId. Omitiendo nueva conexión.")
+            return
         }
 
         val token = sessionManager.getAccessToken()

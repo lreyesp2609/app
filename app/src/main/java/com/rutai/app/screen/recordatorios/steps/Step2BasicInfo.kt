@@ -28,6 +28,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.rutai.app.R
 import com.rutai.app.screen.components.AppButton
 import com.rutai.app.screen.components.AppTextField
 
@@ -53,7 +55,7 @@ fun Step2BasicInfo(
         StepIndicator(
             currentStep = 2,
             totalSteps = 4,
-            stepTitle = "Información del recordatorio"
+            stepTitle = stringResource(R.string.step2_title)
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -71,13 +73,13 @@ fun Step2BasicInfo(
                         onTitleChange(it)
                         if (it.isNotEmpty()) showTitleError = false
                     },
-                    label = "Nombre del recordatorio *",
+                    label = stringResource(R.string.label_reminder_name),
                     leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (showTitleError) {
                     Text(
-                        text = "El título es obligatorio",
+                        text = stringResource(R.string.error_title_required),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(start = 16.dp, top = 4.dp)
@@ -88,7 +90,7 @@ fun Step2BasicInfo(
             AppTextField(
                 value = description,
                 onValueChange = onDescriptionChange,
-                label = "Descripción (opcional)",
+                label = stringResource(R.string.label_description_optional),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = false,
                 maxLines = 5
@@ -103,14 +105,14 @@ fun Step2BasicInfo(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             AppButton(
-                text = "Atrás",
+                text = stringResource(R.string.back),
                 leadingIcon = { Icon(Icons.Default.ArrowBack, contentDescription = null) },
                 onClick = onBackClick,
                 modifier = Modifier.weight(1f),
                 outlined = true
             )
             AppButton(
-                text = "Siguiente",
+                text = stringResource(R.string.next),
                 trailingIcon = { Icon(Icons.Default.ArrowForward, contentDescription = null) },
                 onClick = {
                     if (title.isEmpty()) {

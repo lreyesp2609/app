@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import com.rutai.app.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -340,20 +341,20 @@ class ReminderViewModel(
                             // 3️⃣ Recargar desde API
                             fetchReminders(token)
 
-                            Toast.makeText(context, "Recordatorio eliminado", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.success_reminder_deleted), Toast.LENGTH_SHORT).show()
                             onSuccess()
                         } else {
                             Log.e("ReminderViewModel", "⚠️ Error API eliminar: ${response.code()}")
-                            Toast.makeText(context, "Error al eliminar", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.error_reminder_delete), Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
                         Log.e("ReminderViewModel", "⚠️ Error de red: ${e.message}")
-                        Toast.makeText(context, "Error de red: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.error_network_connection), Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
                 Log.e("ReminderViewModel", "❌ Error al eliminar: ${e.message}")
-                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.error_generic_message, e.message ?: ""), Toast.LENGTH_SHORT).show()
             } finally {
                 isLoading = false
             }
@@ -640,7 +641,7 @@ fun rememberSystemNotificationSounds(context: Context): List<NotificationSound> 
         val defaultUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         sounds.add(NotificationSound(
             uri = defaultUri.toString(),
-            title = "Predeterminado del sistema"
+            title = context.getString(R.string.sound_default_system)
         ))
 
         // Obtener todos los tonos de notificación disponibles

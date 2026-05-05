@@ -3,6 +3,13 @@
     <string name="app_name">RutAI</string>
     <string name="notification_channel_name">Recordatorios RutAI</string>
     <string name="notification_channel_description">Notificaciones de recordatorios basados en ubicación</string>
+    <string name="service_active_title">RutAI activo</string>
+    <string name="monitoring_location">Monitoreando ubicación</string>
+    <string name="danger_very_high">🚨 ZONA MUY PELIGROSA</string>
+    <string name="danger_high">⚠️ ZONA PELIGROSA</string>
+    <string name="danger_medium">⚠️ ZONA DE RIESGO</string>
+    <string name="danger_low">ℹ️ Zona Marcada</string>
+    <string name="notification_danger_detail">Distancia: %1$dm\nNivel de peligro: %2$d/5</string>
 
     <!-- Welcome Screen -->
     <string name="welcome_user">¡Bienvenido, %1$s!</string>
@@ -197,6 +204,11 @@
     <string name="role_moderator">Moderador</string>
     <string name="role_member">Miembro</string>
     <string name="status_inactive">• Inactivo</string>
+
+    <!-- Alertas de Seguridad -->
+    <string name="alert_route_pattern_detected">Hemos detectado que frecuentemente usas la misma ruta. Por tu seguridad, te recomendamos variar tus trayectos.</string>
+    <string name="alert_safety_recommendation">Para tu protección, te recomendamos alternar entre diferentes rutas hacia tu destino.</string>
+    <string name="alert_route_variety">Notamos un patrón en tus rutas. Recuerda que alternar caminos puede mejorar tu seguridad personal.</string>
 
     <!-- Invitation Dialog -->
     <string name="invite_to_group">Invitar a %1$s</string>
@@ -449,6 +461,7 @@
     <string name="error_reminder_duplicate">Ya existe un recordatorio con ese título</string>
     <string name="error_reminder_create">Error al crear recordatorio</string>
     <string name="error_reminder_update">Error al actualizar recordatorio</string>
+    <string name="error_reminder_delete">Error al eliminar recordatorio</string>
     <string name="success_reminder_deleted">Recordatorio eliminado</string>
     <string name="error_invalid_transport">Tipo de transporte inválido</string>
     <string name="error_route_not_found">Ruta no encontrada</string>
@@ -489,6 +502,7 @@
     <string name="error_obtaining_address">Error obteniendo la dirección</string>
     <string name="error_reminder_not_found">Recordatorio no encontrado</string>
     <string name="error_loading_reminder">Error al cargar el recordatorio</string>
+    <string name="sound_default_system">Predeterminado del sistema</string>
 
     <!-- Location Helper & Map Components -->
     <string name="error_location_permission_denied">Permiso de ubicación denegado</string>
@@ -504,4 +518,91 @@
     <string name="no_user_info">No se encontró información del usuario</string>
     <string name="error_loading_content">Ocurrió un error al cargar el contenido</string>
     <string name="go_to_feature">Ir a %1$s</string>
+
+    <!-- Security Alert Codes -->
+    <string name="public_zones_detected">⚠️ Esta ruta pasa por %1$d zona(s) marcadas por otros usuarios.</string>
+    <string name="all_routes_high_risk">TODAS las rutas pasan por zonas de ALTO RIESGO. Procede con precaución.</string>
+    <string name="all_routes_at_risk">Todas las rutas pasan por zonas con riesgo. Considera alternativas.</string>
+    <string name="safe_route_available">✅ Usa la ruta %1$s (segura).</string>
+    <string name="zone_not_found">Zona no encontrada</string>
+    <string name="high_risk_zone">⚠️ ZONA DE ALTO RIESGO: %1$s</string>
+    <string name="moderate_risk_zone">⚠️ ZONA DE RIESGO MODERADO: %1$s</string>
+    <string name="marked_zone">ℹ️ Zona marcada: %1$s</string>
+
+    <!-- Pasos de Recordatorios -->
+    <string name="step_indicator_format">Paso %1$d de %2$d</string>
+    <string name="step1_title">Seleccionar ubicación</string>
+    <string name="step2_title">Información del recordatorio</string>
+    <string name="step3_title">Configuración del recordatorio</string>
+    <string name="step4_title">Notificaciones</string>
+
+    <string name="selected_location_label">Ubicación seleccionada</string>
+    <string name="select_location_prompt">Selecciona una ubicación</string>
+    <string name="keep_current_location">Mantener ubicación actual</string>
+    <string name="next">Siguiente</string>
+    <string name="back">Atrás</string>
+
+    <string name="label_reminder_name">Nombre del recordatorio *</string>
+    <string name="label_description_optional">Descripción (opcional)</string>
+    <string name="error_title_required">El título es obligatorio</string>
+
+    <string name="label_reminder_type">Tipo de recordatorio</string>
+    <string name="type_location_short">Ubicación</string>
+    <string name="type_time_short">Hora</string>
+    <string name="type_both_short">Ambos</string>
+
+    <string name="desc_location_trigger">Se activará cuando llegues al lugar</string>
+    <string name="desc_datetime_trigger">Se activará en los días y hora seleccionados</string>
+    <string name="desc_both_trigger">Se activará cuando llegues al lugar en los días y hora seleccionados</string>
+
+    <string name="label_days_of_week">Días de la semana *</string>
+    <string name="all_days">Todos</string>
+    <string name="clear">Limpiar</string>
+    <string name="error_select_at_least_one_day">Debes seleccionar al menos un día</string>
+
+    <string name="day_monday">Lunes</string>
+    <string name="day_tuesday">Martes</string>
+    <string name="day_wednesday">Miércoles</string>
+    <string name="day_thursday">Jueves</string>
+    <string name="day_friday">Viernes</string>
+    <string name="day_saturday">Sábado</string>
+    <string name="day_sunday">Domingo</string>
+
+    <string name="label_time">Hora *</string>
+    <string name="select_time_prompt">Seleccionar hora</string>
+    <string name="error_select_time">Debes seleccionar una hora</string>
+
+    <string name="label_proximity_config">Configuración de proximidad</string>
+    <string name="label_proximity_radius">Radio de proximidad</string>
+    <string name="label_radius_meters">Radio en metros</string>
+    <string name="placeholder_radius">Ejemplo: 20</string>
+    <string name="label_activate_when">Activar cuando:</string>
+    <string name="trigger_enter_short">Entre</string>
+    <string name="trigger_exit_short">Salga</string>
+    <string name="trigger_both_short">Entre o salga</string>
+
+    <string name="label_notification_settings">Configuración de notificación</string>
+    <string name="desc_vibration">Vibrar al recibir notificación</string>
+    <string name="desc_sound">Reproducir tono de notificación</string>
+    <string name="label_notification_tone">Tono de notificación</string>
+    <string name="title_select_tone">Seleccionar tono</string>
+    <string name="cd_play_sound">Reproducir</string>
+
+    <string name="msg_saving_reminder">Espera, guardando recordatorio...</string>
+    <string name="error_empty_title">El título no puede estar vacío</string>
+    <string name="error_select_location_step">Debes seleccionar una ubicación</string>
+    <string name="error_complete_days_time">Debes completar días y hora</string>
+    <string name="success_reminder_updated">¡Recordatorio actualizado!</string>
+    <string name="success_reminder_created">¡Recordatorio creado!</string>
+    <string name="error_reminder_update_fail">Error al actualizar</string>
+    <string name="error_reminder_create_fail">Error al crear el recordatorio</string>
+
+    <string name="title_summary">Resumen</string>
+    <string name="label_title">Título</string>
+    <string name="label_description">Descripción</string>
+    <string name="summary_type_location">Por ubicación</string>
+    <string name="summary_type_datetime">Por fecha y hora</string>
+    <string name="summary_type_both">Ubicación + Fecha y hora</string>
+    <string name="all_days_summary">Todos los días</string>
+    <string name="ok">Aceptar</string>
 </resources>

@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.compose.ui.res.stringResource
+import com.rutai.app.R
 import com.rutai.app.screen.components.AppBackButton
 import com.rutai.app.screen.components.AppButton
 import com.rutai.app.screen.mapa.MapControlButton
@@ -58,14 +60,14 @@ fun Step1SelectLocation(
             StepIndicator(
                 currentStep = 1,
                 totalSteps = 4,
-                stepTitle = "Seleccionar ubicación"
+                stepTitle = stringResource(R.string.step1_title)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
             if (selectedAddress.isNotEmpty()) {
                 CompactLocationCard(
-                    title = "Ubicación seleccionada",
+                    title = stringResource(R.string.selected_location_label),
                     location = selectedAddress,
                     icon = Icons.Default.LocationOn,
                     iconColor = Color(0xFFEF4444)
@@ -98,7 +100,7 @@ fun Step1SelectLocation(
         ) {
             // Botón principal
             AppButton(
-                text = if (canContinue) "Siguiente" else "Selecciona una ubicación",
+                text = if (canContinue) stringResource(R.string.next) else stringResource(R.string.select_location_prompt),
                 icon = Icons.Default.ArrowForward,
                 onClick = onNextClick,
                 modifier = Modifier.fillMaxWidth(),
@@ -110,7 +112,7 @@ fun Step1SelectLocation(
             // 🆕 Botón para mantener ubicación (solo en modo edición)
             if (isEditMode && selectedAddress.isNotEmpty()) {
                 AppButton(
-                    text = "Mantener ubicación actual",
+                    text = stringResource(R.string.keep_current_location),
                     icon = Icons.Default.Check,
                     onClick = onNextClick,
                     modifier = Modifier.fillMaxWidth(),

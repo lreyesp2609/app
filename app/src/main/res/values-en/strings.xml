@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Alerts -->
+    <string name="alert_route_pattern_detected">We detected that you frequently use the same route. For your safety, we recommend varying your trips.</string>
+    <string name="alert_safety_recommendation">For your protection, we recommend alternating between different routes to your destination.</string>
+    <string name="alert_route_variety">We noticed a pattern in your routes. Remember that alternating paths can improve your personal safety.</string>
+
+    <!-- Security Alert Codes -->
+    <string name="public_zones_detected">⚠️ This route passes through %1$d zone(s) marked by other users.</string>
+    <string name="all_routes_high_risk">ALL routes pass through HIGH RISK zones. Proceed with caution.</string>
+    <string name="all_routes_at_risk">All routes pass through risky zones. Consider alternatives.</string>
+    <string name="safe_route_available">✅ Use the %1$s route (safe).</string>
+    <string name="zone_not_found">Zone not found</string>
+    <string name="high_risk_zone">⚠️ HIGH RISK ZONE: %1$s</string>
+    <string name="moderate_risk_zone">⚠️ MODERATE RISK ZONE: %1$s</string>
+    <string name="marked_zone">ℹ️ Marked zone: %1$s</string>
+
+    <!-- Reminders Steps -->
+    <string name="step_indicator_format">Step %1$d of %2$d</string>
+    <string name="step1_title">Select location</string>
+    <string name="step2_title">Reminder information</string>
+    <string name="step3_title">Reminder configuration</string>
+    <string name="step4_title">Notifications</string>
+
+    <string name="selected_location_label">Selected location</string>
+    <string name="select_location_prompt">Select a location</string>
+    <string name="keep_current_location">Keep current location</string>
+    <string name="next">Next</string>
+    <string name="back">Back</string>
+
+    <string name="label_reminder_name">Reminder name *</string>
+    <string name="label_description_optional">Description (optional)</string>
+    <string name="error_title_required">Title is required</string>
+
+    <string name="label_reminder_type">Reminder type</string>
+    <string name="type_location_short">Location</string>
+    <string name="type_time_short">Time</string>
+    <string name="type_both_short">Both</string>
+
+    <string name="desc_location_trigger">It will activate when you arrive at the place</string>
+    <string name="desc_datetime_trigger">It will activate on the selected days and time</string>
+    <string name="desc_both_trigger">It will activate when you arrive at the place on the selected days and time</string>
+
+    <string name="label_days_of_week">Days of the week *</string>
+    <string name="all_days">All</string>
+    <string name="clear">Clear</string>
+    <string name="error_select_at_least_one_day">You must select at least one day</string>
+
+    <string name="day_monday">Monday</string>
+    <string name="day_tuesday">Tuesday</string>
+    <string name="day_wednesday">Wednesday</string>
+    <string name="day_thursday">Thursday</string>
+    <string name="day_friday">Friday</string>
+    <string name="day_saturday">Saturday</string>
+    <string name="day_sunday">Sunday</string>
+
+    <string name="label_time">Time *</string>
+    <string name="select_time_prompt">Select time</string>
+    <string name="error_select_time">You must select a time</string>
+
+    <string name="label_proximity_config">Proximity configuration</string>
+    <string name="label_proximity_radius">Proximity radius</string>
+    <string name="label_radius_meters">Radius in meters</string>
+    <string name="placeholder_radius">Example: 20</string>
+    <string name="label_activate_when">Activate when:</string>
+    <string name="trigger_enter_short">Enter</string>
+    <string name="trigger_exit_short">Exit</string>
+    <string name="trigger_both_short">Both</string>
+
+    <string name="label_notification_settings">Notification settings</string>
+    <string name="desc_vibration">Vibrate when receiving notification</string>
+    <string name="desc_sound">Play notification tone</string>
+    <string name="label_notification_tone">Notification tone</string>
+    <string name="title_select_tone">Select tone</string>
+    <string name="cd_play_sound">Play</string>
+
+    <string name="msg_saving_reminder">Wait, saving reminder...</string>
+    <string name="error_empty_title">The title cannot be empty</string>
+    <string name="error_select_location_step">You must select a location</string>
+    <string name="error_complete_days_time">You must complete days and time</string>
+    <string name="success_reminder_updated">Reminder updated!</string>
+    <string name="success_reminder_created">Reminder created!</string>
+    <string name="error_reminder_update_fail">Error updating</string>
+    <string name="error_reminder_create_fail">Error creating the reminder</string>
+
+    <string name="title_summary">Summary</string>
+    <string name="label_title">Title</string>
+    <string name="label_description">Description</string>
+    <string name="summary_type_location">By location</string>
+    <string name="summary_type_datetime">By date and time</string>
+    <string name="summary_type_both">Location + Date and time</string>
+    <string name="all_days_summary">Every day</string>
+    <string name="ok">OK</string>
+</resources>

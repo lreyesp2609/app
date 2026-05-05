@@ -49,8 +49,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.rutai.app.R
 import com.rutai.app.models.NotificationSound
 import com.rutai.app.models.Reminder
 import com.rutai.app.screen.components.AppButton
@@ -90,7 +92,7 @@ fun Step4Notifications(
 
     // Obtener el título del sonido seleccionado
     val selectedSoundTitle = remember(selectedSoundUri, systemSounds) {
-        systemSounds.find { it.uri == selectedSoundUri }?.title ?: "Predeterminado del sistema"
+        systemSounds.find { it.uri == selectedSoundUri }?.title ?: context.getString(R.string.sound_default_system)
     }
 
     // Dialog selector de sonido
@@ -118,7 +120,7 @@ fun Step4Notifications(
         StepIndicator(
             currentStep = 4,
             totalSteps = 4,
-            stepTitle = "Notificaciones"
+            stepTitle = stringResource(R.string.step4_title)
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -151,7 +153,7 @@ fun Step4Notifications(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Configuración de notificación",
+                            text = stringResource(R.string.label_notification_settings),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -186,12 +188,12 @@ fun Step4Notifications(
                                 )
                                 Column {
                                     Text(
-                                        text = "Vibración",
+                                        text = stringResource(R.string.vibration),
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Text(
-                                        text = "Vibrar al recibir notificación",
+                                        text = stringResource(R.string.desc_vibration),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -232,12 +234,12 @@ fun Step4Notifications(
                                 )
                                 Column {
                                     Text(
-                                        text = "Sonido",
+                                        text = stringResource(R.string.sound),
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Text(
-                                        text = "Reproducir tono de notificación",
+                                        text = stringResource(R.string.desc_sound),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -280,7 +282,7 @@ fun Step4Notifications(
                                     )
                                     Column {
                                         Text(
-                                            text = "Tono de notificación",
+                                            text = stringResource(R.string.label_notification_tone),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -325,50 +327,50 @@ fun Step4Notifications(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             AppButton(
-                text = "Atrás",
+                text = stringResource(R.string.back),
                 leadingIcon = { Icon(Icons.Default.ArrowBack, contentDescription = null) },
                 onClick = onBackClick,
                 modifier = Modifier.weight(1f),
                 outlined = true
             )
             AppButton(
-                text = if (isEditMode) "Actualizar" else "Guardar", // 🔥 Cambiar texto según modo
+                text = if (isEditMode) stringResource(R.string.edit) else stringResource(R.string.save),
                 icon = Icons.Default.Check,
                 onClick = {
                     // 🔥 VALIDACIONES CON NOTIFICACIONES
                     when {
                         viewModel.isLoading -> {
-                            notificationViewModel.showError("Espera, guardando recordatorio...")
+                            notificationViewModel.showError(context.getString(R.string.msg_saving_reminder))
                             return@AppButton
                         }
 
                         title.isBlank() -> {
-                            notificationViewModel.showError("El título no puede estar vacío")
+                            notificationViewModel.showError(context.getString(R.string.error_empty_title))
                             return@AppButton
                         }
 
                         reminderType == "datetime" && selectedDays.isEmpty() -> {
-                            notificationViewModel.showError("Debes seleccionar al menos un día")
+                            notificationViewModel.showError(context.getString(R.string.error_select_at_least_one_day))
                             return@AppButton
                         }
 
                         reminderType == "datetime" && selectedTime == null -> {
-                            notificationViewModel.showError("Debes seleccionar una hora")
+                            notificationViewModel.showError(context.getString(R.string.error_select_time))
                             return@AppButton
                         }
 
                         reminderType == "location" && selectedAddress.isBlank() -> {
-                            notificationViewModel.showError("Debes seleccionar una ubicación")
+                            notificationViewModel.showError(context.getString(R.string.error_select_location_step))
                             return@AppButton
                         }
 
                         reminderType == "both" && (selectedDays.isEmpty() || selectedTime == null) -> {
-                            notificationViewModel.showError("Debes completar días y hora")
+                            notificationViewModel.showError(context.getString(R.string.error_complete_days_time))
                             return@AppButton
                         }
 
                         reminderType == "both" && selectedAddress.isBlank() -> {
-                            notificationViewModel.showError("Debes seleccionar una ubicación")
+                            notificationViewModel.showError(context.getString(R.string.error_select_location_step))
                             return@AppButton
                         }
 
@@ -414,11 +416,11 @@ fun Step4Notifications(
                                     context
                                 ) { success ->
                                     if (success) {
-                                        notificationViewModel.showSuccess("¡Recordatorio actualizado!")
+                                        notificationViewModel.showSuccess(context.getString(R.string.success_reminder_updated))
                                         onSaveSuccess()
                                     } else {
                                         val errorMessage =
-                                            viewModel.error.value ?: "Error al actualizar"
+                                            viewModel.error.value ?: context.getString(R.string.error_reminder_update_fail)
                                         notificationViewModel.showError(errorMessage)
                                     }
                                 }
@@ -426,11 +428,11 @@ fun Step4Notifications(
                                 // MODO CREACIÓN
                                 viewModel.createReminder(reminder, context) { success ->
                                     if (success) {
-                                        notificationViewModel.showSuccess("¡Recordatorio creado!")
+                                        notificationViewModel.showSuccess(context.getString(R.string.success_reminder_created))
                                         onSaveSuccess()
                                     } else {
                                         val errorMessage = viewModel.error.value
-                                            ?: "Error al crear el recordatorio"
+                                            ?: context.getString(R.string.error_reminder_create_fail)
                                         notificationViewModel.showError(errorMessage)
                                     }
                                 }
@@ -458,12 +460,12 @@ fun SoundPickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cerrar", color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.close), color = MaterialTheme.colorScheme.primary)
             }
         },
         title = {
             Text(
-                "Seleccionar tono",
+                stringResource(R.string.title_select_tone),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -506,7 +508,7 @@ fun SoundPickerDialog(
                                     )
                                 )
                                 Text(
-                                    text = sound.title,
+                                    text = if (sound.uri == "") stringResource(R.string.sound_default_system) else sound.title,
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = if (selectedSoundUri == sound.uri)
                                         MaterialTheme.colorScheme.onSurface
@@ -527,7 +529,7 @@ fun SoundPickerDialog(
                             ) {
                                 Icon(
                                     Icons.Default.PlayArrow,
-                                    contentDescription = "Reproducir",
+                                    contentDescription = stringResource(R.string.cd_play_sound),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -569,7 +571,7 @@ fun ReminderSummaryCard(
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
-                    text = "Resumen",
+                    text = stringResource(R.string.title_summary),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -579,34 +581,34 @@ fun ReminderSummaryCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Título
-            SummaryItem(label = "Título", value = title)
+            SummaryItem(label = stringResource(R.string.label_title), value = title)
 
             // Descripción (si existe)
             if (description.isNotEmpty()) {
-                SummaryItem(label = "Descripción", value = description)
+                SummaryItem(label = stringResource(R.string.label_description), value = description)
             }
 
             // Tipo
             SummaryItem(
-                label = "Tipo",
+                label = stringResource(R.string.label_reminder_type),
                 value = when (reminderType) {
-                    "location" -> "Por ubicación"
-                    "datetime" -> "Por fecha y hora"
-                    "both" -> "Ubicación + Fecha y hora"
+                    "location" -> stringResource(R.string.summary_type_location)
+                    "datetime" -> stringResource(R.string.summary_type_datetime)
+                    "both" -> stringResource(R.string.summary_type_both)
                     else -> reminderType
                 }
             )
 
             // Ubicación
             if (reminderType == "location" || reminderType == "both") {
-                SummaryItem(label = "Ubicación", value = selectedAddress)
+                SummaryItem(label = stringResource(R.string.cd_location), value = selectedAddress)
                 SummaryItem(
-                    label = "Radio",
+                    label = stringResource(R.string.label_radius_meters),
                     value = "${proximityRadius.toInt()}m - ${
                         when (triggerType) {
-                            "enter" -> "Al entrar"
-                            "exit" -> "Al salir"
-                            else -> "Al entrar o salir"
+                            "enter" -> stringResource(R.string.trigger_enter_short)
+                            "exit" -> stringResource(R.string.trigger_exit_short)
+                            else -> stringResource(R.string.trigger_both_short)
                         }
                     }"
                 )
@@ -614,13 +616,27 @@ fun ReminderSummaryCard(
 
             // Días y hora
             if (reminderType == "datetime" || reminderType == "both") {
+                val daysOfWeekMap = mapOf(
+                    "Lunes" to R.string.day_monday,
+                    "Martes" to R.string.day_tuesday,
+                    "Miércoles" to R.string.day_wednesday,
+                    "Jueves" to R.string.day_thursday,
+                    "Viernes" to R.string.day_friday,
+                    "Sábado" to R.string.day_saturday,
+                    "Domingo" to R.string.day_sunday
+                )
+                
                 SummaryItem(
-                    label = "Días",
-                    value = if (selectedDays.size == 7) "Todos los días" else selectedDays.joinToString(", ")
+                    label = stringResource(R.string.label_days_of_week),
+                    value = if (selectedDays.size == 7) {
+                        stringResource(R.string.all_days_summary)
+                    } else {
+                        selectedDays.map { stringResource(daysOfWeekMap[it] ?: R.string.day_monday) }.joinToString(", ")
+                    }
                 )
                 selectedTime?.let {
                     SummaryItem(
-                        label = "Hora",
+                        label = stringResource(R.string.label_time),
                         value = String.format("%02d:%02d", it.first, it.second)
                     )
                 }
