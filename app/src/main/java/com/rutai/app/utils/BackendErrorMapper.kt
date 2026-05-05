@@ -29,6 +29,10 @@ object BackendErrorMapper {
             "ZONE_ADOPT_ERROR" -> R.string.error_zone_adopt
             "SUGGESTED_ZONES_FETCH_ERROR" -> R.string.error_suggested_zones_fetch
             "SUGGESTED_ZONE_NOT_FOUND" -> R.string.error_suggested_zone_not_found
+            "ROUTE_SAVE_ERROR" -> R.string.error_route_save
+            "ROUTE_FINISH_ERROR" -> R.string.error_route_finish
+            "ROUTE_CANCEL_ERROR" -> R.string.error_route_cancel
+            "ROUTE_VALIDATION_ERROR" -> R.string.error_route_validation
             
             // Grupos
             "GROUP_NAME_ALREADY_EXISTS" -> R.string.error_group_name_exists
@@ -54,11 +58,22 @@ object BackendErrorMapper {
             "INVALID_TOKEN" -> R.string.error_invalid_credentials_short
             "USER_NOT_FOUND" -> R.string.error_user_not_found
             "USER_ALREADY_EXISTS" -> R.string.error_user_already_exists
+            "INVALID_CREDENTIALS" -> R.string.error_invalid_credentials
+            "ACCOUNT_LOCKED" -> R.string.error_account_locked
+            "INVALID_EMAIL" -> R.string.error_invalid_email
+            "WEAK_PASSWORD" -> R.string.error_weak_password
+            "INVALID_DATA" -> R.string.error_invalid_data
             
             // Ubicaciones
             "LOCATION_NOT_FOUND" -> R.string.error_location_not_found
+            "LOCATION_NAME_ALREADY_EXISTS" -> R.string.error_location_name_exists
             "INVALID_TRANSPORT_TYPE" -> R.string.error_invalid_transport
             "ROUTE_NOT_FOUND" -> R.string.error_route_not_found
+            
+            // Errores Genéricos / Red
+            "NETWORK_ERROR" -> R.string.error_no_internet
+            "SERVER_ERROR" -> R.string.error_server_internal
+            "TIMEOUT" -> R.string.error_timeout
             
             // FCM
             "FCM_TOKEN_UPDATED" -> R.string.success_fcm_updated

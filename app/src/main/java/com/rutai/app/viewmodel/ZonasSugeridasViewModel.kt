@@ -1,15 +1,20 @@
 package com.rutai.app.viewmodel
 
+import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
-import android.util.Log
 import com.rutai.app.models.ZonaPeligrosaResponse
 import com.rutai.app.models.ZonaSugerida
 import com.rutai.app.network.RetrofitClient
+import com.rutai.app.utils.BackendErrorMapper
+import kotlinx.coroutines.launch
 
-class ZonasSugeridasViewModel(private val token: String) : ViewModel() {
+class ZonasSugeridasViewModel(
+    private val context: Context,
+    private val token: String
+) : ViewModel() {
 
     var zonasSugeridas by mutableStateOf<List<ZonaSugerida>>(emptyList())
         private set
@@ -70,7 +75,7 @@ class ZonasSugeridasViewModel(private val token: String) : ViewModel() {
                 }
 
             } catch (e: Exception) {
-                errorMessage = "Error al cargar zonas sugeridas: ${e.message}"
+                errorMessage = BackendErrorMapper.resolve(context, e.message)
                 Log.e("ZonasSugeridas", "❌ Error: ${e.message}", e)
             } finally {
                 isLoading = false
@@ -108,12 +113,7 @@ class ZonasSugeridasViewModel(private val token: String) : ViewModel() {
                 Log.d("ZonasSugeridas", "✅ Zona $zonaId adoptada correctamente")
 
             } catch (e: Exception) {
-                val error = when {
-                    e.message?.contains("Ya tienes una zona") == true ->
-                        "Ya tienes una zona con ese nombre"
-                    else ->
-                        "Error al adoptar zona: ${e.message}"
-                }
+                val error = BackendErrorMapper.resolve(context, e.message)
                 onError(error)
                 Log.e("ZonasSugeridas", "❌ Error: ${e.message}", e)
             } finally {

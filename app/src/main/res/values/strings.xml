@@ -438,6 +438,10 @@
     <string name="error_zone_adopt">Error adopting zone</string>
     <string name="error_suggested_zones_fetch">Error fetching suggested zones</string>
     <string name="error_suggested_zone_not_found">Suggested zone not found</string>
+    <string name="error_route_save">Error saving route</string>
+    <string name="error_route_finish">Error finishing route</string>
+    <string name="error_route_cancel">Error cancelling route</string>
+    <string name="error_route_validation">Error validating route security</string>
     <string name="error_not_in_group">You do not belong to this group</string>
     <string name="success_group_left">You have left the group</string>
     <string name="success_group_deleted">Group deleted successfully</string>

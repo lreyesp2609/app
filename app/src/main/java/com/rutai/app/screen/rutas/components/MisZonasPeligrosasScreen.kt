@@ -102,7 +102,7 @@ fun MisZonasPeligrosasScreen(
     val token = sessionManager.getAccessToken() ?: return
 
     var zonaSugeridaPreview by remember { mutableStateOf<ZonaSugerida?>(null) }
-    val zonasSugeridasVM = remember { ZonasSugeridasViewModel(token) }
+    val zonasSugeridasVM = remember { ZonasSugeridasViewModel(context, token) }
 
     var currentLat by remember { mutableStateOf(0.0) }
     var currentLon by remember { mutableStateOf(0.0) }

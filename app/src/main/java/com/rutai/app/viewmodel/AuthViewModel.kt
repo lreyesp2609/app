@@ -28,6 +28,7 @@ import com.rutai.app.screen.recordatorios.components.scheduleReminder
 import com.rutai.app.services.UnifiedLocationService
 import com.rutai.app.utils.PermissionUtils
 import com.rutai.app.utils.SessionManager
+import com.rutai.app.utils.BackendErrorMapper
 import com.google.firebase.messaging.FirebaseMessaging
 import com.rutai.app.R
 import kotlinx.coroutines.delay
@@ -163,29 +164,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                         isLoggedIn = false
                         sessionManager.saveLoginState(false)
                         isLoading = false
-                        errorMessage = when {
-                            exception.message?.contains("INVALID_CREDENTIALS") == true -> {
-                                context.getString(R.string.error_invalid_credentials)
-                            }
-                            exception.message?.contains("USER_NOT_FOUND") == true -> {
-                                context.getString(R.string.error_user_not_found)
-                            }
-                            exception.message?.contains("ACCOUNT_LOCKED") == true -> {
-                                context.getString(R.string.error_account_locked)
-                            }
-                            exception.message?.contains("NETWORK_ERROR") == true -> {
-                                context.getString(R.string.error_no_internet)
-                            }
-                            exception.message?.contains("401") == true -> {
-                                context.getString(R.string.error_invalid_credentials_short)
-                            }
-                            exception.message?.contains("500") == true -> {
-                                context.getString(R.string.error_server_internal)
-                            }
-                            else -> {
-                                context.getString(R.string.error_login_generic)
-                            }
-                        }
+                        errorMessage = BackendErrorMapper.resolve(context, exception.message)
                         onResult(false)
                     }
                 )
@@ -620,36 +599,7 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                 },
                 onFailure = { exception ->
                     isLoading = false
-
-                    // Manejar diferentes tipos de errores del backend
-                    errorMessage = when {
-                        exception.message?.contains("USER_ALREADY_EXISTS") == true -> {
-                            context.getString(R.string.error_user_already_exists)
-                        }
-                        exception.message?.contains("INVALID_EMAIL") == true -> {
-                            context.getString(R.string.error_invalid_email)
-                        }
-                        exception.message?.contains("WEAK_PASSWORD") == true -> {
-                            context.getString(R.string.error_weak_password)
-                        }
-                        exception.message?.contains("NETWORK_ERROR") == true -> {
-                            context.getString(R.string.error_no_internet)
-                        }
-                        exception.message?.contains("SERVER_ERROR") == true -> {
-                            context.getString(R.string.error_server_internal)
-                        }
-                        exception.message?.contains("400") == true -> {
-                            context.getString(R.string.error_invalid_data)
-                        }
-                        exception.message?.contains("500") == true -> {
-                            context.getString(R.string.error_server_internal)
-                        }
-                        else -> {
-                            // Mensaje genérico amigable
-                            context.getString(R.string.error_register_generic)
-                        }
-                    }
-
+                    errorMessage = BackendErrorMapper.resolve(context, exception.message)
                     onResult(false)
                 }
             )

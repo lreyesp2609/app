@@ -12,6 +12,8 @@ import com.rutai.app.network.RetrofitInstance
 import com.rutai.app.repository.RutasRepository
 import com.rutai.app.screen.rutas.components.getPreferenceDisplayName
 import com.rutai.app.ui.theme.DangerLevelColors
+import com.rutai.app.utils.BackendErrorMapper
+import com.rutai.app.utils.toLocalISOString
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
@@ -360,11 +362,13 @@ class MapViewModel(
                 Log.d("MapViewModel", "✅ Ruta guardada correctamente")
                 _rutaIdActiva.value = rutaGuardada.id
                 _mostrarOpcionesFinalizar.value = true
-            }.onFailure { error ->
-                Log.e("MapViewModel", "❌ Error al guardar ruta: ${error.message}")
+            }.onFailure { exception ->
+                val error = BackendErrorMapper.resolve(context, exception.message)
+                Log.e("MapViewModel", "❌ Error al guardar ruta: $error")
             }
         } catch (e: Exception) {
-            Log.e("MapViewModel", "Excepción al guardar ruta", e)
+            val error = BackendErrorMapper.resolve(context, e.message)
+            Log.e("MapViewModel", "Excepción al guardar ruta: $error", e)
         }
     }
 
@@ -574,12 +578,14 @@ class MapViewModel(
                     _route.value = null
                     _puntosGPSReales.clear()
 
-                }.onFailure { error ->
-                    Log.e("MapViewModel", "❌ Error finalizando ruta: ${error.message}")
+                }.onFailure { exception ->
+                    val error = BackendErrorMapper.resolve(context, exception.message)
+                    Log.e("MapViewModel", "❌ Error finalizando ruta: $error")
                 }
 
             } catch (e: Exception) {
-                Log.e("MapViewModel", "Error finalizando ruta", e)
+                val error = BackendErrorMapper.resolve(context, e.message)
+                Log.e("MapViewModel", "Error finalizando ruta: $error", e)
             }
         }
     }
@@ -599,7 +605,8 @@ class MapViewModel(
                 _puntosGPSReales.clear()  // Limpiar puntos GPS
 
             } catch (e: Exception) {
-                Log.e("MapViewModel", "Error cancelando ruta", e)
+                val error = BackendErrorMapper.resolve(context, e.message)
+                Log.e("MapViewModel", "Error cancelando ruta: $error", e)
             }
         }
     }
@@ -843,7 +850,8 @@ class MapViewModel(
                 onSuccess()
 
             } catch (e: Exception) {
-                Log.e("MapViewModel", "❌ Error adoptando zona: ${e.message}", e)
+                val error = BackendErrorMapper.resolve(context, e.message)
+                Log.e("MapViewModel", "❌ Error adoptando zona: $error", e)
             }
         }
     }

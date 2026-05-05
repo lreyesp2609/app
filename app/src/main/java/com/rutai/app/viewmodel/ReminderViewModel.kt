@@ -29,6 +29,7 @@ import com.rutai.app.repository.ReminderRepository
 import com.rutai.app.screen.recordatorios.components.ReminderReceiver
 import com.rutai.app.screen.recordatorios.components.scheduleReminder
 import com.rutai.app.services.UnifiedLocationService
+import com.rutai.app.utils.BackendErrorMapper
 import com.rutai.app.utils.PermissionUtils
 import com.rutai.app.utils.SessionManager
 import kotlinx.coroutines.Job
@@ -134,28 +135,13 @@ class ReminderViewModel(
                         } else {
                             // ❌ ERROR EN API - DETENER EJECUCIÓN
                             val errorBody = response.errorBody()?.string()
-                            val errorMessage = try {
+                            val detail = try {
                                 val jsonError = org.json.JSONObject(errorBody ?: "{}")
-                                val detail = jsonError.optString("detail", "Error desconocido")
-
-                                // 🔥 Limpiar el mensaje de error para hacerlo más legible
-                                when {
-                                    detail.contains("Ya existe un recordatorio con ese título", ignoreCase = true) -> {
-                                        "Ya existe un recordatorio con ese título"
-                                    }
-                                    detail.contains("400:", ignoreCase = true) -> {
-                                        // Extraer solo el mensaje después de "400: "
-                                        detail.substringAfter("400: ", detail).trim()
-                                    }
-                                    detail.contains("Error creating reminder:", ignoreCase = true) -> {
-                                        // Extraer solo el mensaje después de "Error creating reminder: "
-                                        detail.substringAfter("Error creating reminder:", "").trim()
-                                    }
-                                    else -> detail
-                                }
+                                jsonError.optString("detail", "Error desconocido")
                             } catch (e: Exception) {
                                 errorBody ?: "Error ${response.code()}"
                             }
+                            val errorMessage = BackendErrorMapper.resolve(context, detail)
 
                             Log.e("ReminderViewModel", "❌ Error en API: ${response.code()}")
                             Log.e("ReminderViewModel", "   Detalle: $errorMessage")
@@ -520,14 +506,8 @@ class ReminderViewModel(
 
                         } else {
                             val errorBody = response.errorBody()?.string()
-                            val errorMessage = try {
-                                val jsonError = org.json.JSONObject(errorBody ?: "{}")
-                                jsonError.optString("detail", "Error al actualizar")
-                            } catch (e: Exception) {
-                                "Error ${response.code()}"
-                            }
-
-                            _error.value = errorMessage
+                            val detail = try { org.json.JSONObject(errorBody ?: "{}").optString("detail", errorBody ?: "") } catch (e: Exception) { errorBody ?: "" }
+                            _error.value = BackendErrorMapper.resolve(context, detail)
                             onComplete(false)
                         }
 

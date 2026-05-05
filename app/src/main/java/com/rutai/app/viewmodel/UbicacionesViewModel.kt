@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.rutai.app.models.UbicacionUsuarioCreate
 import com.rutai.app.models.UbicacionUsuarioResponse
 import com.rutai.app.repository.UbicacionesRepository
+import com.rutai.app.utils.BackendErrorMapper
 import kotlinx.coroutines.launch
 
 class UbicacionesViewModel(
@@ -45,21 +46,7 @@ class UbicacionesViewModel(
                 },
                 onFailure = { exception ->
                     isLoading = false
-
-                    val error = when {
-                        exception.message?.contains("LOCATION_NAME_ALREADY_EXISTS") == true ->
-                            context.getString(com.rutai.app.R.string.error_location_name_exists)
-
-                        exception.message?.contains("NETWORK_ERROR") == true ->
-                            context.getString(com.rutai.app.R.string.error_network_connection)
-
-                        exception.message?.contains("HTTP_ERROR") == true ->
-                            context.getString(com.rutai.app.R.string.error_server_communication)
-
-                        else ->
-                            context.getString(com.rutai.app.R.string.error_create_location)
-                    }
-
+                    val error = BackendErrorMapper.resolve(context, exception.message)
                     callback(false, error)
                 }
             )
@@ -118,18 +105,7 @@ class UbicacionesViewModel(
                 },
                 onFailure = { exception ->
                     isLoading = false
-
-                    val error = when {
-                        exception.message?.contains("NETWORK_ERROR") == true ->
-                            context.getString(com.rutai.app.R.string.error_network_connection)
-
-                        exception.message?.contains("HTTP_ERROR_404") == true ->
-                            context.getString(com.rutai.app.R.string.error_location_not_found)
-
-                        else ->
-                            context.getString(com.rutai.app.R.string.error_delete_location)
-                    }
-
+                    val error = BackendErrorMapper.resolve(context, exception.message)
                     notificationViewModel.showError(error)
                 }
             )
