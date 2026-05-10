@@ -8,6 +8,8 @@ import com.rutai.app.websocket.WebSocketManager
 import com.rutai.app.utils.SessionManager
 import com.rutai.app.websocket.NotificationWebSocketManager
 import com.google.gson.Gson
+import org.osmdroid.config.Configuration
+import java.io.File
 
 class RecuerdaGoApplication : Application() {
 
@@ -27,6 +29,19 @@ class RecuerdaGoApplication : Application() {
         // 🔥 Inicializar RetrofitClient con contexto
         RetrofitClient.init(this)
 
+        // 🗺️ CONFIGURACIÓN CRÍTICA OSMDROID
+        val userAgent = "${BuildConfig.APPLICATION_ID}/1.0"
+        Configuration.getInstance().userAgentValue = userAgent
+        
+        // Cargar configuración existente
+        Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
+        
+        // Asegurar que el caché de tiles tenga una ruta válida y permisos
+        val osmConfig = Configuration.getInstance()
+        osmConfig.osmdroidBasePath = File(cacheDir, "osmdroid")
+        osmConfig.osmdroidTileCache = File(osmConfig.osmdroidBasePath, "tiles")
+
+        Log.d(TAG, "🗺️ OSMDroid configurado con UserAgent: $userAgent")
         Log.d(TAG, "✅ RetrofitClient inicializado con AuthInterceptor")
         Log.d(TAG, "✅ ========================================")
 

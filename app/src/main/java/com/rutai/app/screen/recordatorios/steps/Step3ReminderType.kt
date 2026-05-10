@@ -45,6 +45,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -747,6 +748,14 @@ fun ProximityMapPreview(
                 updateProximityCircle(map, latitude, longitude, radiusMeters)
             }
         )
+
+        DisposableEffect(mapView) {
+            mapView.onResume()
+            onDispose {
+                mapView.onPause()
+                mapView.onDetach()
+            }
+        }
 
         // Overlay con información del radio
         Box(

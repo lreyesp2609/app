@@ -41,9 +41,9 @@ object RetrofitClient {
             .addInterceptor(loggingInterceptor)    // ✅ 2º - Loggea después
 
             // Timeouts aumentados
-            .connectTimeout(60, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .writeTimeout(60, TimeUnit.SECONDS)
+            .connectTimeout(70, TimeUnit.SECONDS)
+            .readTimeout(70, TimeUnit.SECONDS)
+            .writeTimeout(70, TimeUnit.SECONDS)
 
             // Reintentos automáticos
             .retryOnConnectionFailure(true)

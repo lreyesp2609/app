@@ -5,25 +5,43 @@ import com.rutai.app.models.LoginResponse
 import com.rutai.app.models.ProfileResponse
 import com.rutai.app.network.RetrofitClient
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
+import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+
+sealed class LoginState {
+    object Idle : LoginState()
+    object Loading : LoginState()
+    data class Retrying(val attempt: Int, val max: Int) : LoginState()
+    data class Success(val data: LoginResponse) : LoginState()
+    data class Error(val message: String) : LoginState()
+}
 
 class AuthRepository {
 
     private val api = RetrofitClient.apiService
 
-    suspend fun login(
+    fun login(
         correo: String,
         contrasenia: String,
         dispositivo: String? = null,
         versionApp: String? = null,
         ip: String? = null
-    ): Result<LoginResponse> {
-        return withContext(Dispatchers.IO) {
+    ): Flow<LoginState> = flow {
+        emit(LoginState.Loading)
+        val maxAttempts = 3
+        var currentAttempt = 1
+        var success = false
+
+        while (currentAttempt <= maxAttempts && !success) {
             try {
                 val response = api.login(
                     correo = correo,
@@ -33,29 +51,45 @@ class AuthRepository {
                     ip = ip
                 )
                 if (response.isSuccessful) {
-                    response.body()?.let { Result.success(it) }
-                        ?: Result.failure(Exception("Respuesta vacía"))
+                    val body = response.body()
+                    if (body != null) {
+                        emit(LoginState.Success(body))
+                        success = true
+                    } else {
+                        emit(LoginState.Error("Respuesta vacía"))
+                        return@flow
+                    }
                 } else {
                     val errorMsg = when (response.code()) {
                         401 -> "INVALID_CREDENTIALS"
                         422 -> "Datos enviados incompletos o inválidos"
                         else -> response.errorBody()?.string() ?: "Error desconocido"
                     }
-                    Result.failure(Exception(errorMsg))
+                    emit(LoginState.Error(errorMsg))
+                    return@flow
                 }
-            } catch (e: SocketTimeoutException) {
-                Result.failure(Exception("NETWORK_ERROR:TIMEOUT - ${e.message}"))
-            } catch (e: UnknownHostException) {
-                Result.failure(Exception("NETWORK_ERROR:NO_INTERNET - ${e.message}"))
-            } catch (e: IOException) {
-                Result.failure(Exception("NETWORK_ERROR:IO_EXCEPTION - ${e.message}"))
-            } catch (e: HttpException) {
-                Result.failure(Exception("HTTP_ERROR:${e.code()} - ${e.message}"))
             } catch (e: Exception) {
-                Result.failure(Exception("UNKNOWN_ERROR - ${e.message}"))
+                val isRetryable = e is SocketTimeoutException || e is ConnectException || e is UnknownHostException
+                
+                if (isRetryable && currentAttempt < maxAttempts) {
+                    emit(LoginState.Retrying(currentAttempt, maxAttempts))
+                    delay(8000)
+                    currentAttempt++
+                } else {
+                    val errorMsg = when (e) {
+                        is SocketTimeoutException -> "NETWORK_ERROR:TIMEOUT - ${e.message}"
+                        is UnknownHostException -> "NETWORK_ERROR:NO_INTERNET - ${e.message}"
+                        is ConnectException -> "NETWORK_ERROR:CONNECT_EXCEPTION - ${e.message}"
+                        is IOException -> "NETWORK_ERROR:IO_EXCEPTION - ${e.message}"
+                        is HttpException -> "HTTP_ERROR:${e.code()} - ${e.message}"
+                        else -> "UNKNOWN_ERROR - ${e.message}"
+                    }
+                    emit(LoginState.Error(errorMsg))
+                    return@flow
+                }
             }
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
     suspend fun getCurrentUser(token: String) = withContext(Dispatchers.IO) {
         try {

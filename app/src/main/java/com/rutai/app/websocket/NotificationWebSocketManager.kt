@@ -3,6 +3,7 @@ package com.rutai.app.websocket
 import android.content.Context
 import android.util.Log
 import com.rutai.app.utils.SessionManager
+import com.rutai.app.BuildConfig
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -359,7 +360,10 @@ fun testWebSocketPing() {
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .build()
 
-    val wsUrl = "wss://recuerdago-api.onrender.com/ws/ping"
+    val wsUrl = BuildConfig.BASE_URL
+        .removeSuffix("/")
+        .replace("https://", "wss://")
+        .replace("http://", "ws://") + "/ws/ping"
     val request = Request.Builder()
         .url(wsUrl)
         .build()

@@ -281,6 +281,8 @@ fun OpenStreetMap(
     }
 
     DisposableEffect(mapView) {
+        mapView.onResume() // 🔥 Activa la carga de tiles
+        
         val listener = object : MapListener {
             override fun onScroll(event: ScrollEvent?): Boolean {
                 event?.source?.mapCenter?.let { center ->
@@ -296,7 +298,12 @@ fun OpenStreetMap(
             }
         }
         mapView.addMapListener(listener)
-        onDispose { mapView.removeMapListener(listener) }
+        
+        onDispose { 
+            mapView.removeMapListener(listener)
+            mapView.onPause()   // 🔥 Pausa hilos
+            mapView.onDetach()  // 🔥 Libera memoria
+        }
     }
 }
 
@@ -308,6 +315,9 @@ fun rememberMapView(context: Context, zoom: Double = 16.0): MapView {
             setMultiTouchControls(true)
             controller.setZoom(zoom)
             setBuiltInZoomControls(false)
+            // Configuración adicional para estabilidad en emuladores
+            setDestroyMode(false)
+            tag = "MainMapView"
         }
     }
 }

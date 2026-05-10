@@ -43,11 +43,40 @@ fun GrupoOpenStreetMap(
     val mapView = rememberMapViewForGrupo(context, zoom)
     val youLabel = stringResource(R.string.you)
 
+    // Configuración de OSMDroid (asegura carga de tiles)
     LaunchedEffect(Unit) {
         Configuration.getInstance().load(
             context,
             context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
         )
+    }
+
+    // Gestionar ciclo de vida del MapView
+    DisposableEffect(mapView) {
+        mapView.onResume() // 🔥 Activa la carga de tiles
+        
+        val listener = object : MapListener {
+            override fun onScroll(event: ScrollEvent?): Boolean {
+                event?.source?.mapCenter?.let { center ->
+                    onLocationSelected(center.latitude, center.longitude)
+                }
+                return true
+            }
+
+            override fun onZoom(event: ZoomEvent?): Boolean {
+                event?.source?.mapCenter?.let { center ->
+                    onLocationSelected(center.latitude, center.longitude)
+                }
+                return true
+            }
+        }
+        mapView.addMapListener(listener)
+        
+        onDispose {
+            mapView.removeMapListener(listener)
+            mapView.onPause()   // 🔥 Pausa hilos de red/renderizado
+            mapView.onDetach()  // 🔥 Libera memoria y evita fugas
+        }
     }
 
     // Log para verificar datos
@@ -168,26 +197,6 @@ fun GrupoOpenStreetMap(
             mapView.controller.setZoom(newZoom)
         }
     }
-
-    DisposableEffect(mapView) {
-        val listener = object : MapListener {
-            override fun onScroll(event: ScrollEvent?): Boolean {
-                event?.source?.mapCenter?.let { center ->
-                    onLocationSelected(center.latitude, center.longitude)
-                }
-                return true
-            }
-
-            override fun onZoom(event: ZoomEvent?): Boolean {
-                event?.source?.mapCenter?.let { center ->
-                    onLocationSelected(center.latitude, center.longitude)
-                }
-                return true
-            }
-        }
-        mapView.addMapListener(listener)
-        onDispose { mapView.removeMapListener(listener) }
-    }
 }
 
 @Composable
@@ -198,6 +207,9 @@ fun rememberMapViewForGrupo(context: Context, zoom: Double = 16.0): MapView {
             setMultiTouchControls(true)
             controller.setZoom(zoom)
             setBuiltInZoomControls(false)
+            // Configuración adicional para estabilidad en emuladores
+            setDestroyMode(false) 
+            tag = "GrupoMapView"
         }
     }
 }

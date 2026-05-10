@@ -22,6 +22,7 @@ import com.rutai.app.models.toReminder
 import com.rutai.app.network.AppDatabase
 import com.rutai.app.network.RetrofitClient
 import com.rutai.app.repository.AuthRepository
+import com.rutai.app.repository.LoginState
 import com.rutai.app.repository.ReminderRepository
 import com.rutai.app.screen.recordatorios.components.ReminderReceiver
 import com.rutai.app.screen.recordatorios.components.scheduleReminder
@@ -32,6 +33,8 @@ import com.rutai.app.utils.BackendErrorMapper
 import com.google.firebase.messaging.FirebaseMessaging
 import com.rutai.app.R
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.net.Inet4Address
@@ -59,6 +62,9 @@ class AuthViewModel(private val context: Context) : ViewModel() {
         private set
     var accessToken by mutableStateOf<String?>(null)
         private set
+
+    private val _loginState = MutableStateFlow<LoginState>(LoginState.Idle)
+    val loginState = _loginState.asStateFlow()
 
     init {
         // 🔹 Restaurar estado inmediatamente desde SharedPreferences
@@ -104,8 +110,28 @@ class AuthViewModel(private val context: Context) : ViewModel() {
                             isLoading = false
                         }
                     },
-                    onFailure = {
-                        clearLocalSession() // ya incluye isRestoringSession = false
+                    onFailure = { exception ->
+                        val errorMsg = exception.message ?: ""
+                        val isNetworkError = errorMsg.contains("NETWORK_ERROR") ||
+                                errorMsg.contains("TIMEOUT") ||
+                                errorMsg.contains("NO_INTERNET") ||
+                                errorMsg.contains("IO_EXCEPTION") ||
+                                errorMsg.contains("500") ||
+                                errorMsg.contains("502") ||
+                                errorMsg.contains("503") ||
+                                errorMsg.contains("504")
+
+                        if (isNetworkError) {
+                            Log.w(TAG, "⚠️ Error de red en restoreSession, manteniendo sesión local: $errorMsg")
+                            // Simular éxito localmente para navegar al Home
+                            isLoggedIn = true
+                            iniciarTrackingPasivoDespuesDeLogin()
+                            isRestoringSession = false
+                            isLoading = false
+                        } else {
+                            Log.e(TAG, "🚨 Error de autenticación en restoreSession, cerrando sesión: $errorMsg")
+                            clearLocalSession()
+                        }
                     }
                 )
             }
@@ -138,36 +164,45 @@ class AuthViewModel(private val context: Context) : ViewModel() {
 
     fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
-            isLoading = true
-            errorMessage = null
-
             repository.login(email, password, Build.MODEL, getAppVersion(context), obtenerIp())
-                .fold(
-                    onSuccess = { loginResponse ->
-                        accessToken = loginResponse.accessToken
-                        isLoggedIn = true
-
-                        sessionManager.saveTokens(loginResponse.accessToken, loginResponse.refreshToken)
-                        sessionManager.saveLoginState(true)
-
-                        getCurrentUser {
-                            restoreUserReminders(context, loginResponse.accessToken)
-                            enviarTokenFCMPendiente()
-
-                            // 🔥 NUEVO: Iniciar tracking pasivo después del login
-                            iniciarTrackingPasivoDespuesDeLogin()
-
-                            onResult(true)
+                .collect { state ->
+                    _loginState.value = state
+                    when (state) {
+                        is LoginState.Loading -> {
+                            isLoading = true
+                            errorMessage = null
                         }
-                    },
-                    onFailure = { exception ->
-                        isLoggedIn = false
-                        sessionManager.saveLoginState(false)
-                        isLoading = false
-                        errorMessage = BackendErrorMapper.resolve(context, exception.message)
-                        onResult(false)
+                        is LoginState.Retrying -> {
+                            isLoading = true
+                            errorMessage = null
+                        }
+                        is LoginState.Success -> {
+                            accessToken = state.data.accessToken
+                            isLoggedIn = true
+
+                            sessionManager.saveTokens(state.data.accessToken, state.data.refreshToken)
+                            sessionManager.saveLoginState(true)
+
+                            getCurrentUser {
+                                restoreUserReminders(context, state.data.accessToken)
+                                enviarTokenFCMPendiente()
+
+                                // 🔥 NUEVO: Iniciar tracking pasivo después del login
+                                iniciarTrackingPasivoDespuesDeLogin()
+                                isLoading = false
+                                onResult(true)
+                            }
+                        }
+                        is LoginState.Error -> {
+                            isLoggedIn = false
+                            sessionManager.saveLoginState(false)
+                            isLoading = false
+                            errorMessage = BackendErrorMapper.resolve(context, state.message)
+                            onResult(false)
+                        }
+                        else -> {}
                     }
-                )
+                }
         }
     }
 

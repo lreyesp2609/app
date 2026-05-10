@@ -25,6 +25,7 @@ import com.rutai.app.screen.components.LanguageSelector
 import com.rutai.app.ui.theme.getBackgroundGradient
 import com.rutai.app.viewmodel.AuthViewModel
 import com.rutai.app.viewmodel.NotificationViewModel
+import com.rutai.app.repository.LoginState
 import com.rutai.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,6 +39,7 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    val loginState by authViewModel.loginState.collectAsState()
 
     // Observa el usuario
     LaunchedEffect(authViewModel.user) {
@@ -145,36 +147,63 @@ fun LoginScreen(
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done
             ),
-            enabled = !authViewModel.isLoading,
+            enabled = loginState !is LoginState.Loading && loginState !is LoginState.Retrying,
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        AppButton(
-            text = if (authViewModel.isLoading) stringResource(R.string.logging_in) else stringResource(R.string.login_button),
-            isLoading = authViewModel.isLoading,
-            onClick = {
-                when {
-                    email.isBlank() && password.isBlank() -> {
-                        notificationViewModel.showError(context.getString(R.string.error_empty_fields))
-                    }
-                    email.isBlank() -> {
-                        notificationViewModel.showError(context.getString(R.string.error_empty_email))
-                    }
-                    password.isBlank() -> {
-                        notificationViewModel.showError(context.getString(R.string.error_empty_password))
-                    }
-                    else -> {
-                        authViewModel.login(email, password) { loginExitoso ->
-                            if (loginExitoso) {
-                                notificationViewModel.showSuccess(context.getString(R.string.login_success))
+        if (loginState is LoginState.Retrying) {
+            val retrying = loginState as LoginState.Retrying
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "El servidor está iniciando, por favor espera...",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = "Intento ${retrying.attempt} de ${retrying.max}",
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    fontSize = 12.sp
+                )
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                )
+            }
+        } else {
+            AppButton(
+                text = if (authViewModel.isLoading) stringResource(R.string.logging_in) else stringResource(R.string.login_button),
+                isLoading = authViewModel.isLoading,
+                enabled = !authViewModel.isLoading,
+                onClick = {
+                    when {
+                        email.isBlank() && password.isBlank() -> {
+                            notificationViewModel.showError(context.getString(R.string.error_empty_fields))
+                        }
+                        email.isBlank() -> {
+                            notificationViewModel.showError(context.getString(R.string.error_empty_email))
+                        }
+                        password.isBlank() -> {
+                            notificationViewModel.showError(context.getString(R.string.error_empty_password))
+                        }
+                        else -> {
+                            authViewModel.login(email, password) { loginExitoso ->
+                                if (loginExitoso) {
+                                    notificationViewModel.showSuccess(context.getString(R.string.login_success))
+                                }
                             }
                         }
                     }
                 }
-            }
-        )
+            )
+        }
 
 
         Spacer(modifier = Modifier.weight(1f))

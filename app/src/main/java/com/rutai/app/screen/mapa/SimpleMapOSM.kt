@@ -18,13 +18,16 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.config.Configuration
-import androidx.compose.ui.graphics.toArgb
-import com.rutai.app.R
+import org.osmdroid.views.overlay.Polygon
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.events.MapListener
+import org.osmdroid.events.ScrollEvent
+import org.osmdroid.events.ZoomEvent
+import androidx.compose.runtime.DisposableEffect
 import com.rutai.app.models.ZonaPeligrosaResponse
 import com.rutai.app.ui.theme.DangerLevelColors
 import com.rutai.app.viewmodel.MapViewModel
 import com.rutai.app.viewmodel.decodePolyline
-import org.osmdroid.views.overlay.Polygon
 
 @Composable
 fun SimpleMapOSM(
@@ -48,6 +51,15 @@ fun SimpleMapOSM(
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val secondaryColor = MaterialTheme.colorScheme.secondary
+
+    // Gestionar ciclo de vida del MapView para carga de tiles estable
+    DisposableEffect(mapView) {
+        mapView.onResume()
+        onDispose {
+            mapView.onPause()
+            mapView.onDetach()
+        }
+    }
 
     LaunchedEffect(Unit) {
         Configuration.getInstance().load(
