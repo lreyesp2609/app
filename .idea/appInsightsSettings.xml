@@ -6,14 +6,6 @@
         <entry key="Firebase Crashlytics">
           <value>
             <InsightsFilterSettings>
-              <option name="connection">
-                <ConnectionSetting>
-                  <option name="appId" value="com.rutai.app" />
-                  <option name="mobileSdkAppId" value="1:749051873297:android:935df99fded8229b38c9b0" />
-                  <option name="projectId" value="recuerdago-8c2e3" />
-                  <option name="projectNumber" value="749051873297" />
-                </ConnectionSetting>
-              </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
               <option name="timeIntervalDays" value="THIRTY_DAYS" />
               <option name="visibilityType" value="ALL" />

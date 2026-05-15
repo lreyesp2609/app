@@ -7,6 +7,7 @@ import com.rutai.app.models.MensajeResponse
 import com.rutai.app.network.MensajesApiService
 import com.rutai.app.network.RetrofitClient
 import com.rutai.app.utils.SessionManager
+import com.rutai.app.utils.safeApiCall
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -14,14 +15,6 @@ class MensajesRepository(private val context: Context) {
 
     private val apiService: MensajesApiService = RetrofitClient.mensajesService
     private val sessionManager = SessionManager.getInstance(context)
-
-    /**
-     * Obtiene el token de acceso guardado
-     */
-    private fun getAuthHeader(): String {
-        val token = sessionManager.getAccessToken()
-        return "Bearer $token"
-    }
 
     /**
      * Obtiene el ID del usuario actual desde SessionManager
@@ -34,23 +27,16 @@ class MensajesRepository(private val context: Context) {
      * Obtiene los mensajes de un grupo
      */
     suspend fun obtenerMensajesGrupo(
+        token: String,
         grupoId: Int,
         limit: Int = 50
     ): Result<List<MensajeResponse>> = withContext(Dispatchers.IO) {
-        try {
-            val response = apiService.obtenerMensajesGrupo(
+        safeApiCall {
+            apiService.obtenerMensajesGrupo(
                 grupoId = grupoId,
                 limit = limit,
-                token = getAuthHeader() // ← Aquí el token correcto
+                token = "Bearer $token"
             )
-
-            if (response.isSuccessful) {
-                Result.success(response.body() ?: emptyList())
-            } else {
-                Result.failure(Exception("Error ${response.code()}: ${response.message()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 
@@ -58,23 +44,16 @@ class MensajesRepository(private val context: Context) {
      * Marca un mensaje como leído
      */
     suspend fun marcarMensajeLeido(
+        token: String,
         grupoId: Int,
         mensajeId: Int
     ): Result<MarcarLeidoResponse> = withContext(Dispatchers.IO) {
-        try {
-            val response = apiService.marcarMensajeLeido(
+        safeApiCall {
+            apiService.marcarMensajeLeido(
                 grupoId = grupoId,
                 mensajeId = mensajeId,
-                token = getAuthHeader()
+                token = "Bearer $token"
             )
-
-            if (response.isSuccessful) {
-                Result.success(response.body() ?: MarcarLeidoResponse("Error", false))
-            } else {
-                Result.failure(Exception("Error ${response.code()}: ${response.message()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 }

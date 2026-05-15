@@ -10,11 +10,12 @@ import com.rutai.app.models.UbicacionUsuarioCreate
 import com.rutai.app.models.UbicacionUsuarioResponse
 import com.rutai.app.repository.UbicacionesRepository
 import com.rutai.app.utils.BackendErrorMapper
+import com.rutai.app.utils.SessionManager
 import kotlinx.coroutines.launch
 
 class UbicacionesViewModel(
     private val context: Context,
-    private val token: String
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val repository = UbicacionesRepository()
@@ -31,25 +32,30 @@ class UbicacionesViewModel(
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
+    private fun getToken(): String = sessionManager.getAccessToken() ?: ""
+
     fun crearUbicacion(
         ubicacion: UbicacionUsuarioCreate,
         callback: (success: Boolean, error: String?) -> Unit
     ) {
         viewModelScope.launch {
             isLoading = true
-
-            repository.crearUbicacion(token, ubicacion).fold(
-                onSuccess = { nuevaUbicacion ->
-                    ubicaciones = ubicaciones + nuevaUbicacion
-                    isLoading = false
-                    callback(true, null)
-                },
-                onFailure = { exception ->
-                    isLoading = false
-                    val error = BackendErrorMapper.resolve(context, exception.message)
-                    callback(false, error)
-                }
-            )
+            try {
+                repository.crearUbicacion(getToken(), ubicacion).fold(
+                    onSuccess = { nuevaUbicacion ->
+                        ubicaciones = ubicaciones + nuevaUbicacion
+                        callback(true, null)
+                    },
+                    onFailure = { exception ->
+                        val error = BackendErrorMapper.resolve(context, exception.message)
+                        callback(false, error)
+                    }
+                )
+            } catch (e: Exception) {
+                callback(false, BackendErrorMapper.resolve(context, e.message))
+            } finally {
+                isLoading = false
+            }
         }
     }
 
@@ -57,17 +63,20 @@ class UbicacionesViewModel(
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
-
-            repository.obtenerUbicaciones(token).fold(
-                onSuccess = {
-                    ubicaciones = it
-                    isLoading = false
-                },
-                onFailure = {
-                    isLoading = false
-                    errorMessage = context.getString(com.rutai.app.R.string.error_load_locations)
-                }
-            )
+            try {
+                repository.obtenerUbicaciones(getToken()).fold(
+                    onSuccess = {
+                        ubicaciones = it
+                    },
+                    onFailure = {
+                        errorMessage = context.getString(com.rutai.app.R.string.error_load_locations)
+                    }
+                )
+            } catch (e: Exception) {
+                errorMessage = context.getString(com.rutai.app.R.string.error_load_locations)
+            } finally {
+                isLoading = false
+            }
         }
     }
 
@@ -75,41 +84,45 @@ class UbicacionesViewModel(
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
-
-            repository.obtenerUbicacionPorId(token, id).fold(
-                onSuccess = {
-                    ubicacionSeleccionada = it
-                    isLoading = false
-                },
-                onFailure = {
-                    isLoading = false
-                    errorMessage = context.getString(com.rutai.app.R.string.error_load_location_id)
-                }
-            )
+            try {
+                repository.obtenerUbicacionPorId(getToken(), id).fold(
+                    onSuccess = {
+                        ubicacionSeleccionada = it
+                    },
+                    onFailure = {
+                        errorMessage = context.getString(com.rutai.app.R.string.error_load_location_id)
+                    }
+                )
+            } catch (e: Exception) {
+                errorMessage = context.getString(com.rutai.app.R.string.error_load_location_id)
+            } finally {
+                isLoading = false
+            }
         }
     }
+
     fun eliminarUbicacion(
         id: Int,
         notificationViewModel: NotificationViewModel
     ) {
         viewModelScope.launch {
             isLoading = true
-
-            repository.eliminarUbicacion(token, id).fold(
-                onSuccess = {
-                    // Quitar de la lista
-                    ubicaciones = ubicaciones.filter { it.id != id }
-
-                    isLoading = false
-                    notificationViewModel.showSuccess(com.rutai.app.R.string.location_deleted_success_msg)
-                },
-                onFailure = { exception ->
-                    isLoading = false
-                    val error = BackendErrorMapper.resolve(context, exception.message)
-                    notificationViewModel.showError(error)
-                }
-            )
+            try {
+                repository.eliminarUbicacion(getToken(), id).fold(
+                    onSuccess = {
+                        ubicaciones = ubicaciones.filter { it.id != id }
+                        notificationViewModel.showSuccess(com.rutai.app.R.string.location_deleted_success_msg)
+                    },
+                    onFailure = { exception ->
+                        val error = BackendErrorMapper.resolve(context, exception.message)
+                        notificationViewModel.showError(error)
+                    }
+                )
+            } catch (e: Exception) {
+                notificationViewModel.showError(BackendErrorMapper.resolve(context, e.message))
+            } finally {
+                isLoading = false
+            }
         }
     }
-
 }

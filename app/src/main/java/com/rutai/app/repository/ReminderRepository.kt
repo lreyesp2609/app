@@ -1,9 +1,16 @@
 package com.rutai.app.repository
 
 import com.rutai.app.models.ReminderEntity
+import com.rutai.app.models.ReminderRequest
+import com.rutai.app.models.ReminderResponse
+import com.rutai.app.network.ReminderApiService
 import com.rutai.app.network.ReminderDao
+import com.rutai.app.network.RetrofitClient
+import com.rutai.app.utils.safeApiCall
 
 class ReminderRepository(private val dao: ReminderDao) {
+
+    private val apiService: ReminderApiService = RetrofitClient.reminderService
 
     suspend fun getLocalReminders(): List<ReminderEntity> = dao.getAllReminders()
 
@@ -33,5 +40,26 @@ class ReminderRepository(private val dao: ReminderDao) {
     // En ReminderRepository
     suspend fun clearAllReminders() {
         dao.clearAllReminders()
+    }
+
+    // API calls
+    suspend fun fetchReminders(token: String): Result<List<ReminderResponse>> {
+        return safeApiCall { apiService.getReminders("Bearer $token") }
+    }
+
+    suspend fun createReminder(token: String, request: ReminderRequest): Result<ReminderResponse> {
+        return safeApiCall { apiService.createReminder("Bearer $token", request) }
+    }
+
+    suspend fun toggleReminder(token: String, reminderId: Int): Result<ReminderResponse> {
+        return safeApiCall { apiService.toggleReminder("Bearer $token", reminderId) }
+    }
+
+    suspend fun deleteReminder(token: String, reminderId: Int): Result<Unit> {
+        return safeApiCall { apiService.deleteReminder("Bearer $token", reminderId) }
+    }
+
+    suspend fun updateReminderApi(token: String, reminderId: Int, request: ReminderRequest): Result<ReminderResponse> {
+        return safeApiCall { apiService.updateReminder("Bearer $token", reminderId, request) }
     }
 }

@@ -102,7 +102,7 @@ fun MisZonasPeligrosasScreen(
     val token = sessionManager.getAccessToken() ?: return
 
     var zonaSugeridaPreview by remember { mutableStateOf<ZonaSugerida?>(null) }
-    val zonasSugeridasVM = remember { ZonasSugeridasViewModel(context, token) }
+    val zonasSugeridasVM = remember { ZonasSugeridasViewModel(context) }
 
     var currentLat by remember { mutableStateOf(0.0) }
     var currentLon by remember { mutableStateOf(0.0) }
@@ -530,7 +530,7 @@ fun MisZonasPeligrosasScreen(
                                     if (response.isSuccessful) {
                                         zonasCreadas = zonasCreadas.filter { it.id != zonaId }
                                         notificationViewModel.showSuccess(context.getString(R.string.zone_deleted_success))
-                                        mapViewModel.cargarZonasPeligrosas(token)
+                                        mapViewModel.cargarZonasPeligrosas()
                                         showDeleteDialog = false
                                         showBottomSheet = false
                                         zonaSeleccionadaParaEditar = null

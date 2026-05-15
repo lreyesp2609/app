@@ -6,38 +6,31 @@ import com.rutai.app.models.GrupoResponse
 import com.rutai.app.models.GrupoResponseSalir
 import com.rutai.app.models.IntegrantesResponse
 import com.rutai.app.network.GrupoService
-import retrofit2.Response
+import com.rutai.app.utils.safeApiCall
 
 class GrupoRepository(private val grupoService: GrupoService) {
 
-    suspend fun createGrupo(token: String, grupoCreate: GrupoCreate): Response<GrupoResponse> {
-        val authHeader = "Bearer $token"
-        return grupoService.createGrupo(grupoCreate, authHeader)
+    suspend fun createGrupo(token: String, grupoCreate: GrupoCreate): Result<GrupoResponse> {
+        return safeApiCall { grupoService.createGrupo(grupoCreate, "Bearer $token") }
     }
 
-    suspend fun listarGrupos(token: String): Response<List<GrupoResponse>> {
-        val authHeader = "Bearer $token"
-        return grupoService.listarGrupos(authHeader)
+    suspend fun listarGrupos(token: String): Result<List<GrupoResponse>> {
+        return safeApiCall { grupoService.listarGrupos("Bearer $token") }
     }
 
-    suspend fun unirseAGrupo(token: String, codigo: String): Response<GrupoResponse> {
-        val authHeader = "Bearer $token"
-        return grupoService.unirseAGrupo(codigo, authHeader)
+    suspend fun unirseAGrupo(token: String, codigo: String): Result<GrupoResponse> {
+        return safeApiCall { grupoService.unirseAGrupo(codigo, "Bearer $token") }
     }
 
-    suspend fun obtenerIntegrantes(token: String, grupoId: Int): Response<IntegrantesResponse> {
-        val authHeader = "Bearer $token"
-        return grupoService.obtenerIntegrantes(grupoId, authHeader)
+    suspend fun obtenerIntegrantes(token: String, grupoId: Int): Result<IntegrantesResponse> {
+        return safeApiCall { grupoService.obtenerIntegrantes(grupoId, "Bearer $token") }
     }
 
-    suspend fun salirDelGrupo(token: String, grupoId: Int): Response<GrupoResponseSalir> {
-        return grupoService.salirDelGrupo(
-            grupoId = grupoId,
-            token = "Bearer $token"
-        )
+    suspend fun salirDelGrupo(token: String, grupoId: Int): Result<GrupoResponseSalir> {
+        return safeApiCall { grupoService.salirDelGrupo(grupoId, "Bearer $token") }
     }
 
-    suspend fun eliminarGrupo(token: String, grupoId: Int): Response<GrupoDeleteResponse> {
-        return grupoService.eliminarGrupo(grupoId, "Bearer $token")
+    suspend fun eliminarGrupo(token: String, grupoId: Int): Result<GrupoDeleteResponse> {
+        return safeApiCall { grupoService.eliminarGrupo(grupoId, "Bearer $token") }
     }
 }

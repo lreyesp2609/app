@@ -71,7 +71,7 @@ fun ChatGrupoScreen(
     )
 
     val mensajes by viewModel.mensajes.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val isLoading = viewModel.isLoading
     val error by viewModel.error.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
 

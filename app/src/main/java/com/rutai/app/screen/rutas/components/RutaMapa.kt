@@ -138,10 +138,8 @@ fun RutaMapa(
     val cargandoZonas by viewModel.cargandoZonas
 
     // 🆕 CARGAR ZONAS AL INICIAR
-    LaunchedEffect(token) {
-        if (token.isNotEmpty()) {
-            viewModel.cargarZonasPeligrosas(token)
-        }
+    LaunchedEffect(Unit) {
+        viewModel.cargarZonasPeligrosas()
     }
 
 
@@ -239,7 +237,7 @@ fun RutaMapa(
 
                     rutaIdActiva?.let { id ->
                         Log.d("RutaMapa", "📤 Enviando finalizarRutaBackend con ID: $id")
-                        viewModel.finalizarRutaBackend(id)
+                        viewModel.finalizarRutaBackend()
                     }
 
                     showRouteInfo = false
@@ -382,8 +380,8 @@ fun RutaMapa(
                             ) {
                                 Button(
                                     onClick = {
-                                        rutaIdActiva?.let { id ->
-                                            viewModel.finalizarRutaBackend(id)
+                                        rutaIdActiva?.let {
+                                            viewModel.finalizarRutaBackend()
                                         }
                                         showRouteInfo = false
                                         viewModel.clearRoute()
@@ -398,7 +396,7 @@ fun RutaMapa(
                                 Button(
                                     onClick = {
                                         rutaIdActiva?.let { id ->
-                                            viewModel.cancelarRutaBackend(id)
+                                            viewModel.cancelarRutaBackend()
                                         }
                                         showRouteInfo = false
                                         viewModel.clearRoute()
@@ -429,9 +427,9 @@ fun RutaMapa(
                         onSelectRoute = { alternative ->
                             viewModel.selectRouteAlternative(
                                 alternative = alternative,
-                                token = token,
+                                mode = selectedTransportMode,
                                 ubicacionId = selectedLocationId,
-                                transporteTexto = selectedTransportMode
+                                mlType = "default" // O el tipo de ML que corresponda
                             )
 
                             showRouteInfo = true
@@ -447,11 +445,11 @@ fun RutaMapa(
                                 val endPoint = Pair(destination.latitud, destination.longitud)
 
                                 viewModel.regenerarRutasEvitandoZonasPeligrosas(
-                                    start = startPoint,
-                                    end = endPoint,
-                                    token = token,
+                                    origin = startPoint,
+                                    destination = endPoint,
+                                    mode = selectedTransportMode,
                                     ubicacionId = selectedLocationId,
-                                    transporteTexto = selectedTransportMode
+                                    mlType = "default"
                                 )
                             }
                         },
@@ -459,10 +457,9 @@ fun RutaMapa(
                         onSavePublicZone = { zonaId: Int ->
                             viewModel.adoptarZonaPublica(
                                 zonaId = zonaId,
-                                token = token,
                                 onSuccess = {
-                                    viewModel.cargarZonasPeligrosas(token)
-                                    viewModel.revalidarRutasActuales(token, selectedLocationId)
+                                    viewModel.cargarZonasPeligrosas()
+                                    viewModel.revalidarRutasActuales(selectedTransportMode, selectedLocationId)
                                 }
                             )
                         },
@@ -561,9 +558,9 @@ fun RutaMapa(
                             Button(
                                 onClick = {
                                     viewModel.aceptarRiesgoRutaInsegura(
-                                        token,
+                                        selectedTransportMode,
                                         selectedLocationId,
-                                        selectedTransportMode
+                                        "default"
                                     )
                                 },
                                 colors = ButtonDefaults.buttonColors(
@@ -604,11 +601,11 @@ fun RutaMapa(
                                 val endPoint = Pair(destination.latitud, destination.longitud)
 
                                 viewModel.fetchAllRouteAlternatives(
-                                    start = startPoint,
-                                    end = endPoint,
-                                    token = token,
+                                    origin = startPoint,
+                                    destination = endPoint,
+                                    mode = selectedTransportMode,
                                     ubicacionId = selectedLocationId,
-                                    transporteTexto = selectedTransportMode
+                                    mlType = "default"
                                 )
 
                                 transportMessage = context.getString(R.string.calculating_alternatives)

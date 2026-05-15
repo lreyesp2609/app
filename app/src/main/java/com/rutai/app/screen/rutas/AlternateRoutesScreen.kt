@@ -79,7 +79,7 @@ fun AlternateRoutesScreen(
 ) {
     val context = LocalContext.current
     val viewModel: UbicacionesViewModel = viewModel(
-        factory = UbicacionesViewModelFactory(context, token)
+        factory = UbicacionesViewModelFactory(context)
     )
     val isDarkTheme = isSystemInDarkTheme()
 

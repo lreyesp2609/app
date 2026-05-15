@@ -1,17 +1,16 @@
 package com.rutai.app.viewmodel
 
 import android.content.Context
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rutai.app.BaseViewModel
 import com.rutai.app.models.GrupoCreate
 import com.rutai.app.models.GrupoResponse
 import com.rutai.app.repository.GrupoRepository
-import com.rutai.app.utils.BackendErrorMapper
+import com.rutai.app.utils.SessionManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 
 sealed class GrupoState {
     object Idle : GrupoState()
@@ -23,173 +22,106 @@ sealed class GrupoState {
 }
 
 class GrupoViewModel(
-    private val context: Context,
-    private val repository: GrupoRepository
-) : ViewModel() {
+    context: Context,
+    private val repository: GrupoRepository,
+    sessionManager: SessionManager
+) : BaseViewModel(context, sessionManager) {
 
     private val _grupoState = MutableStateFlow<GrupoState>(GrupoState.Idle)
     val grupoState: StateFlow<GrupoState> = _grupoState
 
-    fun createGrupo(token: String, grupoCreate: GrupoCreate) {
-        viewModelScope.launch {
-            _grupoState.value = GrupoState.Loading
-            try {
-                val response = repository.createGrupo(token, grupoCreate)
+    fun createGrupo(grupoCreate: GrupoCreate) {
+        _grupoState.value = GrupoState.Loading
+        safeApiCall(
+            call = { token -> repository.createGrupo(token, grupoCreate) },
+            onSuccess = { grupo ->
+                _grupoState.value = GrupoState.Success(
+                    grupo = grupo,
+                    message = context.getString(com.rutai.app.R.string.group_created_success)
+                )
+            },
+            onError = { error ->
+                _grupoState.value = GrupoState.Error(error)
+            }
+        )
+    }
 
-                when {
-                    response.isSuccessful && response.body() != null -> {
-                        _grupoState.value = GrupoState.Success(
-                            grupo = response.body()!!,
-                            message = context.getString(com.rutai.app.R.string.group_created_success)
-                        )
-                    }
-                    else -> {
-                        val errorBody = response.errorBody()?.string()
-                        val detail = try {
-                            JSONObject(errorBody ?: "{}").optString("detail", errorBody ?: "")
-                        } catch (e: Exception) { errorBody ?: "" }
-                        
-                        val mensaje = BackendErrorMapper.resolve(context, detail)
-                        _grupoState.value = GrupoState.Error(mensaje)
+    fun listarGrupos(showLoading: Boolean = true) {
+        if (showLoading) _grupoState.value = GrupoState.Loading
+        safeApiCall(
+            call = { token -> repository.listarGrupos(token) },
+            onSuccess = { grupos ->
+                _grupoState.value = GrupoState.ListSuccess(grupos)
+            },
+            onError = { error ->
+                _grupoState.value = GrupoState.Error(error)
+            }
+        )
+    }
+
+    fun unirseAGrupo(codigo: String) {
+        _grupoState.value = GrupoState.Loading
+        safeApiCall(
+            call = { token -> repository.unirseAGrupo(token, codigo) },
+            onSuccess = { grupo ->
+                _grupoState.value = GrupoState.JoinSuccess(
+                    grupo = grupo,
+                    message = context.getString(com.rutai.app.R.string.join_group_success)
+                )
+                // Recargar lista tras unirse
+                viewModelScope.launch {
+                    delay(500)
+                    listarGrupos(showLoading = false)
+                }
+            },
+            onError = { error ->
+                _grupoState.value = GrupoState.Error(error)
+                // Recargar lista incluso en error si no es de autenticación
+                if (!error.contains("Sesión expirada", ignoreCase = true)) {
+                    viewModelScope.launch {
+                        delay(500)
+                        listarGrupos(showLoading = false)
                     }
                 }
-            } catch (e: Exception) {
-                _grupoState.value = GrupoState.Error(
-                    when (e) {
-                        is java.net.UnknownHostException -> context.getString(com.rutai.app.R.string.error_no_internet)
-                        is java.net.SocketTimeoutException -> context.getString(com.rutai.app.R.string.error_timeout)
-                        else -> e.localizedMessage ?: context.getString(com.rutai.app.R.string.error_unknown_create_group)
-                    }
-                )
             }
-        }
+        )
     }
 
-    // ✅ CORREGIDO - Ahora usa el endpoint correcto
-    fun listarGrupos(token: String, showLoading: Boolean = true) {
-        viewModelScope.launch {
-            if (showLoading) {
-                _grupoState.value = GrupoState.Loading
-            }
-
-            try {
-                // ✅ Usar el endpoint que SÍ existe en el servidor
-                val response = repository.listarGrupos(token)
-
-                if (response.isSuccessful && response.body() != null) {
-                    _grupoState.value = GrupoState.ListSuccess(response.body()!!)
-                } else {
-                    _grupoState.value = GrupoState.Error(
-                        context.getString(com.rutai.app.R.string.error_getting_groups, response.message())
-                    )
-                }
-            } catch (e: Exception) {
-                _grupoState.value = GrupoState.Error(
-                    context.getString(com.rutai.app.R.string.error_generic_message, e.localizedMessage)
-                )
-            }
-        }
-    }
-
-    fun unirseAGrupo(token: String, codigo: String) {
-        viewModelScope.launch {
-            _grupoState.value = GrupoState.Loading
-
-            var shouldReloadList = true
-
-            try {
-                val response = repository.unirseAGrupo(token, codigo)
-
-                when {
-                    response.isSuccessful && response.body() != null -> {
-                        _grupoState.value = GrupoState.JoinSuccess(
-                            grupo = response.body()!!,
-                            message = context.getString(com.rutai.app.R.string.join_group_success)
-                        )
-                    }
-                    else -> {
-                        if (response.code() == 401) shouldReloadList = false
-                        
-                        val errorBody = response.errorBody()?.string()
-                        val detail = try {
-                            JSONObject(errorBody ?: "{}").optString("detail", errorBody ?: "")
-                        } catch (e: Exception) { errorBody ?: "" }
-                        
-                        val mensaje = BackendErrorMapper.resolve(context, detail)
-                        _grupoState.value = GrupoState.Error(mensaje)
-                    }
-                }
-            } catch (e: Exception) {
-                _grupoState.value = GrupoState.Error(
-                    when (e) {
-                        is java.net.UnknownHostException -> context.getString(com.rutai.app.R.string.error_no_internet_join)
-                        is java.net.SocketTimeoutException -> context.getString(com.rutai.app.R.string.error_timeout_join)
-                        else -> e.localizedMessage ?: context.getString(com.rutai.app.R.string.error_unknown_join)
-                    }
-                )
-            }
-
-            // ✅ Recargar la lista SIN mostrar loading
-            if (shouldReloadList) {
-                delay(500)
-                listarGrupos(token, showLoading = false)
-            }
-        }
-    }
-
-    fun resetState() {
-        _grupoState.value = GrupoState.Idle
-    }
+    fun resetState() { _grupoState.value = GrupoState.Idle }
 
     private val _mensajeSalida = MutableStateFlow<String?>(null)
     val mensajeSalida: StateFlow<String?> get() = _mensajeSalida
 
-    fun salirDelGrupo(token: String, grupoId: Int) {
-        viewModelScope.launch {
-            try {
-                val response = repository.salirDelGrupo(token, grupoId)
-                if (response.isSuccessful) {
-                    _mensajeSalida.value = response.body()?.message ?: context.getString(com.rutai.app.R.string.exit_group_success_msg)
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    val detail = try {
-                        JSONObject(errorBody ?: "{}").optString("detail", errorBody ?: "")
-                    } catch (e: Exception) { errorBody ?: "" }
-                    _mensajeSalida.value = BackendErrorMapper.resolve(context, detail)
-                }
-            } catch (e: Exception) {
-                _mensajeSalida.value = context.getString(com.rutai.app.R.string.error_connection_exit_group, e.localizedMessage)
+    fun salirDelGrupo(grupoId: Int) {
+        safeApiCall(
+            call = { token -> repository.salirDelGrupo(token, grupoId) },
+            onSuccess = { response ->
+                _mensajeSalida.value = response.message ?: context.getString(com.rutai.app.R.string.exit_group_success_msg)
+                listarGrupos(showLoading = false)
+            },
+            onError = { error ->
+                _mensajeSalida.value = error
             }
-        }
+        )
     }
 
-    fun resetMensajeSalida() {
-        _mensajeSalida.value = null
-    }
+    fun resetMensajeSalida() { _mensajeSalida.value = null }
 
     private val _mensajeEliminacion = MutableStateFlow<String?>(null)
     val mensajeEliminacion: StateFlow<String?> get() = _mensajeEliminacion
 
-    fun eliminarGrupo(token: String, grupoId: Int) {
-        viewModelScope.launch {
-            try {
-                val response = repository.eliminarGrupo(token, grupoId)
-                if (response.isSuccessful) {
-                    _mensajeEliminacion.value = response.body()?.message ?: context.getString(com.rutai.app.R.string.delete_group_success_msg)
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    val detail = try {
-                        JSONObject(errorBody ?: "{}").optString("detail", errorBody ?: "")
-                    } catch (e: Exception) { errorBody ?: "" }
-                    _mensajeEliminacion.value = BackendErrorMapper.resolve(context, detail)
-                }
-            } catch (e: Exception) {
-                _mensajeEliminacion.value = context.getString(com.rutai.app.R.string.error_connection_delete_group, e.localizedMessage)
+    fun eliminarGrupo(grupoId: Int) {
+        safeApiCall(
+            call = { token -> repository.eliminarGrupo(token, grupoId) },
+            onSuccess = { response ->
+                _mensajeEliminacion.value = response.message ?: context.getString(com.rutai.app.R.string.delete_group_success_msg)
+                listarGrupos(showLoading = false)
+            },
+            onError = { error ->
+                _mensajeEliminacion.value = error
             }
-        }
+        )
     }
 
-    fun resetMensajeEliminacion() {
-        _mensajeEliminacion.value = null
-    }
+    fun resetMensajeEliminacion() { _mensajeEliminacion.value = null }
 }

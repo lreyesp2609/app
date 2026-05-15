@@ -86,11 +86,10 @@ fun GrupoDetalleScreen(
     )
 
     val integrantes by viewModel.integrantes.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val isLoading = viewModel.isLoading
 
     val sessionManager = SessionManager.getInstance(context)
     val currentUserId = sessionManager.getUser()?.id ?: 0
-    val token = sessionManager.getAccessToken() ?: ""
 
     val isCreator = integrantes.firstOrNull { it.usuario_id == currentUserId }?.es_creador ?: false
 
@@ -156,7 +155,7 @@ fun GrupoDetalleScreen(
                 TextButton(
                     onClick = {
                         showDeleteDialog = false
-                        grupoViewModel.eliminarGrupo(token, grupoId)
+                        grupoViewModel.eliminarGrupo(grupoId)
                     },
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
@@ -297,7 +296,7 @@ fun GrupoDetalleScreen(
                         titulo = stringResource(R.string.group_option_exit),
                         subtitulo = stringResource(R.string.group_option_exit_sub),
                         onClick = {
-                            grupoViewModel.salirDelGrupo(token, grupoId)
+                            grupoViewModel.salirDelGrupo(grupoId)
                         },
                         isDestructive = true
                     )

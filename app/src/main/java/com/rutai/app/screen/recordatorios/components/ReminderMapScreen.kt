@@ -80,8 +80,9 @@ fun ReminderMapScreen(
     // ViewModel
     val database = remember { AppDatabase.getDatabase(context) }
     val repository = remember { ReminderRepository(database.reminderDao()) }
+    val sessionManager = remember { com.rutai.app.utils.SessionManager.getInstance(context) }
     val viewModel: ReminderViewModel = viewModel(
-        factory = ReminderViewModelFactory(repository)
+        factory = ReminderViewModelFactory(context, repository, sessionManager)
     )
 
     // Función para cargar POIs

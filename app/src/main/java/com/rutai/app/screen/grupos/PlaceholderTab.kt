@@ -126,7 +126,7 @@ fun CollaborativeGroupsScreen(
             Log.w("CollaborativeGroupsScreen", "⚠️ Token vacío, esperando restauración para cargar grupos")
             return@LaunchedEffect
         }
-        viewModel.listarGrupos(token)
+        viewModel.listarGrupos()
         delay(200)
         showContent = true
         delay(400)
@@ -321,7 +321,7 @@ fun CollaborativeGroupsScreen(
                     }
 
                     else -> {
-                        viewModel.unirseAGrupo(token, codigo)
+                        viewModel.unirseAGrupo(codigo)
                         showJoinDialog = false
                     }
                 }

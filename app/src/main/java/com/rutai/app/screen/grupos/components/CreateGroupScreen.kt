@@ -240,7 +240,7 @@ fun CreateGroupScreen(
                                 nombre = groupName.trim(),
                                 descripcion = groupDescription.trim().ifBlank { null }
                             )
-                            viewModel.createGrupo(token, grupoCreate)
+                            viewModel.createGrupo(grupoCreate)
                         }
                     }
                 },

@@ -236,15 +236,33 @@ class AuthRepository {
     }
 
     // 🔥 Métodos FCM
-    suspend fun enviarTokenFCM(bearerToken: String, request: Map<String, String>): Response<Unit> {
+    suspend fun enviarTokenFCM(bearerToken: String, request: Map<String, String>): Result<Unit> {
         return withContext(Dispatchers.IO) {
-            api.registrarFCMToken(bearerToken, request)
+            try {
+                val response = api.registrarFCMToken(bearerToken, request)
+                if (response.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception("Error ${response.code()}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 
-    suspend fun eliminarTokenFCM(bearerToken: String): Response<Unit> {
+    suspend fun eliminarTokenFCM(bearerToken: String): Result<Unit> {
         return withContext(Dispatchers.IO) {
-            api.eliminarTodosLosTokens(bearerToken)
+            try {
+                val response = api.eliminarTodosLosTokens(bearerToken)
+                if (response.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception("Error ${response.code()}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 

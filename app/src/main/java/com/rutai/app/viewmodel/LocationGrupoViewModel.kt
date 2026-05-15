@@ -2,8 +2,8 @@ package com.rutai.app.viewmodel
 
 import android.content.Context
 import android.util.Log
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rutai.app.BaseViewModel
 import com.rutai.app.models.MiembroUbicacion
 import com.rutai.app.services.LocationTrackingService
 import com.rutai.app.utils.SessionManager
@@ -14,9 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class LocationGrupoViewModel(context: Context) : ViewModel() {
+class LocationGrupoViewModel(context: Context) : BaseViewModel(context, SessionManager.getInstance(context)) {
 
-    private val sessionManager = SessionManager.getInstance(context)
     private val currentUserId = sessionManager.getUser()?.id ?: 0
 
     // ✅ Guardar el grupoId actual

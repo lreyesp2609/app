@@ -64,7 +64,7 @@ fun ParticipantesScreen(
 
     val integrantes by viewModel.integrantes.collectAsState()
     val totalIntegrantes by viewModel.totalIntegrantes.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val isLoading = viewModel.isLoading
     val error by viewModel.error.collectAsState()
 
     // 🆕 Obtener el ID del usuario actual

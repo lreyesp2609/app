@@ -49,8 +49,9 @@ fun RemindersScreen(
     val context = LocalContext.current
     val database = AppDatabase.getDatabase(context)
     val repository = ReminderRepository(database.reminderDao())
+    val sessionManager = com.rutai.app.utils.SessionManager.getInstance(context)
     val viewModel: ReminderViewModel = viewModel(
-        factory = ReminderViewModelFactory(repository)
+        factory = ReminderViewModelFactory(context, repository, sessionManager)
     )
 
     var showContent by remember { mutableStateOf(false) }
@@ -61,11 +62,7 @@ fun RemindersScreen(
     LaunchedEffect(token) {
         delay(200)
         showContent = true
-        if (token.isBlank()) {
-            Log.w("RemindersScreen", "⚠️ Token vacío, esperando refresh de sesión para cargar recordatorios")
-            return@LaunchedEffect
-        }
-        viewModel.fetchReminders(token)
+        viewModel.fetchReminders()
         delay(400)
         showStats = true
     }

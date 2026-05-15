@@ -2,8 +2,8 @@ package com.rutai.app.viewmodel
 
 import android.content.Context
 import android.util.Log
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rutai.app.BaseViewModel
 import com.rutai.app.BuildConfig
 import com.rutai.app.models.EstadoMensaje
 import com.rutai.app.models.MensajeResponse
@@ -22,18 +22,17 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 
-class ChatGrupoViewModel(context: Context) : ViewModel() {
+class ChatGrupoViewModel(
+    context: Context,
+    private val repository: MensajesRepository,
+    sessionManager: SessionManager
+) : BaseViewModel(context, sessionManager) {
 
-    private val repository = MensajesRepository(context)
-    private val sessionManager = SessionManager.getInstance(context)
     private val currentUserId = repository.getCurrentUserId()
 
     // Estados
     private val _mensajes = MutableStateFlow<List<MensajeUI>>(emptyList())
     val mensajes: StateFlow<List<MensajeUI>> = _mensajes.asStateFlow()
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -53,59 +52,36 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
      * Carga los mensajes del grupo y conecta al WebSocket
      */
     fun cargarMensajes(grupoId: Int) {
-        viewModelScope.launch {
-            Log.d(TAG, "📥 Cargando mensajes del grupo $grupoId")
-            _isLoading.value = true
-            _error.value = null
+        _error.value = null
+        safeApiCall(
+            call = { token -> repository.obtenerMensajesGrupo(token, grupoId) },
+            onSuccess = { mensajesResponse ->
+                val mensajesUI = mensajesResponse.mapNotNull { it.toMensajeUI(currentUserId) }
+                _mensajes.value = mensajesUI
+                Log.d(TAG, "✅ ${mensajesUI.size} mensajes cargados correctamente")
 
-            repository.obtenerMensajesGrupo(grupoId)
-                .onSuccess { mensajesResponse ->
-                    val mensajesUI = mensajesResponse.mapNotNull { it.toMensajeUI(currentUserId) }
-                    _mensajes.value = mensajesUI
-                    Log.d(TAG, "✅ ${mensajesUI.size} mensajes cargados correctamente")
-
-                    marcarTodoComoLeido(grupoId, mensajesUI)
-                    conectarWebSocket(grupoId)
-                }
-                .onFailure { exception ->
-                    _error.value = exception.message ?: "Error desconocido"
-                    Log.e(TAG, "❌ Error al cargar mensajes: ${exception.message}")
-                }
-
-            _isLoading.value = false
-        }
+                marcarTodoComoLeido(grupoId, mensajesUI)
+                conectarWebSocket(grupoId)
+            },
+            onError = { errorMsg ->
+                _error.value = errorMsg
+                Log.e(TAG, "❌ Error al cargar mensajes: $errorMsg")
+            }
+        )
     }
 
     private fun marcarTodoComoLeido(grupoId: Int, mensajes: List<MensajeUI>) {
-        viewModelScope.launch {
-            val mensajesNoLeidos = mensajes.filter { !it.esMio && !it.leido }
+        val mensajesNoLeidos = mensajes.filter { !it.esMio && !it.leido }
 
-            if (mensajesNoLeidos.isEmpty()) {
-                Log.d(TAG, "ℹ️ No hay mensajes no leídos que marcar")
-                return@launch
-            }
+        if (mensajesNoLeidos.isEmpty()) {
+            Log.d(TAG, "ℹ️ No hay mensajes no leídos que marcar")
+            return
+        }
 
-            Log.d(TAG, "👁️ Marcando ${mensajesNoLeidos.size} mensajes como leídos")
+        Log.d(TAG, "👁️ Marcando ${mensajesNoLeidos.size} mensajes como leídos")
 
-            mensajesNoLeidos.forEach { mensaje ->
-                repository.marcarMensajeLeido(grupoId, mensaje.id)
-                    .onSuccess {
-                        Log.d(TAG, "✅ Mensaje ${mensaje.id} marcado como leído")
-                    }
-                    .onFailure { exception ->
-                        Log.e(TAG, "❌ Error al marcar mensaje ${mensaje.id}: ${exception.message}")
-                    }
-            }
-
-            _mensajes.value = _mensajes.value.map { mensaje ->
-                if (!mensaje.esMio && !mensaje.leido) {
-                    mensaje.copy(leido = true)
-                } else {
-                    mensaje
-                }
-            }
-
-            Log.d(TAG, "✅ Todos los mensajes marcados como leídos")
+        mensajesNoLeidos.forEach { mensaje ->
+            marcarComoLeido(grupoId, mensaje.id)
         }
     }
 
@@ -264,9 +240,9 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
                 _isConnected.value = false
                 Log.w(TAG, "❌ WebSocket desconectado del grupo $grupoId")
             },
-            onError = { error ->
-                _error.value = "Error de conexión: $error"
-                Log.e(TAG, "❌ Error en WebSocket: $error")
+            onError = { errorMsg ->
+                _error.value = "Error de conexión: $errorMsg"
+                Log.e(TAG, "❌ Error en WebSocket: $errorMsg")
             }
         ))
     }
@@ -344,30 +320,30 @@ class ChatGrupoViewModel(context: Context) : ViewModel() {
     }
 
     fun marcarComoLeido(grupoId: Int, mensajeId: Int) {
-        viewModelScope.launch {
-            val mensaje = _mensajes.value.find { it.id == mensajeId }
+        val mensaje = _mensajes.value.find { it.id == mensajeId }
 
-            if (mensaje?.esMio == true) {
-                Log.d(TAG, "⚠️ Mensaje $mensajeId es mío, no se marca como leído")
-                return@launch
-            }
-
-            Log.d(TAG, "👁️ Marcando mensaje $mensajeId como leído")
-            repository.marcarMensajeLeido(grupoId, mensajeId)
-                .onSuccess {
-                    _mensajes.value = _mensajes.value.map { msg ->
-                        if (msg.id == mensajeId) {
-                            msg.copy(leido = true)
-                        } else {
-                            msg
-                        }
-                    }
-                    Log.d(TAG, "✅ Mensaje $mensajeId marcado como leído")
-                }
-                .onFailure { exception ->
-                    Log.e(TAG, "❌ Error al marcar como leído: ${exception.message}")
-                }
+        if (mensaje?.esMio == true) {
+            Log.d(TAG, "⚠️ Mensaje $mensajeId es mío, no se marca como leído")
+            return
         }
+
+        Log.d(TAG, "👁️ Marcando mensaje $mensajeId como leído")
+        safeApiCall(
+            call = { token -> repository.marcarMensajeLeido(token, grupoId, mensajeId) },
+            onSuccess = {
+                _mensajes.value = _mensajes.value.map { msg ->
+                    if (msg.id == mensajeId) {
+                        msg.copy(leido = true)
+                    } else {
+                        msg
+                    }
+                }
+                Log.d(TAG, "✅ Mensaje $mensajeId marcado como leído")
+            },
+            onError = { errorMsg ->
+                Log.e(TAG, "❌ Error al marcar como leído: $errorMsg")
+            }
+        )
     }
 
     private fun obtenerWebSocketUrl(grupoId: Int, token: String): String {

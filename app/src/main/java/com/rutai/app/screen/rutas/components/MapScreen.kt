@@ -105,7 +105,7 @@ fun MapScreen(
     var zonasCreadas by remember { mutableStateOf<List<ZonaGuardada>>(emptyList()) }
 
     val ubicacionesViewModel: UbicacionesViewModel = viewModel(
-        factory = UbicacionesViewModelFactory(context, token)
+        factory = UbicacionesViewModelFactory(context)
     )
     val scope = rememberCoroutineScope()
 

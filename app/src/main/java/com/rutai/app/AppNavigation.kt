@@ -30,6 +30,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.rutai.app.network.AppDatabase
 import com.rutai.app.repository.ReminderRepository
+import com.rutai.app.utils.SessionManager
 import com.rutai.app.screen.SplashScreen
 import com.rutai.app.screen.auth.LoginScreen
 import com.rutai.app.screen.auth.RegisterScreen
@@ -71,8 +72,9 @@ fun AppNavigation(
     val notificationViewModel: NotificationViewModel = viewModel()
     val database = AppDatabase.getDatabase(context)
     val repository = ReminderRepository(database.reminderDao())
+    val sessionManager = com.rutai.app.utils.SessionManager.getInstance(context)
     val reminderViewModel: ReminderViewModel = viewModel(
-        factory = ReminderViewModelFactory(repository)
+        factory = ReminderViewModelFactory(context, repository, sessionManager)
     )
     val isLoggedIn = authViewModel.isLoggedIn
     val isLoading = authViewModel.isLoading
@@ -87,8 +89,20 @@ fun AppNavigation(
         WebSocketLocationManager.initialize(context)
     }
 
-    // Conectar WebSocket de Notificaciones
     val isRestoringSession = authViewModel.isRestoringSession
+
+    // 🔥 REDIRECCIÓN AUTOMÁTICA AL LOGOUT
+    LaunchedEffect(isLoggedIn, isRestoringSession) {
+        if (!isLoggedIn && !isRestoringSession) {
+            Log.w("AppNavigation", "🚪 Sesión finalizada - Redirigiendo a Login")
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
+
+    // Conectar WebSocket de Notificaciones
     LaunchedEffect(isLoggedIn, accessToken, isRestoringSession) {
 
         if (isRestoringSession) {
@@ -254,12 +268,11 @@ fun AppNavigation(
                     )
 
                     val viewModel: UbicacionesViewModel = viewModel(
-                        factory = UbicacionesViewModelFactory(LocalContext.current, token)
+                        factory = UbicacionesViewModelFactory(LocalContext.current)
                     )
 
                     LaunchedEffect(id) {
                         viewModel.cargarUbicacionPorId(id)
-                        mapViewModel.setToken(token)
                     }
 
                     val ubicacion = viewModel.ubicacionSeleccionada

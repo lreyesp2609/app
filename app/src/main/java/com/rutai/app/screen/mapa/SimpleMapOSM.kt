@@ -24,6 +24,8 @@ import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.graphics.toArgb
+import com.rutai.app.R
 import com.rutai.app.models.ZonaPeligrosaResponse
 import com.rutai.app.ui.theme.DangerLevelColors
 import com.rutai.app.viewmodel.MapViewModel

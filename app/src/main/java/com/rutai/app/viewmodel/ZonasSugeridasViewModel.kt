@@ -3,26 +3,20 @@ package com.rutai.app.viewmodel
 import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.*
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import com.rutai.app.BaseViewModel
 import com.rutai.app.models.ZonaPeligrosaResponse
 import com.rutai.app.models.ZonaSugerida
-import com.rutai.app.network.RetrofitClient
-import com.rutai.app.utils.BackendErrorMapper
-import kotlinx.coroutines.launch
+import com.rutai.app.repository.RutasRepository
+import com.rutai.app.utils.SessionManager
 
-class ZonasSugeridasViewModel(
-    private val context: Context,
-    private val token: String
-) : ViewModel() {
+class ZonasSugeridasViewModel(context: Context) : BaseViewModel(context, SessionManager.getInstance(context)) {
+
+    private val repository = RutasRepository()
 
     var zonasSugeridas by mutableStateOf<List<ZonaSugerida>>(emptyList())
         private set
 
     var mostrarSugerencias by mutableStateOf(false)
-        private set
-
-    var isLoading by mutableStateOf(false)
         private set
 
     var errorMessage by mutableStateOf<String?>(null)
@@ -36,20 +30,10 @@ class ZonasSugeridasViewModel(
         lon: Double,
         radioKm: Float = 10.0f
     ) {
-        viewModelScope.launch {
-            try {
-                isLoading = true
-                errorMessage = null
-
-                Log.d("ZonasSugeridas", "🔍 Buscando zonas cerca de ($lat, $lon) en radio ${radioKm}km")
-
-                val zonas = RetrofitClient.rutasApiService.obtenerZonasSugeridas(
-                    token = "Bearer $token",
-                    lat = lat,
-                    lon = lon,
-                    radioKm = radioKm
-                )
-
+        errorMessage = null
+        safeApiCall(
+            call = { token -> repository.obtenerZonasSugeridas(token, lat, lon, radioKm) },
+            onSuccess = { zonas ->
                 if (zonas.isNotEmpty()) {
                     // Calcular distancia a cada zona
                     zonasSugeridas = zonas.map { zona ->
@@ -67,20 +51,17 @@ class ZonasSugeridasViewModel(
                     }.sortedBy { it.distanciaKm } // Más cercanas primero
 
                     mostrarSugerencias = true
-
                     Log.d("ZonasSugeridas", "✅ ${zonas.size} zonas sugeridas encontradas")
                 } else {
                     mostrarSugerencias = false
                     Log.d("ZonasSugeridas", "ℹ️ No hay zonas sugeridas en esta área")
                 }
-
-            } catch (e: Exception) {
-                errorMessage = BackendErrorMapper.resolve(context, e.message)
-                Log.e("ZonasSugeridas", "❌ Error: ${e.message}", e)
-            } finally {
-                isLoading = false
+            },
+            onError = { error ->
+                errorMessage = error
+                Log.e("ZonasSugeridas", "❌ Error: $error")
             }
-        }
+        )
     }
 
     /**
@@ -91,15 +72,9 @@ class ZonasSugeridasViewModel(
         onSuccess: (ZonaPeligrosaResponse) -> Unit,
         onError: (String) -> Unit
     ) {
-        viewModelScope.launch {
-            try {
-                isLoading = true
-
-                val zonaAdoptada = RetrofitClient.rutasApiService.adoptarZonaSugerida(
-                    token = "Bearer $token",
-                    zonaId = zonaId
-                )
-
+        safeApiCall(
+            call = { token -> repository.adoptarZonaSugerida(token, zonaId) },
+            onSuccess = { zonaAdoptada ->
                 // Marcar como adoptada en la lista
                 zonasSugeridas = zonasSugeridas.map {
                     if (it.zonaOriginal.id == zonaId) {
@@ -108,18 +83,14 @@ class ZonasSugeridasViewModel(
                         it
                     }
                 }
-
                 onSuccess(zonaAdoptada)
                 Log.d("ZonasSugeridas", "✅ Zona $zonaId adoptada correctamente")
-
-            } catch (e: Exception) {
-                val error = BackendErrorMapper.resolve(context, e.message)
+            },
+            onError = { error ->
                 onError(error)
-                Log.e("ZonasSugeridas", "❌ Error: ${e.message}", e)
-            } finally {
-                isLoading = false
+                Log.e("ZonasSugeridas", "❌ Error: $error")
             }
-        }
+        )
     }
 
     /**
