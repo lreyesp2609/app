@@ -102,11 +102,6 @@ class MainActivity : AppCompatActivity() {
         NotificationHelper.createNotificationChannel(this)
         testWebSocketPing()
 
-        val authViewModel: AuthViewModel = ViewModelProvider(
-            this,
-            AuthViewModel.AuthViewModelFactory(this)
-        )[AuthViewModel::class.java]
-
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.navigationBarColor = Color.Black.toArgb()
         window.statusBarColor = Color.Black.toArgb()
@@ -167,13 +162,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // 🔥 Solo refrescar si ya terminó de restaurar sesión
-        if (::authViewModel.isInitialized &&
-            !authViewModel.isRestoringSession &&
-            authViewModel.isLoggedIn) {
-            Log.d(TAG, "🔄 App volvió de background - verificando token")
-            authViewModel.verificarYRefrescarToken()
-        }
+        // El refresh proactivo vive en SessionManager singleton.
+        // Aquí evitamos refrescos duplicados al volver a foreground.
     }
 
     // 🔥 CORREGIDO: Solo verificar y pedir foreground location

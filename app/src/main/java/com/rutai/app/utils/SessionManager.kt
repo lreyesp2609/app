@@ -3,17 +3,30 @@ package com.rutai.app.utils
 import android.content.Context
 import android.util.Log
 import com.rutai.app.models.User
+import com.rutai.app.repository.AuthRepository
 import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 class SessionManager private constructor(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
+    private val authRepository by lazy { AuthRepository() }
+    private val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var autoRefreshJob: Job? = null
 
     // 🆕 Listener para cambios de token
     private val tokenListeners = mutableListOf<(String) -> Unit>()
 
     companion object {
         private const val TAG = "WS_SessionManager"
+        private const val REFRESH_INTERVAL_MS = 4 * 60 * 1000L
+        private const val MAX_REFRESH_FAILURES = 3
 
         @Volatile
         private var INSTANCE: SessionManager? = null
@@ -139,6 +152,55 @@ class SessionManager private constructor(context: Context) {
 
     fun hasValidSession(): Boolean {
         return getRefreshToken() != null && isLoggedIn()
+    }
+
+    fun startAutoRefreshIfNeeded(onAuthExpired: () -> Unit = {}) {
+        if (autoRefreshJob?.isActive == true) {
+            Log.d(TAG, "🔁 Auto-refresh ya está activo (singleton)")
+            return
+        }
+
+        autoRefreshJob = refreshScope.launch {
+            Log.d(TAG, "🚀 Auto-refresh singleton iniciado")
+            var consecutiveFailures = 0
+
+            while (isActive) {
+                delay(REFRESH_INTERVAL_MS)
+
+                val refreshToken = getRefreshToken()
+                val loggedIn = isLoggedIn()
+                if (refreshToken.isNullOrEmpty() || !loggedIn) {
+                    continue
+                }
+
+                authRepository.refreshToken(refreshToken).fold(
+                    onSuccess = { response ->
+                        consecutiveFailures = 0
+                        saveTokens(response.accessToken, response.refreshToken)
+                        Log.d(TAG, "✅ Auto-refresh exitoso")
+                    },
+                    onFailure = { error ->
+                        consecutiveFailures++
+                        val isAuthError = error.message?.contains("401") == true ||
+                            error.message?.contains("AUTH_ERROR") == true
+
+                        Log.w(TAG, "⚠️ Auto-refresh falló (#$consecutiveFailures): ${error.message}")
+
+                        // ⚠️ Solo cerrar sesión por errores de autenticación reales.
+                        // Errores de red/intermitencia NO deben limpiar credenciales.
+                        if (isAuthError) {
+                            saveLoginState(false)
+                            clear()
+                            onAuthExpired()
+                            consecutiveFailures = 0
+                        } else if (consecutiveFailures >= MAX_REFRESH_FAILURES) {
+                            Log.w(TAG, "🌐 Fallos de red consecutivos en auto-refresh. Se mantiene sesión local.")
+                            consecutiveFailures = 0
+                        }
+                    }
+                )
+            }
+        }
     }
 
 }

@@ -235,6 +235,8 @@
     <string name="feature_route_options_desc">La IA te ayuda a variar tus trayectos habituales</string>
     <string name="feature_stats_title">Consulta tus estadísticas</string>
     <string name="feature_stats_desc">Revisa el historial de tus viajes</string>
+    <string name="debug_invalidate_token_title">Debug: Invalidar token</string>
+    <string name="debug_invalidate_token_desc">Fuerza un 401 en la próxima petición protegida para validar auto-refresh</string>
 
     <string name="generate_route">Generar ruta</string>
     <string name="data">Datos</string>

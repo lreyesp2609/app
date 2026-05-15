@@ -112,7 +112,15 @@ class AuthInterceptor(private val context: Context) : Interceptor {
     }
 
     private fun isAuthEndpoint(url: String): Boolean {
-        return url.contains("/login/refresh") || (url.contains("/login/") && !url.contains("/login/logout"))
+        val normalizedUrl = url.substringBefore("?").trimEnd('/')
+
+        // Solo excluimos endpoints de autenticación que no deben reintentar refresh automáticamente:
+        // - Login (obtiene tokens)
+        // - Refresh (evita bucle infinito)
+        // - Logout (termina sesión de forma explícita)
+        return normalizedUrl.endsWith("/login") ||
+            normalizedUrl.endsWith("/login/refresh") ||
+            normalizedUrl.endsWith("/login/logout")
     }
 
     private fun forzarLogout(razon: String?) {
