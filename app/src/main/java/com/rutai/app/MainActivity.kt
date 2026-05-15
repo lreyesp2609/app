@@ -102,11 +102,6 @@ class MainActivity : AppCompatActivity() {
         NotificationHelper.createNotificationChannel(this)
         testWebSocketPing()
 
-        val authViewModel: AuthViewModel = ViewModelProvider(
-            this,
-            AuthViewModel.AuthViewModelFactory(this)
-        )[AuthViewModel::class.java]
-
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.navigationBarColor = Color.Black.toArgb()
         window.statusBarColor = Color.Black.toArgb()

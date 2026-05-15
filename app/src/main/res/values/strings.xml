@@ -605,4 +605,8 @@
     <string name="summary_type_both">Location + Date and time</string>
     <string name="all_days_summary">Every day</string>
     <string name="ok">OK</string>
+
+    <!-- DEBUG -->
+    <string name="debug_invalidate_token_title">Debug: Invalidate token</string>
+    <string name="debug_invalidate_token_desc">Forces a 401 on the next protected request to validate auto-refresh</string>
 </resources>

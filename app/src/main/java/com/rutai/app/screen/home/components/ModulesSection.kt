@@ -19,6 +19,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.rutai.app.R
 import com.rutai.recuerdago.screens.tabs.ModuleCard
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.platform.LocalContext
+import android.util.Log
+import com.rutai.app.BuildConfig
+import com.rutai.app.utils.SessionManager
 
 @Composable
 fun ModulesSection(
@@ -26,6 +31,8 @@ fun ModulesSection(
     accentColor: Color,
     onTabSelected: (Int) -> Unit
 ) {
+    val context = LocalContext.current
+
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(vertical = 16.dp)
@@ -65,6 +72,26 @@ fun ModulesSection(
                 icon = Icons.Default.Group,
                 onClick = { onTabSelected(3) }
             )
+        }
+        if (BuildConfig.DEBUG) {
+            item {
+                ModuleCard(
+                    title = stringResource(R.string.debug_invalidate_token_title),
+                    description = stringResource(R.string.debug_invalidate_token_desc),
+                    icon = Icons.Default.Warning,
+                    onClick = {
+                        val sessionManager = SessionManager.getInstance(context)
+                        val refreshToken = sessionManager.getRefreshToken()
+
+                        if (!refreshToken.isNullOrEmpty()) {
+                            sessionManager.saveTokens("TOKEN_INVALIDO_DEBUG", refreshToken)
+                            Log.w("ModulesSection", "🧪 Token de acceso invalidado manualmente para probar auto-refresh")
+                        } else {
+                            Log.w("ModulesSection", "⚠️ No hay refresh token disponible para prueba de auto-refresh")
+                        }
+                    }
+                )
+            }
         }
     }
 }

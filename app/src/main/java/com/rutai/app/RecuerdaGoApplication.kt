@@ -1,6 +1,7 @@
 package com.rutai.app
 
 import android.app.Application
+import android.content.Intent
 import android.util.Log
 import com.rutai.app.network.RetrofitClient
 import com.rutai.app.websocket.WebSocketLocationManager
@@ -122,5 +123,10 @@ class RecuerdaGoApplication : Application() {
         Log.e(TAG, "✅ LISTENER GLOBAL REGISTRADO PERMANENTEMENTE")
         Log.e(TAG, "✅ Total de listeners: ${sessionManager.getListenerCount()}")
         Log.e(TAG, "════════════════════════════════════════")
+
+        sessionManager.startAutoRefreshIfNeeded {
+            sendBroadcast(Intent("com.rutai.app.FORCE_LOGOUT"))
+            Log.w(TAG, "🚨 Sesión expirada desde auto-refresh singleton")
+        }
     }
 }

@@ -34,11 +34,8 @@ import com.rutai.app.utils.PermissionUtils
 import com.rutai.app.utils.SessionManager
 import com.rutai.app.utils.BackendErrorMapper
 import com.google.firebase.messaging.FirebaseMessaging
-import com.rutai.app.R
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.net.Inet4Address
 import java.net.NetworkInterface
@@ -85,7 +82,6 @@ class AuthViewModel(context: Context) : BaseViewModel(context, SessionManager.ge
 
         restoreStateFromPrefs()
         restoreSession()
-        startAutoRefresh()
     }
 
     private fun restoreStateFromPrefs() {
@@ -359,33 +355,6 @@ class AuthViewModel(context: Context) : BaseViewModel(context, SessionManager.ge
     override fun onCleared() {
         super.onCleared()
         try { context.unregisterReceiver(logoutReceiver) } catch (e: Exception) {}
-    }
-
-    private fun startAutoRefresh() {
-        viewModelScope.launch {
-            var consecutiveFailures = 0
-            val MAX_FAILURES = 3
-            while (isActive) {
-                delay(4 * 60 * 1000)
-                val savedRefresh = sessionManager.getRefreshToken()
-                if (savedRefresh != null && isLoggedIn) {
-                    repository.refreshToken(savedRefresh).fold(
-                        onSuccess = { response ->
-                            consecutiveFailures = 0
-                            accessToken = response.accessToken
-                            sessionManager.saveTokens(response.accessToken, response.refreshToken)
-                        },
-                        onFailure = { error ->
-                            consecutiveFailures++
-                            val isAuthError = error.message?.contains("401") == true
-                            if (isAuthError || consecutiveFailures >= MAX_FAILURES) {
-                                logout(context, shouldRemoveFCMToken = false)
-                            }
-                        }
-                    )
-                }
-            }
-        }
     }
 
     fun obtenerIp(): String {
