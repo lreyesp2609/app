@@ -456,7 +456,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
                 if (accessToken.isNullOrEmpty()) {
                     Log.w(TAG, "⚠️ NO HAY TOKEN DE ACCESO")
-                    saveFCMTokenLocally(token)
+                    sessionManager.saveFcmToken(token)
                     return@launch
                 }
 
@@ -472,29 +472,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
                 if (response.isSuccessful) {
                     Log.d(TAG, "✅ TOKEN FCM REGISTRADO EN BACKEND")
-                    clearLocalFCMToken()
                 } else {
                     Log.e(TAG, "❌ ERROR AL REGISTRAR TOKEN HTTP ${response.code()}")
-                    saveFCMTokenLocally(token)
+                    sessionManager.saveFcmToken(token)
                 }
 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ EXCEPCIÓN AL ENVIAR TOKEN: ${e.message}")
-                saveFCMTokenLocally(token)
+                SessionManager.getInstance(applicationContext).saveFcmToken(token)
             }
         }
     }
 
-    private fun saveFCMTokenLocally(token: String) {
-        val prefs = getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("PENDING_FCM_TOKEN", token).apply()
-        Log.d(TAG, "💾 Token guardado localmente")
-    }
 
-    private fun clearLocalFCMToken() {
-        val prefs = getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
-        prefs.edit().remove("PENDING_FCM_TOKEN").apply()
-    }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

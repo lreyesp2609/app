@@ -28,6 +28,14 @@ class SessionManager private constructor(context: Context) {
         private const val TAG = "WS_SessionManager"
         private const val REFRESH_INTERVAL_MS = 4 * 60 * 1000L
         private const val MAX_REFRESH_FAILURES = 3
+        
+        // Claves de SharedPreferences
+        private const val ACCESS_TOKEN = "ACCESS_TOKEN"
+        private const val REFRESH_TOKEN = "REFRESH_TOKEN"
+        private const val TOKEN_EXPIRES_AT = "TOKEN_EXPIRES_AT"
+        private const val IS_LOGGED_IN = "IS_LOGGED_IN"
+        private const val USER_DATA = "USER_DATA"
+        private const val FCM_TOKEN = "FCM_TOKEN"
 
         @Volatile
         private var INSTANCE: SessionManager? = null
@@ -42,127 +50,137 @@ class SessionManager private constructor(context: Context) {
         }
     }
 
-    fun saveTokens(access: String, refresh: String) {
+    // Dentro de SessionManager.kt, añade estas constantes y métodos
+    fun saveFcmToken(token: String) {
+        prefs.edit().putString(FCM_TOKEN, token).apply()
+        Log.d(TAG, "📲 Token FCM guardado localmente")
+    }
+
+    fun getFcmToken(): String? = prefs.getString(FCM_TOKEN, null)
+
+
+    /**
+     * Guarda los tokens y calcula el tiempo de expiración.
+     * @param expiresInSeconds Tiempo de vida del token en segundos (default 15 min / 900s)
+     */
+    fun saveTokens(access: String, refresh: String, expiresInSeconds: Long = 900) {
+        val expiresAt = System.currentTimeMillis() + (expiresInSeconds * 1000)
+        
         Log.d(TAG, "💾 ========================================")
         Log.d(TAG, "💾 GUARDANDO NUEVOS TOKENS")
+        Log.d(TAG, "💾 Expiración calculada: $expiresAt ms")
         Log.d(TAG, "💾 ========================================")
-        Log.d(TAG, "   Access Token: ${access.take(20)}...")
-        Log.d(TAG, "   Refresh Token: ${refresh.take(20)}...")
-        Log.d(TAG, "   Listeners registrados: ${tokenListeners.size}")
 
         prefs.edit()
-            .putString("ACCESS_TOKEN", access)
-            .putString("REFRESH_TOKEN", refresh)
+            .putString(ACCESS_TOKEN, access)
+            .putString(REFRESH_TOKEN, refresh)
+            .putLong(TOKEN_EXPIRES_AT, expiresAt)
             .apply()
 
-        // 🆕 Notificar a todos los listeners
+        // Notificar a todos los listeners
         if (tokenListeners.isEmpty()) {
-            Log.w(TAG, "⚠️ ========================================")
             Log.w(TAG, "⚠️ NO HAY LISTENERS REGISTRADOS")
-            Log.w(TAG, "⚠️ El token no será enviado al WebSocket")
-            Log.w(TAG, "⚠️ ========================================")
         } else {
             Log.d(TAG, "📢 Notificando a ${tokenListeners.size} listeners...")
-            tokenListeners.forEachIndexed { index, listener ->
+            tokenListeners.forEach { listener ->
                 try {
-                    Log.d(TAG, "   📤 Notificando listener #${index + 1}...")
                     listener.invoke(access)
-                    Log.d(TAG, "   ✅ Listener #${index + 1} notificado correctamente")
                 } catch (e: Exception) {
-                    Log.e(TAG, "   ❌ Error al notificar listener #${index + 1}: ${e.message}")
-                    e.printStackTrace()
+                    Log.e(TAG, "❌ Error al notificar listener: ${e.message}")
                 }
             }
-            Log.d(TAG, "✅ ========================================")
-            Log.d(TAG, "✅ TODOS LOS LISTENERS NOTIFICADOS")
-            Log.d(TAG, "✅ ========================================")
         }
+    }
+
+    /**
+     * Verifica si el token expirará pronto según un margen de minutos.
+     */
+    fun isTokenExpiringSoon(marginMinutes: Int = 3): Boolean {
+        val expiresAt = prefs.getLong(TOKEN_EXPIRES_AT, 0)
+        if (expiresAt == 0L) return true
+        
+        val currentTime = System.currentTimeMillis()
+        val marginMs = marginMinutes * 60 * 1000L
+        return (expiresAt - currentTime) < marginMs
+    }
+
+    /**
+     * Verifica si el token ya expiró.
+     */
+    fun isTokenExpired(): Boolean {
+        val expiresAt = prefs.getLong(TOKEN_EXPIRES_AT, 0)
+        return System.currentTimeMillis() >= expiresAt
     }
 
     fun addTokenChangeListener(listener: (String) -> Unit) {
         tokenListeners.add(listener)
-        Log.d(TAG, "➕ ========================================")
-        Log.d(TAG, "➕ LISTENER REGISTRADO")
-        Log.d(TAG, "➕ Total de listeners: ${tokenListeners.size}")
-        Log.d(TAG, "➕ ========================================")
+        Log.d(TAG, "➕ LISTENER REGISTRADO. Total: ${tokenListeners.size}")
     }
 
     fun removeTokenChangeListener(listener: (String) -> Unit) {
-        val removed = tokenListeners.remove(listener)
-        Log.d(TAG, "➖ ========================================")
-        Log.d(TAG, "➖ LISTENER ${if (removed) "REMOVIDO" else "NO ENCONTRADO"}")
-        Log.d(TAG, "➖ Total de listeners: ${tokenListeners.size}")
-        Log.d(TAG, "➖ ========================================")
+        tokenListeners.remove(listener)
+        Log.d(TAG, "➖ LISTENER REMOVIDO. Total: ${tokenListeners.size}")
     }
 
-    // 🆕 Método para verificar cuántos listeners hay
-    fun getListenerCount(): Int {
-        return tokenListeners.size
-    }
+    fun getListenerCount(): Int = tokenListeners.size
 
-    fun getAccessToken(): String? {
-        val token = prefs.getString("ACCESS_TOKEN", null)
-        if (token != null) {
-            Log.v(TAG, "🔑 Token recuperado: ${token.take(20)}...")
-        } else {
-            Log.w(TAG, "⚠️ No hay token disponible")
-        }
-        return token
-    }
+    fun getAccessToken(): String? = prefs.getString(ACCESS_TOKEN, null)
 
-    fun getRefreshToken(): String? = prefs.getString("REFRESH_TOKEN", null)
+    fun getRefreshToken(): String? = prefs.getString(REFRESH_TOKEN, null)
 
     fun saveLoginState(isLoggedIn: Boolean) {
         prefs.edit()
-            .putBoolean("IS_LOGGED_IN", isLoggedIn)
+            .putBoolean(IS_LOGGED_IN, isLoggedIn)
             .apply()
         Log.d(TAG, "🔐 Estado de login actualizado: $isLoggedIn")
     }
 
-    fun isLoggedIn(): Boolean = prefs.getBoolean("IS_LOGGED_IN", false)
+    fun isLoggedIn(): Boolean = prefs.getBoolean(IS_LOGGED_IN, false)
 
     fun saveUser(user: User) {
         val userJson = gson.toJson(user)
         prefs.edit()
-            .putString("USER_DATA", userJson)
+            .putString(USER_DATA, userJson)
             .apply()
-        Log.d(TAG, "👤 Usuario guardado: ${user.nombre} ${user.apellido}")
     }
 
     fun getUser(): User? {
-        val userJson = prefs.getString("USER_DATA", null)
+        val userJson = prefs.getString(USER_DATA, null)
         return if (userJson != null) {
             try {
                 gson.fromJson(userJson, User::class.java)
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Error al parsear usuario: ${e.message}")
                 null
             }
-        } else {
-            null
-        }
+        } else null
     }
 
     fun clear() {
-        Log.d(TAG, "🧹 Limpiando sesión (manteniendo listeners)")
-        // ❌ NO borrar listeners aquí - deben persistir
-        // tokenListeners.clear()
+        Log.d(TAG, "🧹 Limpiando sesión")
         prefs.edit().clear().apply()
-        Log.d(TAG, "✅ Sesión limpiada. Listeners preservados: ${tokenListeners.size}")
     }
 
     fun hasValidSession(): Boolean {
         return getRefreshToken() != null && isLoggedIn()
     }
 
+    /**
+     * Detiene el loop de auto-refresco.
+     */
+    fun stopAutoRefresh() {
+        autoRefreshJob?.cancel()
+        autoRefreshJob = null
+        Log.d(TAG, "🛑 Auto-refresh detenido")
+    }
+
     fun startAutoRefreshIfNeeded(onAuthExpired: () -> Unit = {}) {
         if (autoRefreshJob?.isActive == true) {
-            Log.d(TAG, "🔁 Auto-refresh ya está activo (singleton)")
+            Log.d(TAG, "🔁 Auto-refresh ya está activo")
             return
         }
 
         autoRefreshJob = refreshScope.launch {
-            Log.d(TAG, "🚀 Auto-refresh singleton iniciado")
+            Log.d(TAG, "🚀 Auto-refresh iniciado")
             var consecutiveFailures = 0
 
             while (isActive) {
@@ -170,10 +188,10 @@ class SessionManager private constructor(context: Context) {
 
                 val refreshToken = getRefreshToken()
                 val loggedIn = isLoggedIn()
-                if (refreshToken.isNullOrEmpty() || !loggedIn) {
-                    continue
-                }
+                
+                if (refreshToken.isNullOrEmpty() || !loggedIn) continue
 
+                // Solo refrescar si está por expirar o ha pasado el intervalo
                 authRepository.refreshToken(refreshToken).fold(
                     onSuccess = { response ->
                         consecutiveFailures = 0
@@ -187,15 +205,14 @@ class SessionManager private constructor(context: Context) {
 
                         Log.w(TAG, "⚠️ Auto-refresh falló (#$consecutiveFailures): ${error.message}")
 
-                        // ⚠️ Solo cerrar sesión por errores de autenticación reales.
-                        // Errores de red/intermitencia NO deben limpiar credenciales.
                         if (isAuthError) {
                             saveLoginState(false)
                             clear()
                             onAuthExpired()
                             consecutiveFailures = 0
+                            stopAutoRefresh()
                         } else if (consecutiveFailures >= MAX_REFRESH_FAILURES) {
-                            Log.w(TAG, "🌐 Fallos de red consecutivos en auto-refresh. Se mantiene sesión local.")
+                            Log.w(TAG, "🌐 Fallos de red consecutivos. Se mantiene sesión local.")
                             consecutiveFailures = 0
                         }
                     }
@@ -203,5 +220,4 @@ class SessionManager private constructor(context: Context) {
             }
         }
     }
-
 }

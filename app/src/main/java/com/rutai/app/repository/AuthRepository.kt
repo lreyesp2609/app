@@ -25,7 +25,7 @@ sealed class LoginState {
     data class Error(val message: String) : LoginState()
 }
 
-class AuthRepository {
+class AuthRepository(private val context: android.content.Context? = null) {
 
     private val api = RetrofitClient.apiService
 

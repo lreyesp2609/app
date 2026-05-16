@@ -380,7 +380,7 @@ class AuthViewModel(context: Context) : BaseViewModel(context, SessionManager.ge
     }
 
     fun registerUser(nombre: String, apellido: String, email: String, password: String, onResult: (Boolean) -> Unit) {
-        safeApiCall(
+        safeApiCallNoToken(
             call = { repository.register(nombre, apellido, email, password) },
             onSuccess = { onResult(true) },
             onError = { errorMessage = it; onResult(false) }
@@ -396,14 +396,23 @@ class AuthViewModel(context: Context) : BaseViewModel(context, SessionManager.ge
     }
 
     private fun enviarTokenFCMPendiente() {
-        val prefs = context.getSharedPreferences("recuerdago_prefs", Context.MODE_PRIVATE)
-        val pendingToken = prefs.getString("PENDING_FCM_TOKEN", null)
-        if (pendingToken != null) {
-            enviarTokenFCM(pendingToken)
-            prefs.edit().remove("PENDING_FCM_TOKEN").apply()
+        // 1. Intentar obtener el token guardado en SessionManager
+        val localFcmToken = sessionManager.getFcmToken()
+
+        if (localFcmToken != null) {
+            Log.d(TAG, "📤 Enviando FCM token recuperado de SessionManager")
+            enviarTokenFCM(localFcmToken)
         } else {
+            // 2. Si no hay nada local, pedirlo a Firebase directamente
+            Log.d(TAG, "🔍 No hay FCM token local, solicitando a FirebaseMessaging...")
             FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-                if (task.isSuccessful) enviarTokenFCM(task.result)
+                if (task.isSuccessful && task.result != null) {
+                    val newToken = task.result
+                    sessionManager.saveFcmToken(newToken)
+                    enviarTokenFCM(newToken)
+                } else {
+                    Log.e(TAG, "❌ No se pudo obtener el token de Firebase: ${task.exception?.message}")
+                }
             }
         }
     }

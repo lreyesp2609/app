@@ -77,7 +77,7 @@
             android:foregroundServiceType="location" />
 
         <service
-            android:name=".services.MyFirebaseMessagingService"
+            android:name=".network.MyFirebaseMessagingService"
             android:exported="false"
             android:directBootAware="true">
             <intent-filter>

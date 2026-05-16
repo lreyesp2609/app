@@ -3,130 +3,140 @@ package com.rutai.app
 import android.app.Application
 import android.content.Intent
 import android.util.Log
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.work.*
 import com.rutai.app.network.RetrofitClient
 import com.rutai.app.websocket.WebSocketLocationManager
 import com.rutai.app.websocket.WebSocketManager
 import com.rutai.app.utils.SessionManager
 import com.rutai.app.websocket.NotificationWebSocketManager
+import com.rutai.app.workers.TokenRefreshWorker
+import com.rutai.app.repository.AuthRepository
 import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
 import java.io.File
+import java.util.concurrent.TimeUnit
 
-class RecuerdaGoApplication : Application() {
+class RecuerdaGoApplication : Application(), DefaultLifecycleObserver {
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     companion object {
         private const val TAG = "RecuerdaGoApp"
+        private const val TOKEN_WORK_NAME = "TokenRefreshWork"
     }
 
     override fun onCreate() {
-        super.onCreate()
+        super<Application>.onCreate()
 
-        repeat(3) {
-            Log.e(TAG, "════════════════════════════════════════")
-            Log.e(TAG, "🚀🚀🚀 APLICACIÓN INICIADA 🚀🚀🚀")
-            Log.e(TAG, "════════════════════════════════════════")
-        }
+        Log.d(TAG, "🚀 Aplicación Iniciada - Configurando servicios de Auth")
 
-        // 🔥 Inicializar RetrofitClient con contexto
+        // 1️⃣ Inicializar Retrofit con el Interceptor corregido
         RetrofitClient.init(this)
 
-        // 🗺️ CONFIGURACIÓN CRÍTICA OSMDROID
-        val userAgent = "${BuildConfig.APPLICATION_ID}/1.0"
-        Configuration.getInstance().userAgentValue = userAgent
-        
-        // Cargar configuración existente
-        Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
-        
-        // Asegurar que el caché de tiles tenga una ruta válida y permisos
-        val osmConfig = Configuration.getInstance()
-        osmConfig.osmdroidBasePath = File(cacheDir, "osmdroid")
-        osmConfig.osmdroidTileCache = File(osmConfig.osmdroidBasePath, "tiles")
-
-        Log.d(TAG, "🗺️ OSMDroid configurado con UserAgent: $userAgent")
-        Log.d(TAG, "✅ RetrofitClient inicializado con AuthInterceptor")
-        Log.d(TAG, "✅ ========================================")
+        // 2️⃣ Configurar Mapas
+        setupOsmdroid()
 
         val sessionManager = SessionManager.getInstance(this)
 
-        // 🔥 REGISTRAR EL LISTENER INMEDIATAMENTE
-        Log.e(TAG, "🔧 Registrando listener de tokens...")
+        // 3️⃣ Registrar listener global para WebSockets
+        setupTokenChangeListener(sessionManager)
 
+        // 4️⃣ Programar refresco en background (cada 15 min)
+        setupTokenRefreshWorker()
+
+        // 5️⃣ Observar ciclo de vida (Foreground/Background)
+        ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+    }
+
+    private fun setupOsmdroid() {
+        val userAgent = "${BuildConfig.APPLICATION_ID}/1.0"
+        Configuration.getInstance().userAgentValue = userAgent
+        Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
+        val osmConfig = Configuration.getInstance()
+        osmConfig.osmdroidBasePath = File(cacheDir, "osmdroid")
+        osmConfig.osmdroidTileCache = File(osmConfig.osmdroidBasePath, "tiles")
+    }
+
+    private fun setupTokenRefreshWorker() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val tokenWorkRequest = PeriodicWorkRequestBuilder<TokenRefreshWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            TOKEN_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            tokenWorkRequest
+        )
+    }
+
+    private fun setupTokenChangeListener(sessionManager: SessionManager) {
         sessionManager.addTokenChangeListener { newToken ->
-            Log.e(TAG, "════════════════════════════════════════")
-            Log.e(TAG, "🔔🔔🔔 TOKEN ACTUALIZADO GLOBALMENTE 🔔🔔🔔")
-            Log.e(TAG, "════════════════════════════════════════")
-            Log.e(TAG, "   Nuevo token: ${newToken.take(20)}...")
+            Log.d(TAG, "🔔 Token renovado: Actualizando WebSockets...")
+            val gson = Gson()
 
-            try {
-                // 🔄 MENSAJE PARA CHATS (usa "action")
-                val mensajeChats = mapOf(
-                    "action" to "refresh_token",
-                    "data" to mapOf("token" to newToken)
-                )
+            // Chat WebSocket
+            if (WebSocketManager.isConnected()) {
+                val msg = gson.toJson(mapOf("action" to "refresh_token", "data" to mapOf("token" to newToken)))
+                WebSocketManager.send(msg)
+            }
 
-                // 🔄 MENSAJE PARA UBICACIONES (usa "type")
-                val mensajeUbicaciones = mapOf(
-                    "type" to "refresh_token",
-                    "token" to newToken
-                )
+            // Location WebSocket
+            if (WebSocketLocationManager.isConnected()) {
+                val msg = gson.toJson(mapOf("type" to "refresh_token", "token" to newToken))
+                WebSocketLocationManager.send(msg)
+            }
 
-                // 🆕 MENSAJE PARA NOTIFICACIONES (usa "action")
-                val mensajeNotificaciones = mapOf(
-                    "action" to "refresh_token",
-                    "data" to mapOf("token" to newToken)
-                )
-
-                var enviados = 0
-
-                // Enviar a WebSocket de chats
-                if (WebSocketManager.isConnected()) {
-                    val mensajeJson = Gson().toJson(mensajeChats)
-                    if (WebSocketManager.send(mensajeJson)) {
-                        enviados++
-                        Log.e(TAG, "✅ Token enviado al WebSocket de chats")
-                    }
-                } else {
-                    Log.e(TAG, "ℹ️ WebSocket de chats no conectado")
-                }
-
-                // Enviar a WebSocket de ubicaciones
-                if (WebSocketLocationManager.isConnected()) {
-                    val mensajeJson = Gson().toJson(mensajeUbicaciones)
-                    if (WebSocketLocationManager.send(mensajeJson)) {
-                        enviados++
-                        Log.e(TAG, "✅ Token enviado al WebSocket de ubicaciones")
-                    }
-                } else {
-                    Log.e(TAG, "ℹ️ WebSocket de ubicaciones no conectado")
-                }
-
-                // 🆕 Enviar a WebSocket de notificaciones
-                if (NotificationWebSocketManager.isConnected()) {
-                    val mensajeJson = Gson().toJson(mensajeNotificaciones)
-                    if (NotificationWebSocketManager.send(mensajeJson)) {
-                        enviados++
-                        Log.e(TAG, "✅ Token enviado al WebSocket de notificaciones")
-                    }
-                } else {
-                    Log.e(TAG, "ℹ️ WebSocket de notificaciones no conectado")
-                }
-
-                Log.e(TAG, "📊 Resumen: Token enviado a $enviados WebSockets")
-
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ Error al enviar token: ${e.message}")
-                e.printStackTrace()
+            // Notifications WebSocket
+            if (NotificationWebSocketManager.isConnected()) {
+                val msg = gson.toJson(mapOf("action" to "refresh_token", "data" to mapOf("token" to newToken)))
+                NotificationWebSocketManager.send(msg)
             }
         }
+    }
 
-        Log.e(TAG, "════════════════════════════════════════")
-        Log.e(TAG, "✅ LISTENER GLOBAL REGISTRADO PERMANENTEMENTE")
-        Log.e(TAG, "✅ Total de listeners: ${sessionManager.getListenerCount()}")
-        Log.e(TAG, "════════════════════════════════════════")
+    // 🔄 EVENTOS DE CICLO DE VIDA (DefaultLifecycleObserver)
 
-        sessionManager.startAutoRefreshIfNeeded {
-            sendBroadcast(Intent("com.rutai.app.FORCE_LOGOUT"))
-            Log.w(TAG, "🚨 Sesión expirada desde auto-refresh singleton")
+    override fun onStart(owner: LifecycleOwner) {
+        // super.onStart(owner) es opcional (es una interfaz con default vacío)
+        Log.d(TAG, "📱 App vuelve al primer plano")
+
+        val sessionManager = SessionManager.getInstance(this)
+
+        if (sessionManager.isLoggedIn()) {
+            applicationScope.launch {
+                if (sessionManager.isTokenExpiringSoon(marginMinutes = 5)) {
+                    Log.w(TAG, "⚠️ Token crítico detectado al volver. Refrescando...")
+                    sessionManager.getRefreshToken()?.let { rt ->
+                        AuthRepository(applicationContext).refreshToken(rt).onSuccess { res ->
+                            sessionManager.saveTokens(res.accessToken, res.refreshToken)
+                            Log.d(TAG, "✅ Token recuperado con éxito al inicio")
+                        }.onFailure { e ->
+                            Log.e(TAG, "❌ Error al recuperar sesión: ${e.message}")
+                        }
+                    }
+                }
+
+                sessionManager.startAutoRefreshIfNeeded {
+                    sendBroadcast(Intent("com.rutai.app.FORCE_LOGOUT"))
+                }
+            }
         }
+    }
+
+    override fun onStop(owner: LifecycleOwner) {
+        Log.d(TAG, "📉 App en background. Deteniendo loop proactivo.")
+        SessionManager.getInstance(this).stopAutoRefresh()
     }
 }
